@@ -1,9 +1,9 @@
-import MainContent from "../components/MainContent/MainContentPage"
+import MainContent from "../../components/MainContent/MainContentPage"
 import "bootstrap/dist/css/bootstrap.min.css"
-import students from "../images/Dashboard/Students.png"
-import Teachers from "../images/Dashboard/Teachers.png"
-import Parents from "../images/Dashboard/Parents.png"
-import Earnings from "../images/Dashboard/Earnings.png"
+import students from "../../images/Dashboard/Students.png"
+import Teachers from "../../images/Dashboard/Teachers.png"
+import Parents from "../../images/Dashboard/Parents.png"
+import Earnings from "../../images/Dashboard/Earnings.png"
 
 function Home() {
   // Sample data for statistics

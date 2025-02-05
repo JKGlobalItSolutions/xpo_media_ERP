@@ -1,43 +1,49 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import MainContentPage from '../../../components/MainContent/MainContentPage';
-import { Form, Button, Row, Col, Container } from 'react-bootstrap';
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import MainContentPage from "../../../components/MainContent/MainContentPage";
+import { Form, Button, Row, Col } from "react-bootstrap";
+import "../Styles/TwoBox.css";
 
-const CommunityAndCasteSetup = () => {
-  const [feeHead, setFeeHead] = useState('');
-  const [accountHead, setAccountHead] = useState('');
+const ReceiptSubHeadSetup = () => {
+  const [feeHead, setFeeHead] = useState("");
+  const [accountHead, setAccountHead] = useState("");
   const location = useLocation();
+
+  // Sample options for the dropdown
+  const mainHeadOptions = ["Tuition Fees", "Transport Fees", "Library Fees", "Hostel Fees"];
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Fee Head:', feeHead);
-    console.log('Account Head:', accountHead);
+    console.log("Selected Main Head:", feeHead);
+    console.log("Sub Head Name:", accountHead);
   };
 
   const handleReset = () => {
-    setFeeHead('');
-    setAccountHead('');
+    setFeeHead("");
+    setAccountHead("");
   };
 
   return (
     <MainContentPage>
-      <Container fluid className="px-0">
+      <div className="px-lg-3 px-0 ">
         <Row>
           <Col xs={12}>
             <div className="fee-setup-container">
               {/* Breadcrumb Navigation */}
-              <nav className="custom-breadcrumb py-3">
+              <nav className="custom-breadcrumb py-1 py-lg-3">
                 <Link to="/home">Home</Link>
-                <span className="separator">&gt;</span>
+                <span className="separator"> &gt; </span>
                 <span>Administration</span>
-                <span className="separator">&gt;</span>
-                <span className="current">Community and Caste Setup</span>
+                <span className="separator"> &gt; </span>
+                <Link to="/admin/receipt-setup">Receipt Setup</Link>
+                <span className="separator"> &gt; </span>
+                <span className="current">Receipt SubHead Setup</span>
               </nav>
 
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3">
-                  <h2 className="m-0">Community and Caste Setup</h2>
+                  <h2 className="m-0">Sub Head Setup</h2>
                 </div>
 
                 {/* Form Content */}
@@ -45,27 +51,33 @@ const CommunityAndCasteSetup = () => {
                   <Form onSubmit={handleSubmit}>
                     <Row className="mb-4">
                       <Col xs={12} md={4} className="label-col mb-2 mb-md-0">
-                        <Form.Label className="mb-0">Enter New Community Name</Form.Label>
+                        <Form.Label className="mb-0">Select Main Head</Form.Label>
                       </Col>
                       <Col xs={12} md={8}>
                         <Form.Control
-                          type="text"
-                          placeholder="Add Class"
+                          as="select"
                           value={feeHead}
                           onChange={(e) => setFeeHead(e.target.value)}
                           className="custom-input"
-                        />
+                        >
+                          <option value="">-- Select Main Head --</option>
+                          {mainHeadOptions.map((option, index) => (
+                            <option key={index} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </Form.Control>
                       </Col>
                     </Row>
 
                     <Row className="mb-4">
                       <Col xs={12} md={4} className="label-col mb-2 mb-md-0">
-                        <Form.Label className="mb-0">Enter New Caste Name</Form.Label>
+                        <Form.Label className="mb-0">Enter Sub Head Name</Form.Label>
                       </Col>
                       <Col xs={12} md={8}>
                         <Form.Control
                           type="text"
-                          placeholder="Add Class"
+                          placeholder="Enter Sub Head Name"
                           value={accountHead}
                           onChange={(e) => setAccountHead(e.target.value)}
                           className="custom-input"
@@ -76,23 +88,23 @@ const CommunityAndCasteSetup = () => {
                     <Row>
                       <Col xs={12}>
                         <div className="button-group mt-4">
-                          <Button 
-                            variant="primary" 
+                          <Button
+                            variant="primary"
                             type="submit"
                             className="create-fee-btn px-4 py-2"
                           >
                             Save
                           </Button>
-                          <Button 
-                            variant="danger" 
+                          <Button
+                            variant="danger"
                             type="button"
                             className="reset-btn px-4 py-2"
                             onClick={handleReset}
                           >
                             Reset
                           </Button>
-                          <Button 
-                            variant="secondary" 
+                          <Button
+                            variant="secondary"
                             type="button"
                             className="cancel-btn px-4 py-2"
                           >
@@ -107,9 +119,9 @@ const CommunityAndCasteSetup = () => {
             </div>
           </Col>
         </Row>
-      </Container>
+      </div>
     </MainContentPage>
   );
 };
 
-export default CommunityAndCasteSetup;
+export default ReceiptSubHeadSetup;
