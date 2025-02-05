@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container } from "react-bootstrap"
 
-const Enquiry = () => {
+const EditStudentDetails = () => {
   const [formData, setFormData] = useState({
     admissionNumber: "",
     studentPhoto: null,
@@ -89,13 +89,13 @@ const Enquiry = () => {
         <div className="admission-form">
           {/* Header and Breadcrumb */}
           <div className="mb-4">
-            <h2 className="mb-2">Enquirey</h2>
+            <h2 className="mb-2">Edit Student Detail</h2>
             <nav className="custom-breadcrumb py-1 py-lg-3">
               <Link to="/home">Home</Link>
               <span className="separator mx-2">&gt;</span>
-              <span>Administration</span>
+              <span>Admission Master</span>
               <span className="separator mx-2">&gt;</span>
-              <Link to="/admin/tuition-setup">Enquiry Form</Link>
+              <Link to="/admission/EditStudentDetails">Edit Student Detail</Link>
             </nav>
           </div>
 
@@ -106,7 +106,7 @@ const Enquiry = () => {
               <div className="d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center gap-2">
                   <span>
-                    <b>Enquiry Form</b>
+                    <b>Edit Student Detail</b>
                   </span>
                 </div>
               </div>
@@ -505,5 +505,5 @@ const Enquiry = () => {
   )
 }
 
-export default Enquiry
+export default EditStudentDetails
 
