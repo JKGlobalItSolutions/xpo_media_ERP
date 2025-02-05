@@ -1,0 +1,127 @@
+.course-setup-container {
+    width: 100%;
+  }
+  
+  /* Breadcrumb styles */
+  .custom-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 14px;
+  }
+  
+  .custom-breadcrumb a {
+    color: #0B3D7B;
+    text-decoration: none;
+  }
+  
+  .custom-breadcrumb a:hover {
+    text-decoration: underline;
+  }
+  
+  .custom-breadcrumb .separator {
+    color: #6c757d;
+    margin: 0 4px;
+  }
+  
+  .custom-breadcrumb .current {
+    color: #6c757d;
+  }
+  
+  /* Form Card styles */
+  .form-card {
+    background: #ffffff;
+    border-radius: 4px;
+    box-shadow: rgba(50, 50, 93, 0.25) 0px 2px 5px -1px, rgba(0, 0, 0, 0.3) 0px 1px 3px -1px;
+  }
+  
+  /* Header styles */
+  .header {
+    background-color: #0B3D7B;
+    color: white;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+  }
+  
+  .header h2 {
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+  
+  /* Form styles */
+  .label-col {
+    display: flex;
+    align-items: center;
+  }
+  
+  .form-label {
+    font-weight: 500;
+    font-size: 14px;
+  }
+  
+  .custom-input {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    height: 45px;
+    font-size: 16px;
+  }
+  
+  .custom-input:focus {
+    border-color: #0B3D7B;
+    box-shadow: 0 0 0 0.2rem rgba(11, 61, 123, 0.25);
+  }
+  
+  .button-group {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+  
+  .add-program-btn {
+    background-color: #0B3D7B;
+    border-color: #0B3D7B;
+    min-width: 120px;
+    font-size: 14px;
+  }
+  
+  .add-program-btn:hover {
+    background-color: #092c5a;
+    border-color: #092c5a;
+  }
+  
+  .reset-btn {
+    background-color: #D60A0B;
+    border-color: #D60A0B;
+    min-width: 80px;
+    font-size: 14px;
+  }
+  
+  .reset-btn:hover {
+    background-color: #b30909;
+    border-color: #b30909;
+  }
+  
+  .cancel-btn {
+    background-color: #A3A3A3;
+    border-color: #A3A3A3;
+    min-width: 80px;
+    font-size: 14px;
+  }
+  
+  .cancel-btn:hover {
+    background-color: #8a8a8a;
+    border-color: #8a8a8a;
+  }
+  
+  /* Responsive styles */
+  @media (max-width: 991px) {
+    .button-group {
+      flex-direction: column;
+    }
+  
+    .add-program-btn,
+    .reset-btn,
+    .cancel-btn {
+      width: 100%;
+    }
+  }
