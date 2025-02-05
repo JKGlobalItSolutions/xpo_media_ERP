@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import MainContentPage from '../../../components/MainContent/MainContentPage';
 import { Form, Button, Row, Col, Container } from 'react-bootstrap';
-import '../Styles/TwoBox.css';
 
 const FeeHeadSetup = () => {
   const [feeHead, setFeeHead] = useState('');
@@ -22,7 +21,7 @@ const FeeHeadSetup = () => {
 
   return (
     <MainContentPage>
-      <Container fluid className="px-3">
+      <div className="px-0 px-lg-0">
         <Row>
           <Col xs={12}>
             <div className="fee-setup-container">
@@ -37,7 +36,7 @@ const FeeHeadSetup = () => {
 
               <div className="form-card mt-3">
                 {/* Header */}
-                <div className="header p-3">
+                <div className="header px-3">
                   <h2 className="m-0">Fee Head Setup</h2>
                 </div>
 
@@ -108,7 +107,7 @@ const FeeHeadSetup = () => {
             </div>
           </Col>
         </Row>
-      </Container>
+      </div>
     </MainContentPage>
   );
 };

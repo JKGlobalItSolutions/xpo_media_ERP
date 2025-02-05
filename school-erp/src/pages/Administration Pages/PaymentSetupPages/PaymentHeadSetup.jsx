@@ -28,7 +28,7 @@ const ReceiptHeadSetup = () => {
                 <span className="separator"> &gt; </span>
                 <span>Administration</span>
                 <span className="separator"> &gt; </span>
-                <Link to="/admin/receipt-setup" >Receipt Setup</Link>
+                <Link to="/admin/payment-setup" >Payment Setup</Link>
                 <span className="separator"> &gt; </span>
                 <span className="current">Receipt Head Setup</span>
               </nav>

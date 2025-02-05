@@ -3,7 +3,7 @@ import { PublicRoute } from "./PublicRouter";
 import { PrivateRoute } from "./PrivateRouter";
 import Login from "../pages/Auth/Login";
 import Register from "../pages/Auth/Register";
-import Home from "../pages/Home";
+import Home from "../pages/MainPages/Home";
 import MainContentPage from "../components/MainContent/MainContentPage";
 import AdministrationRoute from "./SubRouters/AdministrationRoute";
 import AdministrationMaster from "./SubRouters/AdmissionMaster";

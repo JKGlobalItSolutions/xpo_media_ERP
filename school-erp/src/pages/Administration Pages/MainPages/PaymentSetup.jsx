@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import MainContentPage from "../../../components/MainContent/MainContentPage";
 import "../Styles/ReceiptSetup.css";
 
-const ReceiptSetup = () => {
+const PaymentSetup = () => {
   const [className, setClassName] = useState("");
   const location = useLocation();
 
@@ -45,7 +45,7 @@ const ReceiptSetup = () => {
                   </Link>
                 </li>
                 <li className="breadcrumb-item active" aria-current="page">
-                  Receipt Setup
+                  Payment Setup
                 </li>
               </ol>
             </nav>
@@ -59,7 +59,7 @@ const ReceiptSetup = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/head-setup"
+            to="/admin/paymenthead-setup"
           >
             <div>
               <div className="card fee-setup-card h-100">
@@ -78,7 +78,7 @@ const ReceiptSetup = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to="/admin/paymentsubhead-setup"
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -92,4 +92,4 @@ const ReceiptSetup = () => {
   );
 };
 
-export default ReceiptSetup;
+export default PaymentSetup;
