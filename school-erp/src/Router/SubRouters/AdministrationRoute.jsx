@@ -11,6 +11,10 @@ import ReceiptSubHeadSetup from '../../pages/Administration Pages/ReceiptSetupPa
 import PaymentSetup from '../../pages/Administration Pages/MainPages/PaymentSetup';
 import PaymenHeadSetup from '../../pages/Administration Pages/PaymentSetupPages/PaymentHeadSetup';
 import PaymentSubHeadSetup from '../../pages/Administration Pages/PaymentSetupPages/PaymentSubHeadSetup';
+import CertificatePreparation from '../../pages/Administration Pages/MainPages/CirtificatePreparation';
+import AttendanceCertificate from '../../pages/Administration Pages/CertificatePreparationPages/Attendancecertificate';
+import CourseCertificate from '../../pages/Administration Pages/CertificatePreparationPages/CourseCertificate';
+import ExperienceCertificate from '../../pages/Administration Pages/CertificatePreparationPages/ExperienceCertificate';
 
 
 
@@ -28,6 +32,10 @@ function AdministrationRoute() {
       <Route path="payment-setup" element={<PaymentSetup />} />
       <Route path="paymenthead-setup" element={<PaymenHeadSetup />} />
       <Route path="paymentsubhead-setup" element={<PaymentSubHeadSetup />} />
+      <Route path="certificate" element={<CertificatePreparation />} />
+      <Route path="attendance-certificate" element={<AttendanceCertificate />} />
+      <Route path="course-certificate" element={<CourseCertificate />} />
+      <Route path="experience-certificate" element={<ExperienceCertificate/>} />
     </Routes>
   );
 }
