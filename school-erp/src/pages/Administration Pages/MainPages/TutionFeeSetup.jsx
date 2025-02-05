@@ -40,8 +40,6 @@ const RegularCandidates = () => {
                 <span to="">Administration</span>
                 <span className="separator">&gt;</span>
                 <Link to="/admin/tuition-setup">Tuition Fee Setup</Link>
-                <span className="separator">&gt;</span>
-                <span className="current">Regular Candidates</span>
               </nav>
 
               <div className="form-card mt-3">
@@ -53,7 +51,7 @@ const RegularCandidates = () => {
                 <div className="content-wrapper p-4">
                   <Form onSubmit={handleSubmit}>
                     <Row className="mb-3">
-                      <Col xs={12} md={6} lg={4}>
+                      <Col xs={12} md={6} lg={3}>
                         <Form.Group>
                           <Form.Label>Select Standard</Form.Label>
                           <Form.Select value={standard} onChange={(e) => setStandard(e.target.value)}>
@@ -64,7 +62,19 @@ const RegularCandidates = () => {
                           </Form.Select>
                         </Form.Group>
                       </Col>
-                      <Col xs={12} md={6} lg={4}>
+                      <Col xs={12} md={6} lg={3}>
+                        <Form.Group>
+                          <Form.Label>Select Tution Fee Setup</Form.Label>
+                          <Form.Select value={feeHeading} onChange={(e) => setFeeHeading(e.target.value)}>
+                            <option value="">Select Tution Fee Setup</option>
+                            <option value="2nd term fee">Regular Candidates</option>
+                            <option value="1st term fee">RTE Candidates</option>
+                            <option value="3rd term fee">Other Candidates</option>
+                            <option value="3rd term fee">Single Parent</option>
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+                      <Col xs={12} md={6} lg={3}>
                         <Form.Group>
                           <Form.Label>Select Fee Heading</Form.Label>
                           <Form.Select value={feeHeading} onChange={(e) => setFeeHeading(e.target.value)}>
@@ -75,7 +85,8 @@ const RegularCandidates = () => {
                           </Form.Select>
                         </Form.Group>
                       </Col>
-                      <Col xs={12} md={6} lg={4}>
+                   
+                      <Col xs={12} md={6} lg={3}>
                         <Form.Group>
                           <Form.Label>Fee</Form.Label>
                           <Form.Control
@@ -137,7 +148,7 @@ const RegularCandidates = () => {
                     <Row className="mt-3">
                       <Col xs={12}>
                         <div className="d-flex gap-2">
-                          <Button variant="primary" type="submit">
+                          <Button style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}} type="submit">
                             Save
                           </Button>
                           <Button variant="danger" type="button" onClick={handleReset}>

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import MainContentPage from "../../components/MainContent/MainContentPage";
-import "./TuitionFeeSetup.css";
+import MainContentPage from "../../../components/MainContent/MainContentPage";
+import "../Styles/ReceiptSetup.css";
 
-const TuitionFeeSetup = () => {
+const ReceiptSetup = () => {
   const [className, setClassName] = useState("");
   const location = useLocation();
 
@@ -45,7 +45,7 @@ const TuitionFeeSetup = () => {
                   </Link>
                 </li>
                 <li className="breadcrumb-item active" aria-current="page">
-                  Tuition Fee Setup
+                  Receipt Setup
                 </li>
               </ol>
             </nav>
@@ -59,14 +59,16 @@ const TuitionFeeSetup = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/tuition-setup/regular-candidates"
+            to="/admin/head-setup"
           >
             <div>
               <div className="card fee-setup-card h-100">
                 <div className="card-body d-flex align-items-center justify-content-center">
-                  <h5 className="card-title text-white m-0">
-                    Regular Candidates
+            
+                <h5 className="card-title text-white m-0">
+                  Head Setup
                   </h5>
+                
                 </div>
               </div>
             </div>
@@ -80,39 +82,14 @@ const TuitionFeeSetup = () => {
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
-                <h5 className="card-title text-white m-0">RTE Candidates</h5>
+                <h5 className="card-title text-white m-0">Sub Head Setup</h5>
               </div>
             </div>
           </Link>
-          <Link
-            style={{ textDecoration: "none" }}
-            className="col-12 col-md-6 col-lg-3"
-            to="/admin/tuition-setup/other-candidate"
-          >
-            <div className="card fee-setup-card h-100">
-              <div className="card-body d-flex align-items-center justify-content-center">
-                <h5 className="card-title text-white m-0">Other Candidates</h5>
-              </div>
-            </div>
-          </Link>
-          <Link
-            style={{ textDecoration: "none" }}
-            className="col-12 col-md-6 col-lg-3"
-            to="/admin/tuition-setup/single-parent"
-          >
-            <div className="card fee-setup-card h-100">
-              <div className="card-body d-flex align-items-center justify-content-center">
-                <h5 className="card-title text-white m-0">Single Parent</h5>
-              </div>
-            </div>
-          </Link>
-
-
-       
         </div>
       </div>
     </MainContentPage>
   );
 };
 
-export default TuitionFeeSetup;
+export default ReceiptSetup;

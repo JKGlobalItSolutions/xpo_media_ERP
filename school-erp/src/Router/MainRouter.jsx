@@ -5,8 +5,8 @@ import Login from "../pages/Auth/Login";
 import Register from "../pages/Auth/Register";
 import Home from "../pages/Home";
 import MainContentPage from "../components/MainContent/MainContentPage";
-import Administration from "../pages/Administration";
 import AdministrationRoute from "./SubRouters/AdministrationRoute";
+import AdministrationMaster from "./SubRouters/AdmissionMaster";
 
 function MainRouter() {
   return (
@@ -54,6 +54,14 @@ function MainRouter() {
         element={
           <PublicRoute>
             <AdministrationRoute />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/admission/*"
+        element={
+          <PublicRoute>
+            <AdministrationMaster />
           </PublicRoute>
         }
       />

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import MainContentPage from '../../components/MainContent/MainContentPage';
+import MainContentPage from '../../../components/MainContent/MainContentPage';
 import { Form, Button, Row, Col, Container } from 'react-bootstrap';
-import './CourseSetup.css';
 
-const CourseSetup = () => {
+const ReceiptHeadSetup = () => {
   const [className, setClassName] = useState('');
   const location = useLocation();
 
@@ -35,8 +34,8 @@ const CourseSetup = () => {
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3">
-                  <h2 className="m-0 d-none d-lg-block">Create Standard/Course Name Setup</h2>
-                  <h6 className="m-0 d-lg-none">Create Standard/Course Name Setup</h6>
+                  <h2 className="m-0 d-none d-lg-block">Head Of Account</h2>
+                  <h6 className="m-0 d-lg-none">Head Of Account</h6>
                 </div>
 
                 {/* Form Content */}
@@ -44,7 +43,7 @@ const CourseSetup = () => {
                   <Form onSubmit={handleSubmit}>
                     <Row className="mb-4 align-items-center">
                       <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">Enter Standard/Course Name</Form.Label>
+                        <Form.Label className="mb-0 ms-lg-5">Enter New Head Name</Form.Label>
                       </Col>
                       <Col xs={12} lg={8}>
                         <Form.Control
@@ -61,11 +60,11 @@ const CourseSetup = () => {
                       <Col xs={12}>
                         <div className="button-group mt-4">
                           <Button 
-                            variant="primary" 
+                            style={{backgroundColor:"#0B3D7B",border:"#0B3D7B"}} 
                             type="submit"
                             className="add-program-btn px-4 py-2"
                           >
-                            Add Program
+                             Save
                           </Button>
                           <Button 
                             variant="danger" 
@@ -96,4 +95,4 @@ const CourseSetup = () => {
   );
 };
 
-export default CourseSetup;
+export default ReceiptHeadSetup

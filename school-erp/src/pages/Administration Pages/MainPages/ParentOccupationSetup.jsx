@@ -1,75 +1,57 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import MainContentPage from '../../components/MainContent/MainContentPage';
+import MainContentPage from '../../../components/MainContent/MainContentPage';
 import { Form, Button, Row, Col, Container } from 'react-bootstrap';
-import './FeeHeadSetup.css';
 
-const FeeHeadSetup = () => {
-  const [feeHead, setFeeHead] = useState('');
-  const [accountHead, setAccountHead] = useState('');
+const ParentOccupationSetup = () => {
+  const [className, setClassName] = useState('');
   const location = useLocation();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Fee Head:', feeHead);
-    console.log('Account Head:', accountHead);
+    console.log('Class Name:', className);
   };
 
   const handleReset = () => {
-    setFeeHead('');
-    setAccountHead('');
+    setClassName('');
   };
 
   return (
     <MainContentPage>
-      <Container fluid className="px-3">
+      <Container fluid className="px-0 px-lg-0">
         <Row>
           <Col xs={12}>
-            <div className="fee-setup-container">
+            <div className="course-setup-container">
               {/* Breadcrumb Navigation */}
-              <nav className="custom-breadcrumb py-3">
+              <nav className="custom-breadcrumb py-1 py-lg-3">
                 <Link to="/home">Home</Link>
                 <span className="separator">&gt;</span>
                 <span>Administration</span>
                 <span className="separator">&gt;</span>
-                <span className="current">Fee Head Setup</span>
+                <span className="current col-12">Parent Occupation Setup</span>
               </nav>
 
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3">
-                  <h2 className="m-0">Fee Head Setup</h2>
+                  <h2 className="m-0 d-none d-lg-block">Parent Occupation Setup</h2>
+                  <h6 className="m-0 d-lg-none">Parent Occupation Setup</h6>
                 </div>
 
                 {/* Form Content */}
                 <div className="content-wrapper p-4">
                   <Form onSubmit={handleSubmit}>
-                    <Row className="mb-4">
-                      <Col xs={12} md={4} className="label-col mb-2 mb-md-0">
-                        <Form.Label className="mb-0">Enter New Fee Head</Form.Label>
+                    <Row className="mb-4 align-items-center">
+                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
+                        <Form.Label className="mb-0 ms-lg-5">Enter New Occupation Name</Form.Label>
                       </Col>
-                      <Col xs={12} md={8}>
+                      <Col xs={12} lg={8}>
                         <Form.Control
                           type="text"
-                          placeholder="1 term"
-                          value={feeHead}
-                          onChange={(e) => setFeeHead(e.target.value)}
-                          className="custom-input"
-                        />
-                      </Col>
-                    </Row>
-
-                    <Row className="mb-4">
-                      <Col xs={12} md={4} className="label-col mb-2 mb-md-0">
-                        <Form.Label className="mb-0">Enter Account Head</Form.Label>
-                      </Col>
-                      <Col xs={12} md={8}>
-                        <Form.Control
-                          type="text"
-                          placeholder="Name of the fee account transfer"
-                          value={accountHead}
-                          onChange={(e) => setAccountHead(e.target.value)}
-                          className="custom-input"
+                          placeholder="Add Class"
+                          value={className}
+                          onChange={(e) => setClassName(e.target.value)}
+                          className="custom-input py-2"
                         />
                       </Col>
                     </Row>
@@ -78,11 +60,11 @@ const FeeHeadSetup = () => {
                       <Col xs={12}>
                         <div className="button-group mt-4">
                           <Button 
-                            variant="primary" 
+                          style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
                             type="submit"
-                            className="create-fee-btn px-4 py-2"
+                            className="add-program-btn px-4 py-2"
                           >
-                            Create Fee Head
+                            Add Occupation
                           </Button>
                           <Button 
                             variant="danger" 
@@ -113,4 +95,4 @@ const FeeHeadSetup = () => {
   );
 };
 
-export default FeeHeadSetup;
+export default ParentOccupationSetup;
