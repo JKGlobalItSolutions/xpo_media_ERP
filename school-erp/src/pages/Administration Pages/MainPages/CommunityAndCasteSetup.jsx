@@ -21,7 +21,7 @@ const CommunityAndCasteSetup = () => {
 
   return (
     <MainContentPage>
-      <Container fluid className="px-0">
+      <Container fluid className="px-0 px-lg-0 ">
         <Row>
           <Col xs={12}>
             <div className="fee-setup-container">
@@ -37,7 +37,8 @@ const CommunityAndCasteSetup = () => {
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3">
-                  <h2 className="m-0">Community and Caste Setup</h2>
+                  <h2 className="m-0 d-none d-lg-block ">Community and Caste Setup</h2>
+                  <h6 className="m-0 d-lg-none ">Community and Caste Setup</h6>
                 </div>
 
                 {/* Form Content */}
