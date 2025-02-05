@@ -27,7 +27,7 @@ function MainContentPage({ children }) {
   }
 
   return (
-    <div style={{ display: "flex", height: "100vh", backgroundColor: "#f3f4f6" }}>
+    <div style={{ display: "flex",  backgroundColor: "#f3f4f6" }}>
       <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} isMobile={isMobile} />
 
       <div
@@ -46,7 +46,6 @@ function MainContentPage({ children }) {
           style={{
             flex: 1,
             overflowY: "auto",
-            overflowX: "hidden",
             backgroundColor: "#f3f4f6",
             padding: "24px",
           }}
