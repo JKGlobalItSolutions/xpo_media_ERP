@@ -62,7 +62,7 @@ export default function GeneralCircularSMS() {
         </nav>
         {/* Header */}
         <div className="p-3 text-white" style={{ backgroundColor: "#0B3D7B", borderRadius: "6px 6px 0 0" }}>
-          <h4 className="mb-0">General Circular SMS</h4>
+          <h4 className="mb-0">Enquiry SMS</h4>
         </div>
 
     
@@ -94,35 +94,10 @@ export default function GeneralCircularSMS() {
                 <h5 className="mb-2">List Nos</h5>
                 <div style={{ height: "150px", overflowY: "auto" }}>{/* List content */}</div>
               </div>
-              <button className="btn text-white w-100 mb-2" style={{ backgroundColor: "#0B3D7B" }}>Remove [Standard & Section]</button>
-
-              <div className="d-flex gap-2 mb-2">
-                <select className="form-select">
-                  <option>Select Standard</option>
-                </select>
-                <select className="form-select">
-                  <option>Select Section</option>
-                </select>
-              </div>
-
-              <div className="d-flex gap-2 mb-2">
-                <button className="btn text-white w-50" style={{ backgroundColor: "#0B3D7B" }}>Remove Standard</button>
-                <button className="btn text-white w-50" style={{ backgroundColor: "#0B3D7B" }}>Remove Section</button>
-              </div>
-
-              <div className="d-flex gap-2">
-                <select className="form-select w-50">
-                  <option>Select Status</option>
-                </select>
-                <select className="form-select w-50">
-                  <option>Select Option</option>
-                </select>
-              </div>
             </div>
           </div>
 
           {/* Individual List Button */}
-          <button className="btn text-white w-100 my-3" style={{ backgroundColor: "#0B3D7B" }}>Individual List</button>
 
           {/* Data Grid */}
           <div className="table-responsive mt-3">
