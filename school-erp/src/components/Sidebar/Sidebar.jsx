@@ -83,8 +83,16 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       icon: transactionIcon,
       path: "/transaction",
       subItems: [
-        { id: "4-1", title: "• Fee Collection", path: "/transaction/fee-collection" },
+        { id: "4-1", title: "• Billing Entry", path: "/transaction/billing-entry" },
+        { id: "4-2", title: "• Other Fee / Miscellaneous Fee", path: "/transaction/other-fee" },
+        { id: "4-2", title: "• Individual Paid", path: "/transaction/individual-paid" },
         { id: "4-2", title: "• Payment Entry", path: "/transaction/payment-entry" },
+        { id: "4-2", title: "• Receipt Entry", path: "/transaction/receipt-entry" },
+        { id: "4-2", title: "• Duplicate Bill", path: "/transaction/duplicate-bill" },
+        { id: "4-2", title: "• Staff Phone Update", path: "/transaction/staff-update" },
+        { id: "4-2", title: "• Student Phone Replace", path: "/transaction/payment-entry" },
+        { id: "4-2", title: "• Attendance Entry", path: "/transaction/payment-entry" },
+        { id: "4-2", title: "• SMS Send", path: "/transaction/payment-entry" },
       ],
     },
     {

@@ -7,6 +7,7 @@ import Home from "../pages/MainPages/Home";
 import MainContentPage from "../components/MainContent/MainContentPage";
 import AdministrationRoute from "./SubRouters/AdministrationRoute";
 import AdministrationMaster from "./SubRouters/AdmissionMaster";
+import TransactionRoute from "./SubRouters/TransactionRoute";
 
 function MainRouter() {
   return (
@@ -62,6 +63,14 @@ function MainRouter() {
         element={
           <PublicRoute>
             <AdministrationMaster />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/transaction/*"
+        element={
+          <PublicRoute>
+            <TransactionRoute />
           </PublicRoute>
         }
       />
