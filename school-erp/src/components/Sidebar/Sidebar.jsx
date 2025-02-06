@@ -90,9 +90,9 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "4-2", title: "• Receipt Entry", path: "/transaction/receipt-entry" },
         { id: "4-2", title: "• Duplicate Bill", path: "/transaction/duplicate-bill" },
         { id: "4-2", title: "• Staff Phone Update", path: "/transaction/staff-update" },
-        { id: "4-2", title: "• Student Phone Replace", path: "/transaction/payment-entry" },
-        { id: "4-2", title: "• Attendance Entry", path: "/transaction/payment-entry" },
-        { id: "4-2", title: "• SMS Send", path: "/transaction/payment-entry" },
+        { id: "4-2", title: "• Student Phone Replace", path: "/transaction/student-phone-replace" },
+        { id: "4-2", title: "• Attendance Entry", path: "/transaction/attendance-entry" },
+        { id: "4-2", title: "• SMS Send", path: "/transaction/sms-send" },
       ],
     },
     {

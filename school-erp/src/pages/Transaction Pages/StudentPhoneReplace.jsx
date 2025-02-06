@@ -1,13 +1,13 @@
 import React from 'react';
 import MainContentPage from '../../components/MainContent/MainContentPage';
 
-const StaffUpdate = () => {
+const StudentPhoneReplace = () => {
   return (
     <MainContentPage>
       <div className="bg-white rounded shadow">
         {/* Header */}
         <div className="bg-primary text-white p-3 mb-4">
-          <h2 className="m-0">Staff Update</h2>
+          <h2 className="m-0">Phone Update</h2>
         </div>
 
         {/* Form Rows */}
@@ -15,7 +15,7 @@ const StaffUpdate = () => {
           {/* Staff Code */}
           <div className="col-md-6">
             <div className="form-group">
-              <label className="form-label">Staff Code</label>
+              <label className="form-label">Register Number</label>
               <select className="form-control form-select " name="staffCode">
                 <option value="">Select Staff Code</option>
                 <option value="SC001">SC001</option>
@@ -28,7 +28,7 @@ const StaffUpdate = () => {
           {/* Staff Name */}
           <div className="col-md-6">
             <div className="form-group">
-              <label className="form-label">Staff Name</label>
+              <label className="form-label">Present Phone</label>
               <select className="form-control form-select " name="staffName">
                 <option value="">Select Staff Name</option>
                 <option value="John Doe">John Doe</option>
@@ -41,7 +41,7 @@ const StaffUpdate = () => {
           {/* Category */}
           <div className="col-md-6">
             <div className="form-group">
-              <label className="form-label">Category</label>
+              <label className="form-label">New Phone</label>
               <select className="form-control form-select " name="category">
                 <option value="">Select Category</option>
                 <option value="Teaching">Teaching</option>
@@ -67,13 +67,8 @@ const StaffUpdate = () => {
 
         {/* Buttons */}
         <div className="d-flex flex-wrap justify-content-center gap-3 p-3">
-          <button
-            className="btn btn-primary flex-grow-1 flex-md-grow-0"
-            style={{ backgroundColor: '#0B3D7B' }}
-          >
-            Insert
-          </button>
-          <button className="btn btn-primary flex-grow-1 flex-md-grow-0">Save</button>
+         
+          <button className="btn btn-primary flex-grow-1 flex-md-grow-0">Replace</button>
           <button className="btn btn-secondary flex-grow-1 flex-md-grow-0">Cancel</button>
         </div>
 
@@ -106,4 +101,4 @@ const StaffUpdate = () => {
   );
 };
 
-export default StaffUpdate;
+export default StudentPhoneReplace;
