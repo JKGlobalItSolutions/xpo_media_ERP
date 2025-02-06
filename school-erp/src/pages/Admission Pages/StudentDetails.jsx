@@ -1,26 +1,14 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Container, Table, Button, Form, Modal, Row, Col } from "react-bootstrap"
-import { Eye, Filter, FileText } from "lucide-react"
 import MainContentPage from "../../components/MainContent/MainContentPage"
+import { Container, Table, Card, Row, Col, Form, Button, Modal, Pagination } from "react-bootstrap"
+import { FaEdit, FaEye, FaFilter, FaTable, FaTh } from "react-icons/fa"
 
 const StudentDetails = () => {
-  const navigate = useNavigate()
-  const [filterModalShow, setFilterModalShow] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filters, setFilters] = useState({
-    class: "",
-    section: "",
-    dateOfBirth: "",
-    enrollmentDate: "",
-    fees: "",
-  })
-  const [currentPage, setCurrentPage] = useState(1)
-
-  // Sample data
-  const studentsData = [
+  const [students] = useState([
     {
-      id: "AFB1246EDF",
+      id: 1,
+      admission: "AFB1246EDF",
       name: "A.Ramachandhiran",
       class: "10th",
       section: "A",
@@ -28,12 +16,14 @@ const StudentDetails = () => {
       dateOfBirth: "09-05-2006",
       gender: "Male",
       parentName: "D.Vijayakumar",
-      contact: "8648214597",
+      contact: "8648214697",
       fees: "Paid",
+      address: "View",
       enrollmentDate: "14-07-2010",
     },
     {
-      id: "DFV2356DNT",
+      id: 2,
+      admission: "DFV2356DNT",
       name: "H.Jayakumar",
       class: "8th",
       section: "F",
@@ -41,12 +31,14 @@ const StudentDetails = () => {
       dateOfBirth: "11-07-2004",
       gender: "Male",
       parentName: "A.Mathivanan",
-      contact: "7732456805",
+      contact: "7732456855",
       fees: "Paid",
-      enrollmentDate: "11-07-2015",
+      address: "View",
+      enrollmentDate: "11-07-2013",
     },
     {
-      id: "MSF5739VBN",
+      id: 3,
+      admission: "MSF5739VBN",
       name: "D.Ganesh",
       class: "2nd",
       section: "B",
@@ -54,26 +46,115 @@ const StudentDetails = () => {
       dateOfBirth: "28-12-2014",
       gender: "Male",
       parentName: "P.Ramanujam",
-      contact: "6958347512",
+      contact: "6958147512",
       fees: "Due",
+      address: "View",
       enrollmentDate: "18-07-2018",
     },
-    // Add more sample data here
-  ]
+    {
+      id: 4,
+      admission: "CNV6806GHM",
+      name: "K.Kalim",
+      class: "4th",
+      section: "C",
+      rollNumber: "124567",
+      dateOfBirth: "14-09-2016",
+      gender: "Male",
+      parentName: "V.Ravichandhiran",
+      contact: "8801564932",
+      fees: "Paid",
+      address: "View",
+      enrollmentDate: "12-07-2019",
+    },
+    {
+      id: 5,
+      admission: "LOD5679DER",
+      name: "M.Yuvashri",
+      class: "1st",
+      section: "G",
+      rollNumber: "854125",
+      dateOfBirth: "03-10-2021",
+      gender: "Female",
+      parentName: "K.Balakrishana",
+      contact: "9456265612",
+      fees: "Due",
+      address: "View",
+      enrollmentDate: "23-07-2023",
+    },
+    {
+      id: 6,
+      admission: "GNC3686GKM",
+      name: "E.Ellamaran",
+      class: "8th",
+      section: "D",
+      rollNumber: "456752",
+      dateOfBirth: "17-08-2007",
+      gender: "Male",
+      parentName: "P.Elangovan",
+      contact: "9963243125",
+      fees: "Paid",
+      address: "View",
+      enrollmentDate: "10-07-2010",
+    },
+    {
+      id: 7,
+      admission: "CVB4675GHU",
+      name: "S.Vignesh Kumar",
+      class: "12th",
+      section: "A",
+      rollNumber: "145678",
+      dateOfBirth: "21-04-2002",
+      gender: "Male",
+      parentName: "R.Dhanajayan",
+      contact: "8456321504",
+      fees: "Paid",
+      address: "View",
+      enrollmentDate: "12-07-2005",
+    },
+    {
+      id: 8,
+      admission: "EDF567THU",
+      name: "B.Bharath",
+      class: "12th",
+      section: "C",
+      rollNumber: "657457",
+      dateOfBirth: "09-06-2002",
+      gender: "Male",
+      parentName: "H.Keerthivasan",
+      contact: "9548461524",
+      fees: "Paid",
+      address: "View",
+      enrollmentDate: "14-07-2005",
+    },
+  ])
 
-  const handleFilterSubmit = (e) => {
-    e.preventDefault()
+  const [viewType, setViewType] = useState("table")
+  const [showFilter, setShowFilter] = useState(false)
+  const [filterData, setFilterData] = useState({
+    class: "",
+    section: "",
+    dateOfBirth: "",
+    enrollmentDate: "",
+    fees: "",
+  })
+
+  const navigate = useNavigate()
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target
+    setFilterData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }))
+  }
+
+  const handleFilterSubmit = () => {
     // Implement filter logic here
-    setFilterModalShow(false)
+    setShowFilter(false)
   }
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value)
-    setCurrentPage(1)
-  }
-
-  const handleReset = () => {
-    setFilters({
+  const handleFilterReset = () => {
+    setFilterData({
       class: "",
       section: "",
       dateOfBirth: "",
@@ -82,197 +163,293 @@ const StudentDetails = () => {
     })
   }
 
-  const handleViewDetails = (studentId) => {
-    navigate(`/admission/EditStudentDetails`)
-  }
-
   return (
     <MainContentPage>
-      <Container fluid>
-        <div className="student-details card">
-          <div className="card-header p-3" style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-            <h4 className="mb-0">All Student Details</h4>
-          </div>
-          <div className="card-body">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <div className="d-flex gap-3 align-items-center">
-                <div className="search-box" style={{ width: "300px" }}>
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by class, Section, Name & Teacher"
-                    value={searchTerm}
-                    onChange={handleSearch}
-                  />
-                </div>
-                <Button
-                  variant="primary"
-                  onClick={() => setFilterModalShow(true)}
-                  style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}
-                >
-                  <Filter className="me-2" size={16} />
-                  SEARCH
-                </Button>
-              </div>
-              <Button variant="success">
-                <FileText className="me-2" size={16} />
-                Export to Excel
-              </Button>
-            </div>
-
-            <div className="table-responsive">
-              <Table bordered hover className="align-middle">
-                <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                  <tr>
-                    <th>Student Photo</th>
-                    <th>Admission</th>
-                    <th>Name</th>
-                    <th>Class</th>
-                    <th>Section</th>
-                    <th>Roll Number</th>
-                    <th>Date of Birth</th>
-                    <th>Gender</th>
-                    <th>Parent/Guardian Name</th>
-                    <th>Contact Information</th>
-                    <th>Fees Detail</th>
-                    <th>Address</th>
-                    <th>Enrollment Date</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {studentsData.map((student) => (
-                    <tr key={student.id}>
-                      <td>
-                        <Link to="#" className="text-primary">
-                          View
-                        </Link>
-                      </td>
-                      <td>{student.id}</td>
-                      <td>{student.name}</td>
-                      <td>{student.class}</td>
-                      <td>{student.section}</td>
-                      <td>{student.rollNumber}</td>
-                      <td>{student.dateOfBirth}</td>
-                      <td>{student.gender}</td>
-                      <td>{student.parentName}</td>
-                      <td>{student.contact}</td>
-                      <td>
-                        <span
-                          className={`badge ${student.fees === "Paid" ? "bg-success" : "bg-danger"}`}
-                          style={{ fontSize: "0.85em", padding: "0.35em 0.65em" }}
-                        >
-                          {student.fees}
-                        </span>
-                      </td>
-                      <td>
-                        <Link to="#" className="text-danger">
-                          View
-                        </Link>
-                      </td>
-                      <td>{student.enrollmentDate}</td>
-                      <td>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => handleViewDetails(student.id)}
-                          style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}
-                        >
-                          <Eye size={16} />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-
-            <div className="d-flex justify-content-end gap-2 mt-4">
-              <Button
-                variant="outline-primary"
-                className={currentPage === 1 ? "active" : ""}
-                onClick={() => setCurrentPage(1)}
-              >
-                Previous
-              </Button>
-              {[1, 2, 3].map((page) => (
-                <Button
-                  key={page}
-                  variant="outline-primary"
-                  className={currentPage === page ? "active" : ""}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Button>
-              ))}
-              <Button variant="outline-primary" onClick={() => setCurrentPage((prev) => prev + 1)}>
-                Next
-              </Button>
-            </div>
+      <Container fluid className="px-4">
+        {/* Header */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <h4 className="fw-bold">Student Details</h4>
           </div>
         </div>
 
-        <Modal show={filterModalShow} onHide={() => setFilterModalShow(false)} centered>
+        {/* Breadcrumb Navigation */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <nav aria-label="breadcrumb">
+              <ol className="breadcrumb m-0">
+                <li className="breadcrumb-item">
+                  <Link to="/home" className="text-decoration-none">
+                    Home
+                  </Link>
+                </li>
+                <li className="breadcrumb-item">
+                  <Link to="/administration" className="text-decoration-none">
+                    Admission
+                  </Link>
+                </li>
+                <li className="breadcrumb-item active" aria-current="page">
+                  Student Details
+                </li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+
+        {/* Main Content Card */}
+        <Card className="border-0 shadow-sm">
+          <Card.Body>
+            {/* Title and Search Section */}
+            <div className="mb-4">
+              <h5 className="text-primary mb-3">All Student Detail</h5>
+              <div className="d-flex justify-content-between align-items-center">
+                <div className="d-flex gap-2" style={{ maxWidth: "400px" }}>
+                  <Form.Control
+                    type="text"
+                    placeholder="Search by class, Section, Name & Teacher"
+                    className="flex-grow-1"
+                  />
+                  <Button variant="primary" style={{ backgroundColor: "#0047AB" }}>
+                    SEARCH
+                  </Button>
+                </div>
+                <div className="d-flex gap-2">
+                  <Button
+                    variant={viewType === "table" ? "primary" : "outline-primary"}
+                    onClick={() => setViewType("table")}
+                    className="px-3"
+                  >
+                    <FaTable />
+                  </Button>
+                  <Button
+                    variant={viewType === "card" ? "primary" : "outline-primary"}
+                    onClick={() => setViewType("card")}
+                    className="px-3"
+                  >
+                    <FaTh />
+                  </Button>
+                  <Button variant="primary" onClick={() => setShowFilter(true)} className="px-3">
+                    <FaFilter />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Student List Views */}
+            {viewType === "card" ? (
+              <Row className="g-4">
+                {students.map((student) => (
+                  <Col key={student.id} xs={12} sm={6} md={4} lg={3}>
+                    <Card className="h-100 shadow-sm position-relative">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        className="position-absolute top-0 end-0 m-2"
+                        style={{ zIndex: 1 }}
+                        onClick={() => navigate(`/admission/EditStudentDetails`)}
+                      >
+                        <FaEdit />
+                      </Button>
+                      <div className="text-center pt-4">
+                        <div
+                          className="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            backgroundColor: "#007bff",
+                            color: "white",
+                          }}
+                        >
+                          <i className="fas fa-user fa-3x"></i>
+                        </div>
+                      </div>
+                      <Card.Body className="text-center">
+                        <div className="mb-3">
+                          <div className="text-muted small">Admission</div>
+                          <div className="fw-bold text-primary">{student.admission}</div>
+                        </div>
+                        <div className="mb-3">
+                          <div className="text-muted small">Name</div>
+                          <div>{student.name}</div>
+                        </div>
+                        <div className="d-flex justify-content-around">
+                          <div>
+                            <div className="text-muted small">Class</div>
+                            <div>{student.class}</div>
+                          </div>
+                          <div>
+                            <div className="text-muted small">Section</div>
+                            <div>{student.section}</div>
+                          </div>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            ) : (
+              <div className="table-responsive">
+                <Table className="table-bordered">
+                  <thead>
+                    <tr>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Student Photo
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Admission
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Name
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Class
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Section
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Roll Number
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Date of Birth
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Gender
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Parent/Guardian Name
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Contact Information
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Fees Detail
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Address
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Enrollment Date
+                      </th>
+                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {students.map((student) => (
+                      <tr key={student.id}>
+                        <td>
+                          <Button variant="link" className="p-0 text-primary text-decoration-none">
+                            View
+                          </Button>
+                        </td>
+                        <td>{student.admission}</td>
+                        <td>{student.name}</td>
+                        <td>{student.class}</td>
+                        <td>{student.section}</td>
+                        <td>{student.rollNumber}</td>
+                        <td>{student.dateOfBirth}</td>
+                        <td>{student.gender}</td>
+                        <td>{student.parentName}</td>
+                        <td>{student.contact}</td>
+                        <td>
+                          <span className={`text-${student.fees === "Paid" ? "success" : "danger"}`}>
+                            {student.fees}
+                          </span>
+                        </td>
+                        <td>
+                          <Button variant="link" className="p-0 text-primary text-decoration-none">
+                            {student.address}
+                          </Button>
+                        </td>
+                        <td>{student.enrollmentDate}</td>
+                        <td>
+                          <>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              style={{ backgroundColor: "#004AAD", marginRight: "5px" }}
+                              onClick={() => navigate(`/admission/EditStudentDetails`)}
+                            >
+                              <FaEdit />
+                            </Button>
+                          </>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            )}
+
+            {/* Updated Pagination */}
+            <div className="d-flex justify-content-end mt-4">
+              <Pagination>
+                <Pagination.Item>Previous</Pagination.Item>
+                <Pagination.Item active style={{ backgroundColor: "#004AAD" }}>
+                  1
+                </Pagination.Item>
+                <Pagination.Item>2</Pagination.Item>
+                <Pagination.Item>3</Pagination.Item>
+                <Pagination.Item>Next</Pagination.Item>
+              </Pagination>
+            </div>
+          </Card.Body>
+        </Card>
+
+        {/* Updated Filter Modal */}
+        <Modal show={showFilter} onHide={() => setShowFilter(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Filter Options</Modal.Title>
+            <Modal.Title>Filter</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <Form onSubmit={handleFilterSubmit}>
-              <Row className="mb-3">
+            <Form>
+              <Row>
                 <Col md={6}>
-                  <Form.Group>
+                  <Form.Group className="mb-3">
                     <Form.Label>Class</Form.Label>
-                    <Form.Select
-                      value={filters.class}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, class: e.target.value }))}
-                    >
+                    <Form.Select name="class" value={filterData.class} onChange={handleFilterChange}>
                       <option value="">Select Class</option>
                       <option value="1">1st</option>
                       <option value="2">2nd</option>
                       <option value="3">3rd</option>
-                      {/* Add more options */}
                     </Form.Select>
                   </Form.Group>
                 </Col>
                 <Col md={6}>
-                  <Form.Group>
+                  <Form.Group className="mb-3">
                     <Form.Label>Section</Form.Label>
-                    <Form.Select
-                      value={filters.section}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, section: e.target.value }))}
-                    >
+                    <Form.Select name="section" value={filterData.section} onChange={handleFilterChange}>
                       <option value="">Select Section</option>
                       <option value="A">A</option>
                       <option value="B">B</option>
                       <option value="C">C</option>
-                      {/* Add more options */}
                     </Form.Select>
                   </Form.Group>
                 </Col>
               </Row>
 
-              <Row className="mb-3">
+              <Row>
                 <Col md={6}>
-                  <Form.Group>
+                  <Form.Group className="mb-3">
                     <Form.Label>Date of birth</Form.Label>
                     <Form.Control
                       type="date"
-                      value={filters.dateOfBirth}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, dateOfBirth: e.target.value }))}
+                      name="dateOfBirth"
+                      value={filterData.dateOfBirth}
+                      onChange={handleFilterChange}
                     />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
-                  <Form.Group>
+                  <Form.Group className="mb-3">
                     <Form.Label>Enrollment Date</Form.Label>
                     <Form.Control
                       type="date"
-                      value={filters.enrollmentDate}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          enrollmentDate: e.target.value,
-                        }))
-                      }
+                      name="enrollmentDate"
+                      value={filterData.enrollmentDate}
+                      onChange={handleFilterChange}
                     />
                   </Form.Group>
                 </Col>
@@ -280,36 +457,38 @@ const StudentDetails = () => {
 
               <Form.Group className="mb-3">
                 <Form.Label>Fees</Form.Label>
-                <div className="d-flex gap-4">
-                  <Form.Check
-                    type="radio"
-                    label="Paid"
-                    name="fees"
-                    value="paid"
-                    checked={filters.fees === "paid"}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, fees: e.target.value }))}
-                  />
-                  <Form.Check
-                    type="radio"
-                    label="Due"
-                    name="fees"
-                    value="due"
-                    checked={filters.fees === "due"}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, fees: e.target.value }))}
-                  />
+                <div className="d-flex gap-2">
+                  <Button
+                    variant={filterData.fees === "paid" ? "secondary" : "light"}
+                    className="flex-grow-1"
+                    onClick={() => handleFilterChange({ target: { name: "fees", value: "paid" } })}
+                  >
+                    Paid
+                  </Button>
+                  <Button
+                    variant={filterData.fees === "due" ? "secondary" : "light"}
+                    className="flex-grow-1"
+                    onClick={() => handleFilterChange({ target: { name: "fees", value: "due" } })}
+                  >
+                    Due
+                  </Button>
                 </div>
               </Form.Group>
-
-              <div className="d-flex justify-content-between mt-4">
-                <Button variant="primary" type="submit" style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}>
-                  Show applied filters
-                </Button>
-                <Button variant="danger" onClick={handleReset}>
-                  Reset
-                </Button>
-              </div>
             </Form>
           </Modal.Body>
+          <Modal.Footer className="justify-content-between">
+            <Button
+              variant="primary"
+              onClick={handleFilterSubmit}
+              style={{ backgroundColor: "#004AAD" }}
+              className="px-4"
+            >
+              Show applied filters
+            </Button>
+            <Button variant="danger" onClick={handleFilterReset} className="px-4">
+              Reset
+            </Button>
+          </Modal.Footer>
         </Modal>
       </Container>
     </MainContentPage>

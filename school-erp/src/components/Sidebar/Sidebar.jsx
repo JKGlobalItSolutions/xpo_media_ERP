@@ -63,18 +63,18 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       id: 3,
       title: "Admission Master",
       icon: admissionIcon,
-      path: "/jaga",
+      path: "/admission",
       subItems: [
         { id: "3-1", title: "• External master Setup/Enquiry", path: "/admission/enquiry" },
         { id: "3-1", title: "• Admission Form", path: "/admission/AdmissionForm" },
-        { id: "3-2", title: "• Barcode Design", path: "/jaga/admission-list" },
+        { id: "3-2", title: "• Barcode Design", path: "/admission/Bar-code-Design" },
         { id: "3-3", title: "• Student Detail", path: "/admission/StudentDetails" },
-        { id: "3-3", title: "• Student Details Report", path: "/jaga/admission-list" },
-        { id: "3-3", title: "• Transfer Certificate", path: "/jaga/admission-list" },
-        { id: "3-3", title: "• Demand Report", path: "/jaga/admission-list" },
-        { id: "3-3", title: "• Section Replace", path: "/jaga/admission-list" },
-        { id: "3-3", title: "• Arrear / Fee Updating", path: "/jaga/admission-list" },
-        { id: "3-3", title: "• Bill Cancel", path: "/jaga/admission-list" },``
+        { id: "3-3", title: "• Student Details Report", path: "/admission/Student-Details-Report" },
+        { id: "3-3", title: "• Transfer Certificate", path: "/admission/Transfer-Certificate" },
+        { id: "3-3", title: "• Demand Report", path: "/admission/Demand-Report" },
+        { id: "3-3", title: "• Section Replace", path: "/admission/Section-Replace" },
+        { id: "3-3", title: "• Arrear / Fee Updating", path: "/admission/Arrear-FeeUpdating" },
+        { id: "3-3", title: "• Bill Cancel", path: "/admission/Bill-Cancel" },``
       ],
     },
     {
