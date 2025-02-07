@@ -10,6 +10,8 @@ import AdministrationMaster from "./SubRouters/AdmissionMaster";
 import TransactionRoute from "./SubRouters/TransactionRoute";
 import TransportRoute from "./SubRouters/TransportRoute";
 import CollectionReportRoute from "./SubRouters/CollectionReportRoute";
+import PaymentReport from "../pages/MainPages/PaymentReport";
+import PaymentReportRoute from "./SubRouters/PaymentReportRoute";
 
 function MainRouter() {
   return (
@@ -89,6 +91,22 @@ function MainRouter() {
         element={
           <PublicRoute>
             <CollectionReportRoute />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/payment-report/*"
+        element={
+          <PublicRoute>
+            <PaymentReportRoute />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/payment-report/"
+        element={
+          <PublicRoute>
+            <PaymentReport />
           </PublicRoute>
         }
       />

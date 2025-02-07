@@ -8,6 +8,7 @@ import DayBusFee from '../../pages/Transport Pages/DayBusFee';
 import NewBusBill from '../../pages/Transport Pages/NewBusBill';
 import PeriodBusCollection from '../../pages/Transport Pages/PeriodBusCollection';
 import BusBalanceReport from '../../pages/Transport Pages/BusBalanceReport';
+import PlacewiseReport from '../../pages/Transport Pages/Placewisereport';
 
 function TransportRoute() {
   return (
@@ -19,6 +20,7 @@ function TransportRoute() {
       <Route path="day-bus-fee" element={< DayBusFee/>} />    
       <Route path="period-bus-collection" element={< PeriodBusCollection/>} />    
       <Route path="bus-balance-report" element={< BusBalanceReport/>} />    
+      <Route path="place-wise-report" element={< PlacewiseReport/>} />    
     </Routes>
   );
 }

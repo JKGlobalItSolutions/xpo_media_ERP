@@ -108,7 +108,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "5-2", title: "• Day Bus Fee Collection", path: "/transport/day-bus-fee" },
         { id: "5-2", title: "• Period Bus Fee Collection Report", path: "/transport/period-bus-collection" },
         { id: "5-2", title: "• Bus Fee Balance Report", path: "/transport/bus-balance-report" },
-        { id: "5-2", title: "• Placewise List", path: "/transport/vehicle-setup" },
+        { id: "5-2", title: "• Placewise List", path: "/transport/place-wise-report" },
       ],
     },
     {
@@ -125,11 +125,8 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       id: 7,
       title: "Payment Reports",
       icon: paymentIcon,
-      path: "/payment-reports",
-      subItems: [
-        { id: "7-1", title: "• Daily Payments", path: "/payment-reports/daily" },
-        { id: "7-2", title: "• Monthly Payments", path: "/payment-reports/monthly" },
-      ],
+      path: "/payment-report",
+      subItems: [],
     },
     {
       id: 8,
