@@ -25,7 +25,7 @@ const TutionFee = () => {
         {/* Header */}
         <div className="row mb-4">
           <div className="col-12">
-            <h4 className="fw-bold">Tution Fee</h4>
+            <h4 className="fw-bold">Miscellaneous Fee Collection</h4>
           </div>
         </div>
 
@@ -39,10 +39,8 @@ const TutionFee = () => {
                     Home
                   </Link>
                 </li>
-                <li className="breadcrumb-item">
-                  <Link to="" className="text-decoration-none">
-                  Tuition Fee
-                  </Link>
+                <li className="breadcrumb-item active" aria-current="page">
+                Miscellaneous Fee Collection
                 </li>
               </ol>
             </nav>
@@ -54,7 +52,7 @@ const TutionFee = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/collection-report/Day-Collection-Report"
+            to="/collection-report/Miscellaneous-Day-Collection-Report"
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -66,7 +64,7 @@ const TutionFee = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/collection-report/Periodical-Collection-Report"
+            to="/collection-report/Miscellaneous-Periodical-Collection-Report"
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">

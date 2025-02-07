@@ -25,7 +25,7 @@ const TutionFee = () => {
         {/* Header */}
         <div className="row mb-4">
           <div className="col-12">
-            <h4 className="fw-bold">Tution Fee</h4>
+            <h4 className="fw-bold">Concession A/C</h4>
           </div>
         </div>
 
@@ -39,43 +39,14 @@ const TutionFee = () => {
                     Home
                   </Link>
                 </li>
-                <li className="breadcrumb-item">
-                  <Link to="" className="text-decoration-none">
-                  Tuition Fee
-                  </Link>
+                <li className="breadcrumb-item active" aria-current="page">
+                Concession A/C
                 </li>
               </ol>
             </nav>
           </div>
         </div>
 
-        {/* Cards Grid */}
-        <div className="row g-4">
-          <Link
-            style={{ textDecoration: "none" }}
-            className="col-12 col-md-6 col-lg-3"
-            to="/collection-report/Day-Collection-Report"
-          >
-            <div className="card fee-setup-card h-100">
-              <div className="card-body d-flex align-items-center justify-content-center">
-                <h5 className="card-title text-white m-0">Day Collection Report</h5>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            style={{ textDecoration: "none" }}
-            className="col-12 col-md-6 col-lg-3"
-            to="/collection-report/Periodical-Collection-Report"
-          >
-            <div className="card fee-setup-card h-100">
-              <div className="card-body d-flex align-items-center justify-content-center">
-                <h5 className="card-title text-white m-0">Period Collection Report</h5>
-              </div>
-            </div>
-          </Link>
-
-        </div>
       </div>
       <footer className="mt-4 text-muted fixed-bottom text-center py-2">
         <small>
