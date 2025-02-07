@@ -134,8 +134,16 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       icon: debitIcon,
       path: "/debit-credit-report",
       subItems: [
-        { id: "8-1", title: "• Debit Report", path: "/debit-credit-report/debit" },
-        { id: "8-2", title: "• Credit Report", path: "/debit-credit-report/credit" },
+        { id: "8-1", title: "• Day D/C Report ( Day Book )", path: "/debit-credit-report/debit" },
+        { id: "8-2", title: "• Period D/C Report ( Ledger )", path: "/debit-credit-report/credit" },
+        { id: "8-2", title: "• Bank Ledger", path: "/debit-credit-report/credit" },
+        { id: "8-2", title: "• Balance List", path: "/debit-credit-report/credit" },
+        { id: "8-2", title: "• Consolidated Strength", path: "/debit-credit-report/credit" },
+        { id: "8-2", title: "• Promotion / Higher Class Process", path: "/debit-credit-report/credit" },
+        { id: "8-2", title: "• Cash Expenses", path: "/debit-credit-report/credit" },
+        { id: "8-2", title: "• Bank Expenses", path: "/debit-credit-report/credit" },
+        { id: "8-2", title: "• Trail Balance", path: "/debit-credit-report/credit" },
+        { id: "8-2", title: "• Backup Data", path: "/debit-credit-report/credit" },
       ],
     },
     {
