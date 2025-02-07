@@ -5,7 +5,7 @@ import { Link } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Form, Button, Card, Container } from "react-bootstrap"
 
-const DayCollectionReport = () => {
+const ReceiptDetails = () => {
   const [courseWiseData, setCourseWiseData] = useState({
     course: "",
     sex: "",
@@ -147,4 +147,4 @@ const DayCollectionReport = () => {
   )
 }
 
-export default DayCollectionReport
+export default ReceiptDetails
