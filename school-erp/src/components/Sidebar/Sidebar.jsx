@@ -138,7 +138,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       icon: debitIcon,
       path: "/debit-credit-report",
       subItems: [
-        { id: "8-1", title: "• Day D/C Report ( Day Book )", path: "/debit-credit-report/debit" },
+        { id: "8-1", title: "• Day D/C Report ( Day Book )", path: "/debit-credit-report/day-dc-report" },
         { id: "8-2", title: "• Period D/C Report ( Ledger )", path: "/debit-credit-report/credit" },
         { id: "8-2", title: "• Bank Ledger", path: "/debit-credit-report/credit" },
         { id: "8-2", title: "• Balance List", path: "/debit-credit-report/credit" },

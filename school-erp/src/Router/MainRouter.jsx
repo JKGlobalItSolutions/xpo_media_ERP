@@ -12,6 +12,7 @@ import TransportRoute from "./SubRouters/TransportRoute";
 import CollectionReportRoute from "./SubRouters/CollectionReportRoute";
 import PaymentReport from "../pages/MainPages/PaymentReport";
 import PaymentReportRoute from "./SubRouters/PaymentReportRoute";
+import DebitCardReportRoute from "./SubRouters/DebitCardReportRoute";
 
 function MainRouter() {
   return (
@@ -107,6 +108,14 @@ function MainRouter() {
         element={
           <PublicRoute>
             <PaymentReport />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/debit-credit-report/*"
+        element={
+          <PublicRoute>
+            <DebitCardReportRoute />
           </PublicRoute>
         }
       />
