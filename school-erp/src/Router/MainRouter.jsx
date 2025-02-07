@@ -8,6 +8,8 @@ import MainContentPage from "../components/MainContent/MainContentPage";
 import AdministrationRoute from "./SubRouters/AdministrationRoute";
 import AdministrationMaster from "./SubRouters/AdmissionMaster";
 import TransactionRoute from "./SubRouters/TransactionRoute";
+import TransportRoute from "./SubRouters/TransportRoute";
+import CollectionReportRoute from "./SubRouters/CollectionReportRoute";
 
 function MainRouter() {
   return (
@@ -71,6 +73,22 @@ function MainRouter() {
         element={
           <PublicRoute>
             <TransactionRoute />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/transport/*"
+        element={
+          <PublicRoute>
+            <TransportRoute />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/Collection-report/*"
+        element={
+          <PublicRoute>
+            <CollectionReportRoute />
           </PublicRoute>
         }
       />

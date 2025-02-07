@@ -1,39 +1,24 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import BillingEntry from '../../pages/Transaction Pages/BillingEntry';
-import OtherFee from '../../pages/Transaction Pages/OtherFee';
-import IndividualPaid from '../../pages/Transaction Pages/IndividualPaid';
-import ReceiptEntry from '../../pages/Transaction Pages/ReceiptEntry';
-import DuplicateBill from '../../pages/Transaction Pages/DuplicateBill';
-import PaymentEntry from '../../pages/Transaction Pages/PaymentEntry';
-import StaffUpdate from '../../pages/Transaction Pages/StaffUpdate';
-import StudentPhoneReplace from '../../pages/Transaction Pages/StudentPhoneReplace';
-import AttendanceEntry from '../../pages/Transaction Pages/AttendanceEntry';
-import SmsSend from '../../pages/Transaction Pages/SmsSend';
-import EnquirySMS from '../../pages/Transaction Pages/SMSPages/EnquirySMS';
-import GeneralCircularSMS from '../../pages/Transaction Pages/SMSPages/GeneralCircularSMS';
-import AbsentListSMS from '../../pages/Transaction Pages/SMSPages/AbsentListSMS';
-
-
-
+import BusVanFee from '../../pages/Transport Pages/BusVanFee';
+import PlaceSetup from '../../pages/Transport Pages/PlaceSetup';
+import BusFeeSetup from '../../pages/Transport Pages/BusFeeSetup';
+import BusVanBill from '../../pages/Transport Pages/NewBusBill';
+import DayBusFee from '../../pages/Transport Pages/DayBusFee';
+import NewBusBill from '../../pages/Transport Pages/NewBusBill';
+import PeriodBusCollection from '../../pages/Transport Pages/PeriodBusCollection';
+import BusBalanceReport from '../../pages/Transport Pages/BusBalanceReport';
 
 function TransportRoute() {
   return (
     <Routes>
-      <Route path="billing-entry" element={< BillingEntry/>} />
-      <Route path="other-fee" element={< OtherFee/>} />
-      <Route path="individual-paid" element={< IndividualPaid/>} />  
-      <Route path="payment-entry" element={< PaymentEntry/>} />  
-      <Route path="receipt-entry" element={< ReceiptEntry/>} />  
-      <Route path="duplicate-bill" element={< DuplicateBill/>} />  
-      <Route path="staff-update" element={< StaffUpdate/>} />  
-      <Route path="student-phone-replace" element={< StudentPhoneReplace/>} />  
-      <Route path="attendance-entry" element={< AttendanceEntry/>} />  
-      <Route path="sms-send" element={< SmsSend/>} />  
-      <Route path="enquiry-sms" element={< EnquirySMS/>} />  
-      <Route path="general-circular-sms" element={< GeneralCircularSMS/>} />  
-      <Route path="absent-list-sms" element={< AbsentListSMS/>} />  
-      
+      <Route path="bus-van-fee" element={< BusVanFee/>} />    
+      <Route path="place-setup" element={< PlaceSetup/>} />    
+      <Route path="bus-fee-setup" element={< BusFeeSetup/>} />    
+      <Route path="new-bus-bill" element={< NewBusBill/>} />    
+      <Route path="day-bus-fee" element={< DayBusFee/>} />    
+      <Route path="period-bus-collection" element={< PeriodBusCollection/>} />    
+      <Route path="bus-balance-report" element={< BusBalanceReport/>} />    
     </Routes>
   );
 }
