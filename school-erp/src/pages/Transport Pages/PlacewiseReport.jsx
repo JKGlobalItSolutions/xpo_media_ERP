@@ -192,6 +192,18 @@ const PlacewiseReport = () => {
                         >
                           Insert
                         </Button>
+                        <Button
+                          className="btn btn-primary flex-grow-1 flex-md-grow-0"
+                          style={{ backgroundColor: "#0B3D7B", border: "none" }}
+                        >
+                          View
+                        </Button>
+                        <Button
+                          className="btn btn-primary flex-grow-1 flex-md-grow-0"
+                          style={{ backgroundColor: "#0B3D7B", border: "none" }}
+                        >
+                          Modify
+                        </Button>
                        
                         <Button
                           className="btn btn-primary flex-grow-1 flex-md-grow-0"
