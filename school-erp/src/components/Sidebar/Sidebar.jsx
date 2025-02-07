@@ -101,8 +101,14 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       icon: transportIcon,
       path: "/transport",
       subItems: [
-        { id: "5-1", title: "• Route Setup", path: "/transport/route-setup" },
-        { id: "5-2", title: "• Vehicle Setup", path: "/transport/vehicle-setup" },
+        { id: "5-1", title: "• Bus / Van Fee Head Setup", path: "/transport/route-setup" },
+        { id: "5-2", title: "• Place Setup", path: "/transport/vehicle-setup" },
+        { id: "5-2", title: "• Bus Fee Setup", path: "/transport/vehicle-setup" },
+        { id: "5-2", title: "• New Bus Bill", path: "/transport/vehicle-setup" },
+        { id: "5-2", title: "• Day Bus Fee Collection", path: "/transport/vehicle-setup" },
+        { id: "5-2", title: "• Period Bus Fee Collection Report", path: "/transport/vehicle-setup" },
+        { id: "5-2", title: "• Bus Fee Balance Report", path: "/transport/vehicle-setup" },
+        { id: "5-2", title: "• Placewise List", path: "/transport/vehicle-setup" },
       ],
     },
     {
