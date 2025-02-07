@@ -5,9 +5,14 @@ import "bootstrap/dist/css/bootstrap.min.css"
 import { Calendar } from "react-bootstrap-icons"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 
-const DayDCReport = () => {
-  const [selectedDate, setSelectedDate] = useState("")
-  const [reportType, setReportType] = useState("SMS")
+const PeriodDCReport = () => {
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [selectedHead, setSelectedHead] = useState("")
+  const [isHeadSelected, setIsHeadSelected] = useState(true)
+
+  // Sample head options - replace with your actual options
+  const headOptions = ["Head Option 1", "Head Option 2", "Head Option 3", "Head Option 4"]
 
   return (
     <MainContentPage>
@@ -35,21 +40,21 @@ const DayDCReport = () => {
         <div className="card shadow-sm">
           {/* Header */}
           <div className="card-header text-white" style={{ backgroundColor: "#0B3D7B" }}>
-            <h5 className="mb-0">Day Ledger</h5>
+            <h5 className="mb-0">Period Ledger</h5>
           </div>
 
           {/* Card Body */}
           <div className="card-body p-4">
             <div className="row">
-              {/* Date Selection */}
+              {/* Start Date */}
               <div className="col-12 mb-4">
-                <label className="form-label">Select Report Date</label>
+                <label className="form-label">Select Starting Date</label>
                 <div className="input-group">
                   <input
                     type="date"
                     className="form-control"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
                   />
                   <span className="input-group-text">
                     <Calendar />
@@ -57,38 +62,52 @@ const DayDCReport = () => {
                 </div>
               </div>
 
-              {/* Radio Buttons */}
+              {/* End Date */}
               <div className="col-12 mb-4">
-                <div className="d-flex gap-4">
+                <label className="form-label">Select Ending Date</label>
+                <div className="input-group">
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                  <span className="input-group-text">
+                    <Calendar />
+                  </span>
+                </div>
+              </div>
+
+              {/* Select Head Radio and Dropdown */}
+              <div className="col-12 mb-4">
+                <div className="d-flex align-items-center gap-3 mb-2">
                   <div className="form-check">
                     <input
                       type="radio"
                       className="form-check-input"
-                      id="sms"
+                      id="selectHead"
                       name="reportType"
-                      value="SMS"
-                      checked={reportType === "SMS"}
-                      onChange={(e) => setReportType(e.target.value)}
+                      checked={isHeadSelected}
+                      onChange={(e) => setIsHeadSelected(e.target.checked)}
                     />
-                    <label className="form-check-label" htmlFor="sms">
-                      SMS
-                    </label>
-                  </div>
-                  <div className="form-check">
-                    <input
-                      type="radio"
-                      className="form-check-input"
-                      id="openingBalance"
-                      name="reportType"
-                      value="Opening Balance"
-                      checked={reportType === "Opening Balance"}
-                      onChange={(e) => setReportType(e.target.value)}
-                    />
-                    <label className="form-check-label" htmlFor="openingBalance">
-                      Opening Balance
+                    <label className="form-check-label" htmlFor="selectHead">
+                      Select Head
                     </label>
                   </div>
                 </div>
+                <select
+                  className="form-select"
+                  value={selectedHead}
+                  onChange={(e) => setSelectedHead(e.target.value)}
+                  disabled={!isHeadSelected}
+                >
+                  <option value="">Select Head</option>
+                  {headOptions.map((option, index) => (
+                    <option key={index} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Buttons */}
@@ -121,5 +140,5 @@ const DayDCReport = () => {
   )
 }
 
-export default DayDCReport
+export default PeriodDCReport
 
