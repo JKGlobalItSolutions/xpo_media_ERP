@@ -118,7 +118,11 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       path: "/collection-report",
       subItems: [
         { id: "6-1", title: "• Tution Fee", path: "/collection-report/tution-fee" },
-        { id: "6-2", title: "• Monthly Collection", path: "/collection-report/monthly" },
+        { id: "6-2", title: "• Miscellaneous Fee Collection", path: "/collection-report/Miscellaneous-Fee-Collection" },
+        { id: "6-3", title: "• Concession A/C", path: "/collection-report/Concession-AC" },
+        { id: "6-4", title: "• Bill Wise Details", path: "/collection-report/Bill-Wise-Details" },
+        { id: "6-5", title: "• Receipt Details", path: "/collection-report/Receipt-Details" },
+        { id: "6-6", title: "• Routwise Balance Report", path: "/collection-report/Routwise-Balance-Report" },
       ],
     },
     {
