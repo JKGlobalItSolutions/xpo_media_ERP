@@ -5,7 +5,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 const IndividualPaid = () => {
   return (
     <MainContentPage>
-      <div className="container-fluid p-0 bg-white rounded shadow">
+      <div className="billing-container container-fluid p-0 bg-white rounded shadow">
         {/* Header */}
         <div className="bg-primary text-white p-3 mb-4">
           <h2>Individual Paid Amount</h2>
@@ -80,8 +80,8 @@ const IndividualPaid = () => {
         </div>
 
         {/* Table */}
-        <div className="px-3 mb-4">
-          <div className="table-responsive">
+        <div className="mb-4">
+          <div className="table-responsive" style={{ overflowX: 'auto', whiteSpace: 'nowrap' }}>
             <table className="table table-bordered">
               <thead className="bg-primary text-white">
                 <tr>
@@ -94,35 +94,34 @@ const IndividualPaid = () => {
               </thead>
               <tbody>
                 <tr>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
+                  <td>1</td>
+                  <td>01-01-2025</td>
+                  <td>120</td>
+                  <td>12345</td>
+                  <td>Tuition Fee</td>
                 </tr>
                 <tr>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
+                  <td>2</td>
+                  <td>01-02-2025</td>
+                  <td>150</td>
+                  <td>12346</td>
+                  <td>Library Fee</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div className="d-flex flex-wrap justify-content-center gap-3 mb-4 mt-3">
-            <button style={{ backgroundColor: "#0B3D7B" }} className="btn btn-primary w-20 w-md-auto">
+            <button style={{ backgroundColor: "#0B3D7B" }} className="btn btn-primary w-100 w-md-auto">
               Softcopy
             </button>
-            <button className="btn btn-primary w-20 w-md-auto">
+            <button className="btn btn-primary w-100 w-md-auto">
               Hardcopy
             </button>
-            <button className="btn btn-secondary w-20 w-md-auto">
+            <button className="btn btn-secondary w-100 w-md-auto">
               Cancel
             </button>
           </div>
         </div>
-        <br />
       </div>
 
       <style jsx>{`
@@ -142,9 +141,6 @@ const IndividualPaid = () => {
         .gap-3 {
           gap: 1rem;
         }
-        .table {
-          margin-bottom: 0;
-        }
         .table th {
           background-color: #0B3D7B;
           color: white;
@@ -154,11 +150,27 @@ const IndividualPaid = () => {
         }
 
         @media (max-width: 768px) {
-          .w-100 {
-            width: 100% !important;
+          .billing-container {
+            padding: 0 10px;
           }
-          .w-md-auto {
-            width: auto !important;
+          .billing-container .row {
+            margin: 0;
+          }
+          .billing-container .col-md-4, 
+          .billing-container .col-md-3, 
+          .billing-container .col-md-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+          }
+          .btn {
+            width: 100%;
+            margin-bottom: 10px;
+          }
+          .table-responsive {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            white-space: nowrap;
           }
         }
       `}</style>
