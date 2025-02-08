@@ -1,6 +1,10 @@
+"use client"
+
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import "bootstrap/dist/css/bootstrap.min.css"
+import { auth } from "../../Firebase/config"
+import { signOut } from "firebase/auth"
 
 // Import icons from your assets folder
 import dashboardIcon from "../../images/Sidebar-icons/dashboard.png"
@@ -15,11 +19,99 @@ import settingIcon from "../../images/Sidebar-icons/setting.png"
 import logoutIcon from "../../images/Sidebar-icons/logout.png"
 import logo from "../../images/Logo/logo.jpg"
 
+// Logout Confirmation Modal Component
+function LogoutModal({ isOpen, onClose, onConfirm }) {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Logout</h2>
+        <p className="modal-message">Are you sure you want to logout?</p>
+        <div className="modal-buttons">
+          <button className="modal-button confirm" onClick={onConfirm}>
+            Yes
+          </button>
+          <button className="modal-button cancel" onClick={onClose}>
+            No
+          </button>
+        </div>
+      </div>
+      <style>
+        {`
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1100;
+          }
+
+          .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+          }
+
+          .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+          }
+
+          .modal-message {
+            margin-bottom: 1.5rem;
+            color: #666;
+          }
+
+          .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+          }
+
+          .modal-button {
+            padding: 0.5rem 2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+          }
+
+          .modal-button:hover {
+            opacity: 0.9;
+          }
+
+          .modal-button.confirm {
+            background-color: #146FDF;
+            color: white;
+          }
+
+          .modal-button.cancel {
+            background-color: #6c757d;
+            color: white;
+          }
+        `}
+      </style>
+    </div>
+  )
+}
+
 function Sidebar({ isOpen, toggleSidebar, isMobile }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [activeItem, setActiveItem] = useState(location.pathname)
   const [expandedItem, setExpandedItem] = useState(null)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   useEffect(() => {
     const activeParent = menuItems.find(
@@ -29,6 +121,25 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       setExpandedItem(activeParent.id)
     }
   }, [location.pathname])
+
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true)
+  }
+
+  const handleLogoutConfirm = async () => {
+    try {
+      await signOut(auth)
+      setShowLogoutModal(false)
+      navigate("/")
+    } catch (error) {
+      console.error("Logout error:", error)
+      setShowLogoutModal(false)
+    }
+  }
+
+  const handleLogoutCancel = () => {
+    setShowLogoutModal(false)
+  }
 
   const menuItems = [
     {
@@ -74,7 +185,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "3-3", title: "• Demand Report", path: "/admission/Demand-Report" },
         { id: "3-3", title: "• Section Replace", path: "/admission/Section-Replace" },
         { id: "3-3", title: "• Arrear / Fee Updating", path: "/admission/Arrear-FeeUpdating" },
-        { id: "3-3", title: "• Bill Cancel", path: "/admission/Bill-Cancel" },``
+        { id: "3-3", title: "• Bill Cancel", path: "/admission/Bill-Cancel" },
       ],
     },
     {
@@ -166,6 +277,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       icon: logoutIcon,
       path: "/logout",
       subItems: [],
+      onClick: handleLogoutClick, // Updated to show modal instead of direct logout
     },
   ]
 
@@ -249,7 +361,10 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
     } else {
       setExpandedItem(itemId)
     }
-    if (!menuItems.find((item) => item.id === itemId)?.subItems?.length) {
+    const menuItem = menuItems.find((item) => item.id === itemId)
+    if (menuItem && menuItem.onClick) {
+      menuItem.onClick()
+    } else if (!menuItems.find((item) => item.id === itemId)?.subItems?.length) {
       navigate(path)
       if (isMobile) {
         toggleSidebar()
@@ -278,108 +393,111 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
   }
 
   return (
-    <div style={sidebarStyle}>
-      <div className="d-flex align-items-center my-3 my-lg-0 justify-content-center  p-lg-4 gap-3">
-        <img
-          src={logo || "/placeholder.svg"}
-          alt="XPO Media Logo"
-          className="img-fluid rounded-circle"
-          style={{ maxWidth: "70px" }}
-        />
-        <span className="text-white fs-4 fw-semibold">XPO Media</span>
-      </div>
+    <>
+      <div style={sidebarStyle}>
+        <div className="d-flex align-items-center my-3 my-lg-0 justify-content-center  p-lg-4 gap-3">
+          <img
+            src={logo || "/placeholder.svg"}
+            alt="XPO Media Logo"
+            className="img-fluid rounded-circle"
+            style={{ maxWidth: "70px" }}
+          />
+          <span className="text-white fs-4 fw-semibold">XPO Media</span>
+        </div>
 
-      <nav className="mt-3">
-        {menuItems.map((item) => (
-          <div key={item.id} className="sidebar-item">
-            <button
-              onClick={() => handleNavigation(item.path, item.id)}
-              style={isItemActive(item) ? activeMenuItemStyle : menuItemStyle}
-              className="menu-item"
-            >
-              <img
-                src={item.icon || "/placeholder.svg"}
-                className="col-1"
-                alt={item.title}
-                style={isItemActive(item) ? activeIconStyle : iconStyle}
-              />
-              <span>{item.title}</span>
-              {item.subItems.length > 0 && (
-                <button onClick={(e) => toggleSubmenu(item.id, e)} style={toggleButtonStyle}>
-                  {expandedItem === item.id ? "-" : "+"}
-                </button>
-              )}
-            </button>
-            {item.subItems.length > 0 && expandedItem === item.id && (
-              <div className="sub-menu">
-                {item.subItems.map((subItem) => (
-                  <button
-                    key={subItem.id}
-                    onClick={() => handleSubItemClick(subItem.path)}
-                    style={activeItem.startsWith(subItem.path) ? activeSubMenuStyle : subMenuStyle}
-                    className="sub-menu-item ms-4"
-                  >
-                    {subItem.title}
+        <nav className="mt-3">
+          {menuItems.map((item) => (
+            <div key={item.id} className="sidebar-item">
+              <button
+                onClick={() => handleNavigation(item.path, item.id)}
+                style={isItemActive(item) ? activeMenuItemStyle : menuItemStyle}
+                className="menu-item"
+              >
+                <img
+                  src={item.icon || "/placeholder.svg"}
+                  className="col-1"
+                  alt={item.title}
+                  style={isItemActive(item) ? activeIconStyle : iconStyle}
+                />
+                <span>{item.title}</span>
+                {item.subItems && item.subItems.length > 0 && (
+                  <button onClick={(e) => toggleSubmenu(item.id, e)} style={toggleButtonStyle}>
+                    {expandedItem === item.id ? "-" : "+"}
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </nav>
+                )}
+              </button>
+              {item.subItems && item.subItems.length > 0 && expandedItem === item.id && (
+                <div className="sub-menu">
+                  {item.subItems.map((subItem) => (
+                    <button
+                      key={subItem.id}
+                      onClick={() => handleSubItemClick(subItem.path)}
+                      style={activeItem.startsWith(subItem.path) ? activeSubMenuStyle : subMenuStyle}
+                      className="sub-menu-item ms-4"
+                    >
+                      {subItem.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </nav>
 
-      <style>
-        {`
-          .sidebar-item {
-            display: flex;
-            flex-direction: column;
-          }
+        <style>
+          {`
+            .sidebar-item {
+              display: flex;
+              flex-direction: column;
+            }
 
-          .menu-item:hover {
-            background-color: #1D1616 !important;
-            color: #146FDF !important;
-          }
-          
-          .menu-item:hover img {
-            filter: none !important;
-          }
-          
-          .sub-menu-item:hover {
-            background-color: #1D1616 !important;
-            color: #146FDF !important;
-          }
-          
-          nav {
-            overflow-y: auto;
-            max-height: calc(100vh - 100px);
-            padding-bottom: 20px;
-          }
-          
-          nav::-webkit-scrollbar {
-            width: 6px;
-          }
-          
-          nav::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          
-          nav::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-          }
-          
-          nav::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
-          }
+            .menu-item:hover {
+              background-color: #1D1616 !important;
+              color: #146FDF !important;
+            }
 
-          .sub-menu {
-            overflow: hidden;
-            transition: max-height 0.3s ease-in-out;
-            background-color: #1D1616;
-          }
-        `}
-      </style>
-    </div>
+            .menu-item:hover img {
+              filter: none !important;
+            }
+
+            .sub-menu-item:hover {
+              background-color: #1D1616 !important;
+              color: #146FDF !important;
+            }
+
+            nav {
+              overflow-y: auto;
+              max-height: calc(100vh - 100px);
+              padding-bottom: 20px;
+            }
+
+            nav::-webkit-scrollbar {
+              width: 6px;
+            }
+
+            nav::-webkit-scrollbar-track {
+              background: transparent;
+            }
+
+            nav::-webkit-scrollbar-thumb {
+              background: rgba(255, 255, 255, 0.2);
+              border-radius: 3px;
+            }
+
+            nav::-webkit-scrollbar-thumb:hover {
+              background: rgba(255, 255, 255, 0.3);
+            }
+
+            .sub-menu {
+              overflow: hidden;
+              transition: max-height 0.3s ease-in-out;
+              background-color: #1D1616;
+            }
+          `}
+        </style>
+      </div>
+      <LogoutModal isOpen={showLogoutModal} onClose={handleLogoutCancel} onConfirm={handleLogoutConfirm} />
+    </>
   )
 }
 
