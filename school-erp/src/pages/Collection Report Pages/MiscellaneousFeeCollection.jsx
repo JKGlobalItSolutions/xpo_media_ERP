@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import MainContentPage from "../../components/MainContent/MainContentPage";
 import "./Styles/TutionFee.css";
 
-const TutionFee = () => {
+const MiscellaneousFeeCollection = () => {
   const [className, setClassName] = useState("");
   const location = useLocation();
 
@@ -88,4 +88,4 @@ const TutionFee = () => {
   );
 };
 
-export default TutionFee;
+export default MiscellaneousFeeCollection;
