@@ -1,10 +1,10 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import CourseSetup from '../../pages/Administration Pages/MainPages/CourseSetup';
-import BookManagement from '../../pages/LibraryManagement.jsx/BookManagement';
-import AddNewBookDetail from '../../pages/LibraryManagement.jsx/AddNewBookDetail';
-import BookEntry from '../../pages/LibraryManagement.jsx/BookEntry';
-import MembersManagement from '../../pages/LibraryManagement.jsx/MembersManagement';
+import BookManagement from '../../pages/LibraryManagement/BookManagement';
+import AddNewBookDetail from '../../pages/LibraryManagement/AddNewBookDetail';
+import BookEntry from '../../pages/LibraryManagement/BookEntry';
+import MembersManagement from '../../pages/LibraryManagement/MembersManagement';
 
 
 
