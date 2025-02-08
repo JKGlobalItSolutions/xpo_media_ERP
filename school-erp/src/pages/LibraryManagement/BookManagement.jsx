@@ -123,8 +123,8 @@ const BookManagement = () => {
                     placeholder="Search by Book Title, Author, ISBN, Category"
                   />
                   <button
-                    style={{background:"linear-gradient(180deg, #1470E1 0%, #0B3D7B 100%)",border:"none"}}
-                    className="btn text-light px-lg-4 "
+                   
+                    className="btn text-light px-lg-4 custom-btn-clr "
                   >
                     SEARCH
                   </button>
@@ -136,7 +136,7 @@ const BookManagement = () => {
                     <FaFilter className="me-2" />
                     Filter
                   </button>
-                  <button className="btn btn-primary custom-btn">
+                  <button className="btn custom-btn-clr custom-btn">
                     <FaPlus className="me-2" />
                     Add Book
                   </button>

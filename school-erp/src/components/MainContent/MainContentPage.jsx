@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Sidebar from "../Sidebar/Sidebar"
 import TopNavbar from "../Navbar/TopNavbar"
 import Footer from "../Footer/Footer"
+import "../../assets/global.css"
 
 function MainContentPage({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
