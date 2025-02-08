@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Form, Button, Card, Container } from "react-bootstrap"
+import Footer from "../../components/Footer/Footer"
 
 const PromotionHigher = () => {
   const [courseWiseData, setCourseWiseData] = useState({
@@ -119,15 +120,7 @@ const PromotionHigher = () => {
         </div>
 
         {/* Footer */}
-        <footer className="mt-4 text-muted">
-          <small>
-            © Copyrights{" "}
-            <a href="#" className="text-decoration-none">
-              XPO Media
-            </a>{" "}
-            2024. All rights reserved
-          </small>
-        </footer>
+       
       </Container>
     </MainContentPage>
   )

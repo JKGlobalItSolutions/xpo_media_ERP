@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import TopNavbar from "../Navbar/TopNavbar";
+import Footer from "../Footer/Footer";
 
 function MainContentPage({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -56,6 +57,9 @@ function MainContentPage({ children }) {
           }}
         >
           {children}
+       <div className="text-center text-lg-start">
+       <Footer  />
+       </div>
         </main>
       </div>
     </div>
