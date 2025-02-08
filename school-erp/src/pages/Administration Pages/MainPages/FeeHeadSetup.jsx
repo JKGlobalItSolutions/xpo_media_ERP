@@ -80,7 +80,7 @@ const FeeHeadSetup = () => {
                           <Button 
                             style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}
                             type="submit"
-                            className="create-fee-btn px-4 py-2"
+                            className="custom-btn-clr px-4 py-2"
                           >
                             Create Fee Head
                           </Button>

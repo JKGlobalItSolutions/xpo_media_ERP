@@ -1,0 +1,13 @@
+/* BillingWindow.css */
+
+.billing-container {
+    overflow-x: auto;
+    white-space: nowrap;
+    width: 100;
+}
+
+@media (max-width: 768px) {
+    .billing-container {
+        max-width: 100vw;
+    }
+}

@@ -148,7 +148,7 @@ const RegularCandidates = () => {
                     <Row className="mt-3">
                       <Col xs={12}>
                         <div className="d-flex gap-2">
-                          <Button style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}} type="submit">
+                          <Button className="custom-btn-clr" type="submit">
                             Save
                           </Button>
                           <Button variant="danger" type="button" onClick={handleReset}>

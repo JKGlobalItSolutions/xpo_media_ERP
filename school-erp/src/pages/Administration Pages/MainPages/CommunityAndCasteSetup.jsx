@@ -80,7 +80,7 @@ const CommunityAndCasteSetup = () => {
                           <Button 
                             variant="primary" 
                             type="submit"
-                            className="create-fee-btn px-4 py-2"
+                            className="custom-btn-clr px-4  py-2"
                           >
                             Save
                           </Button>

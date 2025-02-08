@@ -150,9 +150,9 @@ const CourseCertificate = () => {
 
                     <div className="button-group mt-4">
                       <Button
-                        style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}
+                       
                         type="submit"
-                        className="px-4 py-2"
+                        className="px-4 custom-btn-clr py-2"
                       >
                         Save
                       </Button>

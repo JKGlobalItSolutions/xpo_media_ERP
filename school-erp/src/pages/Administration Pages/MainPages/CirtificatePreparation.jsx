@@ -65,9 +65,9 @@ const CertificatePreparation = () => {
               <div className="card fee-setup-card h-100">
                 <div className="card-body d-flex align-items-center justify-content-center">
             
-                <h5 className="card-title text-white m-0">
+                <h6 className="card-title text-white m-0">
                 Attendance Certificate
-                  </h5>
+                  </h6>
                 
                 </div>
               </div>
@@ -82,7 +82,7 @@ const CertificatePreparation = () => {
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
-                <h5 className="card-title text-white m-0">Course Certificate</h5>
+                <h6 className="card-title text-white m-0">Course Certificate</h6>
               </div>
             </div>
           </Link>
@@ -93,7 +93,7 @@ const CertificatePreparation = () => {
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
-                <h5 className="card-title text-white m-0">Experience Certificate</h5>
+                <h6 className="card-title text-white m-0">Experience Certificate</h6>
               </div>
             </div>
           </Link>

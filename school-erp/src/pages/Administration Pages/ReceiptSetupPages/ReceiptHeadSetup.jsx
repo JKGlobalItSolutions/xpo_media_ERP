@@ -69,7 +69,7 @@ const ReceiptHeadSetup = () => {
                               border: "#0B3D7B",
                             }}
                             type="submit"
-                            className="add-program-btn px-4 py-2"
+                            className="custom-btn-clr px-4 py-2"
                           >
                             Save
                           </Button>

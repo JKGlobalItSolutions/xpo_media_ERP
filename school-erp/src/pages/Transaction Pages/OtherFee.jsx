@@ -189,16 +189,18 @@ const OtherFee = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="d-flex flex-wrap gap-2 mt-4">
-              <button type="button" style={styles.actionButton}>Insert</button>
-              <button type="button" style={styles.actionButton}>View</button>
-              <button type="button" style={styles.actionButton}>Bill Cancel</button>
-              <button type="button" style={styles.actionButton}>Save</button>
-              <button type="button" style={styles.actionButton}>PayDetails</button>
-              <button type="button" style={styles.actionButton}>Row Del</button>
-              <button type="button" style={styles.actionButton}>Print</button>
-              <button type="button" style={styles.closeButton}>Close</button>
-            </div>
+     
+            <div className="d-flex flex-wrap gap-2">
+                <button type="button" className="btn custom-btn-clr" >Insert</button>
+                <button type="button" className="btn custom-btn-clr" >View</button>
+                <button type="button" className="btn custom-btn-clr" >Bill Cancel</button>
+                <button type="button" className="btn custom-btn-clr" >Save</button>
+                <button type="button" className="btn custom-btn-clr" >PayDetails</button>
+                <button type="button" className="btn custom-btn-clr" >Row Del</button>
+                <button type="button" className="btn custom-btn-clr" >Print</button>
+                <button type="button" className='btn custom-btn-clr' >Close</button>
+
+              </div>
           </div>
         </div>
       </div>
