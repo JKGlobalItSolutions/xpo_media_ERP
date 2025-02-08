@@ -2,17 +2,25 @@ import React from 'react';
 import MainContentPage from '../../components/MainContent/MainContentPage';
 import { Breadcrumb } from 'react-bootstrap'; // Using Bootstrap for breadcrumb
 import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
+import { Link } from "react-router-dom"
+
 
 const ConsolidatedStrength = () => {
   return (
     <MainContentPage>
       <div className="container mx-auto p-4">
         {/* Breadcrumb */}
-        <Breadcrumb>
-          <Breadcrumb.Item href="#">Home</Breadcrumb.Item>
-          <Breadcrumb.Item href="#">Debit / Credit Card Report</Breadcrumb.Item>
-          <Breadcrumb.Item active>Consolidated Strength</Breadcrumb.Item>
-        </Breadcrumb>
+        <div className="mb-4">
+          <h2 className="mb-2">Promotion Higher</h2>
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link to="/admission">Debit/Credit Report</Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>Consolidated Strength</span>
+          </nav>
+        </div>
+      
 
         {/* Header */}
         <div
