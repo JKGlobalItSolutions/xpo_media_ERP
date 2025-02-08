@@ -109,9 +109,6 @@ const BookManagement = () => {
           </nav>
         </div>
 
-        {/* Search and Actions */}
-        <h2 className="book-title">Book Management</h2>
-
         <div className="card mb-4 border-0 shadow-sm">
           <div className="card-body">
             <div className="row g-3">
@@ -151,13 +148,13 @@ const BookManagement = () => {
           <table className="table table-bordered table-hover">
             <thead>
               <tr>
-                <th>Book ID</th>
-                <th>Title</th>
-                <th>Author</th>
-                <th>ISBN</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th className="custom-btn-clr">Book ID</th>
+                <th className="custom-btn-clr">Title</th>
+                <th className="custom-btn-clr">Author</th>
+                <th className="custom-btn-clr">ISBN</th>
+                <th className="custom-btn-clr">Category</th>
+                <th className="custom-btn-clr">Status</th>
+                <th className="custom-btn-clr">Actions</th>
               </tr>
             </thead>
             <tbody>

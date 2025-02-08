@@ -62,9 +62,8 @@ const PlaceSetup = () => {
               <div className="form-section">
                 {/* Header */}
                 <div
+                  className="custom-btn-clr"
                   style={{
-                    backgroundColor: "#0B3D7B",
-                    color: "white",
                     padding: "15px 20px",
                     fontSize: "24px",
                     borderTopLeftRadius: "8px",
@@ -187,15 +186,13 @@ const PlaceSetup = () => {
                     <Row className="mt-4">
                       <div className="col-12 d-flex flex-wrap justify-content-center gap-3">
                         <Button
-                          className="btn btn-primary flex-grow-1 flex-md-grow-0"
-                          style={{ backgroundColor: "#0B3D7B", border: "none" }}
+                          className="btn flex-grow-1 flex-md-grow-0 custom-btn-clr"
                         >
                           Insert
                         </Button>
                        
                         <Button
-                          className="btn btn-primary flex-grow-1 flex-md-grow-0"
-                          style={{ backgroundColor: "#0B3D7B", border: "none" }}
+                          className="btn flex-grow-1 flex-md-grow-0 custom-btn-clr"
                         >
                           Save
                         </Button>

@@ -42,7 +42,7 @@ const NewBusBill = () => {
     <MainContentPage>
         <div className="bus-van-bill-container">
       {/* Header */}
-      <div className="header" style={{ backgroundColor: '#0B3D7B', padding: '15px', color: 'white' }}>
+      <div className="header custom-btn-clr">
         <Container fluid>
         <Row className="align-items-center">
   <div className="col-12 col-lg-4 d-flex align-items-center justify-content-between d-md-flex">
@@ -281,7 +281,7 @@ const NewBusBill = () => {
             </Row>
 
             {/* Payment Mode Section */}
-            <div className="payment-mode-section p-3 mb-3" style={{ backgroundColor: '#0B3D7B', color: 'white' }}>
+            <div className="payment-mode-section p-3 mb-3 custom-btn-clr" >
               <h5>Payment Mode</h5>
               <div className="d-flex gap-4">
                 <Form.Check
@@ -409,16 +409,16 @@ const NewBusBill = () => {
 
 <Row className="mt-4">
   <div className="col-12 d-flex flex-wrap justify-content-center gap-3">
-    <Button className="btn btn-primary flex-grow-1 flex-md-grow-0" style={{ backgroundColor: '#0B3D7B', border: 'none' }}>
+    <Button className="btn btn-primary flex-grow-1 flex-md-grow-0 custom-btn-clr" >
       Insert
     </Button>
-    <Button className="btn btn-primary flex-grow-1 flex-md-grow-0" style={{ backgroundColor: '#0B3D7B', border: 'none' }}>
+    <Button className="btn btn-primary flex-grow-1 flex-md-grow-0 custom-btn-clr" >
       Bill Cancel
     </Button>
-    <Button className="btn btn-primary flex-grow-1 flex-md-grow-0" style={{ backgroundColor: '#0B3D7B', border: 'none' }}>
+    <Button className="btn btn-primary flex-grow-1 flex-md-grow-0 custom-btn-clr" >
       Save
     </Button>
-    <Button className="btn btn-primary flex-grow-1 flex-md-grow-0" style={{ backgroundColor: '#0B3D7B', border: 'none' }}>
+    <Button className="btn btn-primary flex-grow-1 flex-md-grow-0 custom-btn-clr" >
       View
     </Button>
     <Button className="btn btn-secondary flex-grow-1 flex-md-grow-0" style={{ backgroundColor: '#6C757D', border: 'none' }}>

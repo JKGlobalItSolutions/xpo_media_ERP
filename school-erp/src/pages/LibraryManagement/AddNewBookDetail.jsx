@@ -73,7 +73,7 @@ const AddNewBookDetail = () => {
           {/* Main Form Card */}
           <div className="form-card mt-3">
             {/* Card Header */}
-            <div className="header p-3" style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+            <div className="header p-3 custom-btn-clr" >
               <div className="d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center gap-2">
                   <span>
@@ -228,10 +228,10 @@ const AddNewBookDetail = () => {
                 {/* Form Actions */}
                 <Row className="mt-4">
                   <Col className="d-flex justify-content-center gap-3">
-                    <Button type="submit" variant="primary">
+                    <Button type="submit" className="custom-btn-clr">
                       Insert
                     </Button>
-                    <Button type="submit" variant="primary">
+                    <Button type="submit" className="custom-btn-clr">
                       Save
                     </Button>
                     <Button variant="secondary">Cancel</Button>

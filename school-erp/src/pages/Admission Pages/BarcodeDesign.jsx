@@ -300,8 +300,8 @@ const BarcodeDesign = () => {
               {/* Form Actions */}
               <Row className="mt-4">
                 <Col className="d-flex justify-content-center gap-3">
-                  <Button variant="primary">New Barcode Design</Button>
-                  <Button type="submit" variant="primary">
+                  <Button className="custom-btn-clr">New Barcode Design</Button>
+                  <Button type="submit" className="custom-btn-clr">
                     Save
                   </Button>
                   <Button variant="danger" onClick={handleReset}>

@@ -34,7 +34,7 @@ const DayDCReport = () => {
         {/* Main Content */}
         <div className="card shadow-sm">
           {/* Header */}
-          <div className="card-header text-white" style={{ backgroundColor: "#0B3D7B" }}>
+          <div className="card-header text-white custom-btn-clr">
             <h5 className="mb-0">Day Ledger</h5>
           </div>
 
@@ -95,15 +95,13 @@ const DayDCReport = () => {
               <div className="col-12">
                 <div className="d-flex gap-2">
                   <button
-                    className="btn text-white px-4"
-                    style={{ backgroundColor: "#0B3D7B" }}
+                    className="btn text-white px-4 custom-btn-clr"
                     onClick={() => console.log("Generate clicked")}
                   >
                     Generate
                   </button>
                   <button
-                    className="btn text-white px-4"
-                    style={{ backgroundColor: "#0B3D7B" }}
+                    className="btn text-white px-4 custom-btn-clr"
                     onClick={() => console.log("View clicked")}
                   >
                     View
