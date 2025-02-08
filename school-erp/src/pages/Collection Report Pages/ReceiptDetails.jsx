@@ -132,16 +132,6 @@ const ReceiptDetails = () => {
           </Card.Body>
         </Card>
 
-        {/* Footer */}
-        <footer className="mt-4 text-muted">
-          <small>
-            © Copyrights{" "}
-            <a href="#" className="text-decoration-none">
-              XPO Media
-            </a>{" "}
-            2024. All rights reserved
-          </small>
-        </footer>
       </Container>
     </MainContentPage>
   )
