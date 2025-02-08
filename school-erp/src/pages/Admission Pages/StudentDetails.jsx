@@ -209,7 +209,7 @@ const StudentDetails = () => {
                     placeholder="Search by class, Section, Name & Teacher"
                     className="flex-grow-1"
                   />
-                  <Button variant="primary" style={{ backgroundColor: "#0047AB" }}>
+                  <Button className="custom-btn-clr">
                     SEARCH
                   </Button>
                 </div>
@@ -217,18 +217,18 @@ const StudentDetails = () => {
                   <Button
                     variant={viewType === "table" ? "primary" : "outline-primary"}
                     onClick={() => setViewType("table")}
-                    className="px-3"
+                    className="px-3 custom-btn-clr"
                   >
                     <FaTable />
                   </Button>
                   <Button
                     variant={viewType === "card" ? "primary" : "outline-primary"}
                     onClick={() => setViewType("card")}
-                    className="px-3"
+                    className="px-3 custom-btn-clr"
                   >
                     <FaTh />
                   </Button>
-                  <Button variant="primary" onClick={() => setShowFilter(true)} className="px-3">
+                  <Button variant="primary" onClick={() => setShowFilter(true)} className="px-3 custom-btn-clr">
                     <FaFilter />
                   </Button>
                 </div>
@@ -292,46 +292,46 @@ const StudentDetails = () => {
                 <Table className="table-bordered">
                   <thead>
                     <tr>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Student Photo
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Admission
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Name
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Class
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Section
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Roll Number
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Date of Birth
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Gender
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Parent/Guardian Name
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Contact Information
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Fees Detail
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Address
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Enrollment Date
                       </th>
-                      <th className="py-2 text-white" style={{ backgroundColor: "#004AAD" }}>
+                      <th className="py-2 text-white custom-btn-clr">
                         Action
                       </th>
                     </tr>

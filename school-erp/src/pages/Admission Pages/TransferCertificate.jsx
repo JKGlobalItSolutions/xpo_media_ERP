@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container } from "react-bootstrap"
+import { Link } from "react-router-dom"
 
 const TransferCertificate = () => {
   const [formData, setFormData] = useState({
@@ -72,12 +73,39 @@ const TransferCertificate = () => {
   return (
     <MainContentPage>
       <Container fluid className="px-0">
+        {/* Header */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <h4 className="fw-bold">Transfer Certificate</h4>
+          </div>
+        </div>
+
+        {/* Breadcrumb Navigation */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <nav aria-label="breadcrumb">
+              <ol className="breadcrumb m-0">
+                <li className="breadcrumb-item">
+                  <Link to="/home" className="text-decoration-none">
+                    Home
+                  </Link>
+                </li>
+                <li className="breadcrumb-item">
+                  <Link to="/administration" className="text-decoration-none">
+                    Admission
+                  </Link>
+                </li>
+                <li className="breadcrumb-item active" aria-current="page">
+                  Transfer Certificate
+                </li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+
         <div className="transfer-form">
-          {/* Header */}
-          <div
-            className="header p-3 d-flex justify-content-between align-items-center"
-            style={{ backgroundColor: "#0B3D7B", color: "white" }}
-          >
+          {/* Header with Admission Number Input */}
+          <div className="header p-3 d-flex justify-content-between align-items-center custom-btn-clr">
             <h4 className="m-0">Transfer Form</h4>
             <Form.Control
               type="text"
@@ -226,8 +254,6 @@ const TransferCertificate = () => {
                       <option value="">Select Community</option>
                     </Form.Select>
                   </Form.Group>
-
-
                 </Col>
 
                 {/* Right Column */}
@@ -237,7 +263,7 @@ const TransferCertificate = () => {
                     <Form.Select name="caste" value={formData.caste} onChange={handleInputChange}>
                       <option value="">Select Caste</option>
                     </Form.Select>
-                  </Form.Group>    
+                  </Form.Group>
 
                   <Form.Group className="mb-3">
                     <Form.Label>State</Form.Label>
@@ -348,7 +374,7 @@ const TransferCertificate = () => {
               {/* Form Actions */}
               <Row className="mt-4">
                 <Col className="d-flex justify-content-center gap-3">
-                  <Button type="submit" style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}>
+                  <Button type="submit" className="custom-btn-clr">
                     Save
                   </Button>
                   <Button variant="secondary">Cancel</Button>

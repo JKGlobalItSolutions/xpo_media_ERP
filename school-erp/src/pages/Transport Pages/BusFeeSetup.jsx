@@ -66,9 +66,8 @@ const BusFeeSetup = () => {
               <div className="form-section">
                 {/* Header */}
                 <div
+                  className="custom-btn-clr"
                   style={{
-                    backgroundColor: "#0B3D7B",
-                    color: "white",
                     padding: "15px 20px",
                     fontSize: "24px",
                     borderTopLeftRadius: "8px",
@@ -172,9 +171,8 @@ const BusFeeSetup = () => {
                       <Row>
                         <Col md={3}>
                           <div
+                            className="custom-btn-clr"
                             style={{
-                              backgroundColor: "#0B3D7B",
-                              color: "white",
                               padding: "10px 15px",
                               borderRadius: "4px",
                             }}
@@ -185,9 +183,9 @@ const BusFeeSetup = () => {
                         <Col md={9}>
                           <Table bordered style={{ border: "1px solid #0B3D7B" }}>
                             <thead>
-                              <tr style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                                <th>Fee Description</th>
-                                <th>Amount in Rs</th>
+                              <tr>
+                                <th className="custom-btn-clr">Fee Description</th>
+                                <th className="custom-btn-clr">Amount in Rs</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -211,10 +209,10 @@ const BusFeeSetup = () => {
 
                  
                     <div className="d-flex flex-wrap justify-content-center gap-3 mt-5">
-                      <Button style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}} type="submit" className="btn-custom">Insert</Button>
-                      <Button style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}} className="btn-custom">Save</Button>
-                      <Button style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}} className="btn-custom">View</Button>
-                      <Button style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}} onClick={handleReset} className="btn-cancel">Cancel</Button>
+                      <Button  type="submit" className="custom-btn-clr">Insert</Button>
+                      <Button  className="custom-btn-clr">Save</Button>
+                      <Button  className="custom-btn-clr">View</Button>
+                      <Button  onClick={handleReset} className="btn-cancel btn btn-secondary">Cancel</Button>
                     </div>
                   </Form>
                 </div>

@@ -24,8 +24,7 @@ const ConsolidatedStrength = () => {
 
         {/* Header */}
         <div
-          className="text-white text-lg font-bold py-3 px-4 rounded-t-md"
-          style={{ backgroundColor: '#0B3D7B' }}
+          className="text-white text-lg font-bold py-3 px-4 rounded-t-md custom-btn-clr"
         >
           Consolidated Strength
         </div>
@@ -70,22 +69,19 @@ const ConsolidatedStrength = () => {
         {/* Buttons */}
         <div className="d-flex justify-content-center gap-3 mt-4">
           <button
-            className="btn text-white px-4 py-2"
-            style={{ backgroundColor: '#0B3D7B' }}
+            className="btn text-white px-4 py-2 custom-btn-clr"
             type="button"
           >
             Save
           </button>
           <button
-            className="btn text-white px-4 py-2"
-            style={{ backgroundColor: '#0B3D7B' }}
+            className="btn text-white px-4 py-2 custom-btn-clr"
             type="button"
           >
             View
           </button>
           <button
-            className="btn text-white px-4 py-2"
-            style={{ backgroundColor: '#0B3D7B' }}
+            className="btn text-white px-4 py-2 custom-btn-clr"
             type="button"
           >
             Cancel

@@ -64,7 +64,7 @@ const BillWiseDetails = () => {
 
         {/* Course Wise Fee Setting Card */}
         <Card className="mb-4">
-          <Card.Header className="p-3" style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+          <Card.Header className="p-3 custom-btn-clr" >
             <h5 className="m-0">Bill Wise Details</h5>
           </Card.Header>
           <Card.Body className="p-4">
@@ -99,10 +99,10 @@ const BillWiseDetails = () => {
               </div>
 
               <div className="d-flex justify-content-center gap-2 mt-4">
-                <Button type="submit" style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}>
+                <Button type="submit" className="custom-btn-clr">
                   Generate
                 </Button>
-                <Button type="submit" style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}>
+                <Button type="submit" className="custom-btn-clr">
                   Save
                 </Button>
                 <Button variant="secondary">Cancel</Button>

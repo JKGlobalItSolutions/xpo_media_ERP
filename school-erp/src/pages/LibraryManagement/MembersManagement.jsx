@@ -158,18 +158,18 @@ const MembersManagement = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <Button style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}>SEARCH</Button>
+                <Button className="custom-btn-clr">SEARCH</Button>
               </div>
               <div className="d-flex gap-2">
                 <Button
                   variant="primary"
-                  style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}
+                  className="custom-btn-clr"
                   onClick={() => setShowFilter(true)}
                 >
                   <FaFilter className="me-2" />
                   Filter
                 </Button>
-                <Button style={{ backgroundColor: "#0B3D7B", borderColor: "#0B3D7B" }}>+</Button>
+                <Button className="custom-btn-clr">+</Button>
               </div>
             </div>
 
@@ -178,16 +178,16 @@ const MembersManagement = () => {
               <Table bordered hover className="mb-0 text-center">
                 <thead>
                   <tr>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Admission Number</th>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Student Name</th>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Class/Standard</th>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Section / Grade</th>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Book Title</th>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Issued Date</th>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Submission Date</th>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Book ID</th>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Status</th>
-                    <th style={{ backgroundColor: "#0B3D7B", color: "white" }}>Action</th>
+                    <th className="custom-btn-clr">Admission Number</th>
+                    <th className="custom-btn-clr">Student Name</th>
+                    <th className="custom-btn-clr">Class/Standard</th>
+                    <th className="custom-btn-clr">Section / Grade</th>
+                    <th className="custom-btn-clr">Book Title</th>
+                    <th className="custom-btn-clr">Issued Date</th>
+                    <th className="custom-btn-clr">Submission Date</th>
+                    <th className="custom-btn-clr">Book ID</th>
+                    <th className="custom-btn-clr">Status</th>
+                    <th className="custom-btn-clr">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -222,7 +222,7 @@ const MembersManagement = () => {
               <Button variant="outline-primary" disabled>
                 Previous
               </Button>
-              <Button variant="primary">1</Button>
+              <Button className="custom-btn-clr">1</Button>
               <Button variant="outline-primary">2</Button>
               <Button variant="outline-primary">3</Button>
               <Button variant="outline-primary">Next</Button>
@@ -301,7 +301,7 @@ const MembersManagement = () => {
             </Form>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="primary" onClick={handleFilterSubmit}>
+            <Button className="custom-btn-clr" onClick={handleFilterSubmit}>
               Show applied filters
             </Button>
             <Button variant="danger" onClick={handleFilterReset}>

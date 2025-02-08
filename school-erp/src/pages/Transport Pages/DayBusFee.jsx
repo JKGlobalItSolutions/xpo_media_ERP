@@ -33,7 +33,7 @@ const DayBusFee = () => {
 
               <div className="form-card mt-3">
                 {/* Header */}
-                <div className="header p-3">
+                <div className="header custom-btn-clr p-3">
                   <h2 className="m-0 d-none d-lg-block">Day Collection Report - Van / Bus</h2>
                   <h6 className="m-0 d-lg-none">Day Collection Report - Van / Bus</h6>
                 </div>
@@ -60,9 +60,8 @@ const DayBusFee = () => {
                       <Col xs={12}>
                         <div className="button-group mt-4">
                           <Button 
-                          style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
                             type="submit"
-                            className="add-program-btn px-4 py-2"
+                            className="add-program-btn px-4 py-2 custom-btn-clr"
                           >
                             Generate
                           </Button>

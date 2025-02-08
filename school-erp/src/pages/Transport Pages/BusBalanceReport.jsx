@@ -40,7 +40,7 @@ const BusBalanceReport = () => {
           <Col xs={12}>
             <div className="course-setup-container" style={{ border: '1px solid #ccc', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
               {/* Header */}
-              <div style={{ backgroundColor: '#0B3D7B', padding: '20px', color: 'white', borderTopLeftRadius: '10px', borderTopRightRadius: '10px' }}>
+              <div className="custom-btn-clr" style={{  padding: '20px',  borderTopLeftRadius: '10px', borderTopRightRadius: '10px' }}>
                 <h2 className="mb-0">Bus Balance Report</h2>
               </div>
 
@@ -94,10 +94,9 @@ const BusBalanceReport = () => {
                 {/* Buttons */}
                 <Row className="justify-content-center gap-3">
                   <Button
+                    className="custom-btn-clr"
                     type="submit"
                     style={{ 
-                      backgroundColor: '#0B3D7B',
-                      border: 'none',
                       width: '150px',
                       fontSize: '1.1rem'
                     }}
@@ -105,8 +104,8 @@ const BusBalanceReport = () => {
                     Process
                   </Button>
                   <Button
+                    className="custom-btn-clr"
                     style={{ 
-                      backgroundColor: '#0B3D7B',
                       border: 'none',
                       width: '100px',
                       fontSize: '1.1rem'
