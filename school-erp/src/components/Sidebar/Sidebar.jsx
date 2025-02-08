@@ -263,16 +263,28 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
     },
     {
       id: 9,
-      title: "Settings",
+      title: "Library Management",
       icon: settingIcon,
-      path: "/settings",
+      path: "/library",
       subItems: [
-        { id: "9-1", title: "• General Settings", path: "/settings/general" },
-        { id: "9-2", title: "• User Settings", path: "/settings/user" },
+        { id: "9-1", title: "• Book Management", path: "/library/book-management" },
+        { id: "9-1", title: "• Add New Book details", path: "/library/add-new-book" },
+        { id: "9-1", title: "• Book Entry", path: "/library/book-entry" },
+        { id: "9-1", title: "• Members Management", path: "/library/members-management" },
       ],
     },
     {
       id: 10,
+      title: "Settings",
+      icon: settingIcon,
+      path: "/settings",
+      subItems: [
+        { id: "10-1", title: "• General Settings", path: "/settings/general" },
+        { id: "10-2", title: "• User Settings", path: "/settings/user" },
+      ],
+    },
+    {
+      id: 11,
       title: "Logout",
       icon: logoutIcon,
       path: "/logout",
