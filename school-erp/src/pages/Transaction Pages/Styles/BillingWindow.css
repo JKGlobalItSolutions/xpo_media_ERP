@@ -1,46 +1,41 @@
-/* BillingWindow.css */
-
 .billing-container {
-    overflow-x: hidden;
-    white-space: normal;
-    width: 100%;
-    max-width: 100vw;
-    box-sizing: border-box;
-}
-
-.billing-container .card, 
-.billing-container .form-control, 
-.billing-container .form-select, 
-.billing-container table {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box;
-}
-
-.billing-container table {
-    table-layout: fixed;
-    word-wrap: break-word;
-}
-
-@media (max-width: 768px) {
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+  
+  .card-body {
+    max-height: calc(100vh - 60px); /* Adjust based on your header height */
+    overflow-y: auto;
+  }
+  
+  .form-control-sm,
+  .form-select-sm {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .table-sm th,
+  .table-sm td {
+    padding: 0.3rem;
+    font-size: 0.875rem;
+  }
+  
+  .custom-btn-clr {
+    background-color: #0b3d7b;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  @media (min-width: 992px) {
     .billing-container {
-        max-width: 100vw;
-        padding: 0 10px;
+      overflow-y: hidden;
     }
-
-    .billing-container .row {
-        margin: 0;
+  
+    .card-body {
+      overflow-y: auto;
     }
-
-    .billing-container .col-md-6, 
-    .billing-container .col-md-8, 
-    .billing-container .col-md-4 {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
-
-    .billing-container .btn {
-        width: 100%;
-        margin-bottom: 10px;
-    }
-}
+  }
+  
+  
