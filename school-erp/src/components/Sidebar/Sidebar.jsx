@@ -92,7 +92,7 @@ function LogoutModal({ isOpen, onClose, onConfirm }) {
           }
 
           .modal-button.confirm {
-            background-color: #146FDF;
+            background-color: #0B3D7B;
             color: white;
           }
 
