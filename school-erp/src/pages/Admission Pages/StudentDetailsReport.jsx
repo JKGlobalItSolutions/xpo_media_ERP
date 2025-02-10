@@ -55,19 +55,7 @@ const StudentDetailsReport = () => {
         {/* Cards Grid */}
         <div className="row g-4">
 
-          <Link
-            style={{ textDecoration: "none" }}
-            className="col-12 col-md-6 col-lg-3"
-            to="/admin/head-setup"
-          >
-            <div>
-              <div className="card fee-setup-card h-100">
-                <div className="card-body d-flex align-items-center justify-content-center">
-                <h5 className="card-title text-white m-0">Student Register Process</h5>
-                </div>
-              </div>
-            </div>
-          </Link>
+         
 
           <Link
             style={{ textDecoration: "none" }}
@@ -125,7 +113,20 @@ const StudentDetailsReport = () => {
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center text-center">
                 <h5 className="card-title text-white m-0">Student Register
-                Grade / Lunch</h5>
+                Grade </h5>
+              </div>
+            </div>
+          </Link>
+          <Link
+            style={{ textDecoration: "none" }}
+            className="col-12 col-md-6 col-lg-3"
+            to="/admin/head-setup"
+          >
+            <div>
+              <div className="card fee-setup-card h-100">
+                <div className="card-body d-flex align-items-center justify-content-center">
+                <h5 className="card-title text-white m-0">Hostel Status</h5>
+                </div>
               </div>
             </div>
           </Link>

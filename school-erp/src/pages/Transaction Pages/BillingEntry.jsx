@@ -1,8 +1,5 @@
-// BillingEntry.jsx
-
 import React, { useState } from 'react';
 import "bootstrap/dist/css/bootstrap.min.css";
-import './Styles/BillingWindow.css'; // Import custom styles
 import MainContentPage from '../../components/MainContent/MainContentPage';
 
 const styles = {
@@ -139,20 +136,20 @@ const BillingEntry = () => {
               </div>
 
               {/* Fee Heading Table */}
-              <div className="table-responsive mb-3">
-                <table className="table table-bordered">
+              <div className="custom-table-wrapper mb-3">
+                <table className="table table-bordered fee-table">
                   <thead>
                     <tr style={styles.headerBg}>
-                      <th>Select Fee Heading</th>
-                      <th>Amount in Rs</th>
-                      <th>Balance</th>
+                      <th className="fee-heading-column">Select Fee Heading</th>
+                      <th className="amount-column">Amount in Rs</th>
+                      <th className="balance-column">Balance</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td></td>
-                      <td></td>
-                      <td></td>
+                      <td className="fee-heading-column"></td>
+                      <td className="amount-column"></td>
+                      <td className="balance-column"></td>
                     </tr>
                   </tbody>
                 </table>
@@ -164,24 +161,24 @@ const BillingEntry = () => {
               </div>
 
               {/* Transaction Table */}
-              <div className="table-responsive mb-3">
-                <table className="table table-bordered">
+              <div className="custom-table-wrapper mb-3">
+                <table className="table table-bordered transaction-table">
                   <thead>
                     <tr style={styles.headerBg}>
-                      <th>Date</th>
-                      <th>Bill Number</th>
-                      <th>Description</th>
-                      <th>Paid Amount</th>
-                      <th>Narration</th>
+                      <th className="date-column">Date</th>
+                      <th className="bill-column">Bill Number</th>
+                      <th className="desc-column">Description</th>
+                      <th className="amount-column">Paid Amount</th>
+                      <th className="narration-column">Narration</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
+                      <td className="date-column"></td>
+                      <td className="bill-column"></td>
+                      <td className="desc-column"></td>
+                      <td className="amount-column"></td>
+                      <td className="narration-column"></td>
                     </tr>
                   </tbody>
                   <tfoot>
@@ -208,7 +205,7 @@ const BillingEntry = () => {
               {/* Action Buttons */}
               <div className="d-flex flex-wrap gap-2">
                 {["Insert", "View", "Bill Cancel", "Save", "Row Del", "Bus Bill", "Print", "Due status"].map((btnText, index) => (
-                  <button type="button" className="btn custom-btn-clr" key={index}>
+                  <button type="button" className="btn" style={styles.customBtn} key={index}>
                     {btnText}
                   </button>
                 ))}
@@ -216,6 +213,83 @@ const BillingEntry = () => {
             </form>
           </div>
         </div>
+
+        <style jsx>{`
+          .billing-container {
+            padding: 1rem;
+          }
+
+          .custom-table-wrapper {
+            overflow-x: auto;
+            margin: 0;
+            padding: 0 1px;
+          }
+
+          /* Fee Table Styles */
+          .fee-table {
+            min-width: 600px;
+          }
+
+          .fee-heading-column {
+            min-width: 250px;
+          }
+
+          .amount-column {
+            min-width: 150px;
+          }
+
+          .balance-column {
+            min-width: 150px;
+          }
+
+          /* Transaction Table Styles */
+          .transaction-table {
+            min-width: 800px;
+          }
+
+          .date-column {
+            min-width: 120px;
+          }
+
+          .bill-column {
+            min-width: 120px;
+          }
+
+          .desc-column {
+            min-width: 200px;
+          }
+
+          .narration-column {
+            min-width: 200px;
+          }
+
+          /* Common table styles */
+          .table th,
+          .table td {
+            padding: 12px;
+            vertical-align: middle;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+          }
+
+          @media (max-width: 768px) {
+            .billing-container {
+              padding: 0.5rem;
+            }
+
+            .custom-table-wrapper {
+              margin: 0 -0.5rem;
+              padding: 0 0.5rem;
+            }
+
+            .btn {
+              margin: 0.25rem;
+              flex: 1 1 auto;
+              min-width: 120px;
+            }
+          }
+        `}</style>
       </div>
     </MainContentPage>
   );

@@ -81,31 +81,31 @@ const IndividualPaid = () => {
 
         {/* Table */}
         <div className="mb-4">
-          <div className="table-responsive" style={{ overflowX: 'auto', whiteSpace: 'nowrap' }}>
+          <div className="table-responsive custom-table-container">
             <table className="table table-bordered">
               <thead className="bg-primary text-white">
                 <tr>
-                  <th>S.No</th>
-                  <th>Paid Date</th>
-                  <th>Paid Amount</th>
-                  <th>Bill Number</th>
-                  <th>Fee Head Description</th>
+                  <th className="sno-column">S.No</th>
+                  <th className="date-column">Paid Date</th>
+                  <th className="amount-column">Paid Amount</th>
+                  <th className="bill-column">Bill Number</th>
+                  <th className="desc-column">Fee Head Description</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>1</td>
-                  <td>01-01-2025</td>
-                  <td>120</td>
-                  <td>12345</td>
-                  <td>Tuition Fee</td>
+                  <td className="sno-column">1</td>
+                  <td className="date-column">01-01-2025</td>
+                  <td className="amount-column">120</td>
+                  <td className="bill-column">12345</td>
+                  <td className="desc-column">Tuition Fee</td>
                 </tr>
                 <tr>
-                  <td>2</td>
-                  <td>01-02-2025</td>
-                  <td>150</td>
-                  <td>12346</td>
-                  <td>Library Fee</td>
+                  <td className="sno-column">2</td>
+                  <td className="date-column">01-02-2025</td>
+                  <td className="amount-column">150</td>
+                  <td className="bill-column">12346</td>
+                  <td className="desc-column">Library Fee</td>
                 </tr>
               </tbody>
             </table>
@@ -149,6 +149,47 @@ const IndividualPaid = () => {
           padding: 0.5rem 2rem;
         }
 
+        .custom-table-container {
+          overflow-x: auto;
+          margin: 0 15px;
+        }
+
+        .table {
+          margin-bottom: 0;
+        }
+
+        /* Column specific widths */
+        .sno-column {
+          min-width: 80px;
+          width: 80px;
+        }
+        .date-column {
+          min-width: 150px;
+          width: 150px;
+        }
+        .amount-column {
+          min-width: 130px;
+          width: 130px;
+        }
+        .bill-column {
+          min-width: 120px;
+          width: 120px;
+        }
+        .desc-column {
+          min-width: 200px;
+          width: 200px;
+        }
+
+        /* Table cell styles */
+        .table th,
+        .table td {
+          padding: 12px;
+          vertical-align: middle;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+        }
+
         @media (max-width: 768px) {
           .billing-container {
             padding: 0 10px;
@@ -166,11 +207,11 @@ const IndividualPaid = () => {
             width: 100%;
             margin-bottom: 10px;
           }
-          .table-responsive {
-            display: block;
-            width: 100%;
-            overflow-x: auto;
-            white-space: nowrap;
+          .custom-table-container {
+            margin: 0;
+          }
+          .table {
+            min-width: 680px; /* Sum of all column widths */
           }
         }
       `}</style>
