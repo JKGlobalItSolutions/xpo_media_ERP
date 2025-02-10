@@ -1,10 +1,23 @@
 import React from 'react';
 import MainContentPage from '../../components/MainContent/MainContentPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { Link } from "react-router-dom";
+
 
 const IndividualPaid = () => {
   return (
     <MainContentPage>
+    <div className="mb-4">
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link >Transaction
+            </Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>Individual Paid</span>
+          </nav>
+        </div>
+
       <div className="billing-container container-fluid p-0 bg-white rounded shadow">
         {/* Header */}
         <div className="bg-primary text-white p-3 mb-4">

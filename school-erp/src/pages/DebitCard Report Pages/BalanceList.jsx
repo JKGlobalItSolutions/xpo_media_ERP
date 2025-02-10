@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import MainContentPage from "../../components/MainContent/MainContentPage";
 
+
 const BalanceList = () => {
   const [className, setClassName] = useState("");
   const location = useLocation();
@@ -29,26 +30,16 @@ const BalanceList = () => {
         </div>
 
         {/* Breadcrumb Navigation */}
-        <div className="row mb-4">
-          <div className="col-12">
-            <nav aria-label="breadcrumb">
-              <ol className="breadcrumb m-0">
-                <li className="breadcrumb-item">
-                  <Link to="/home" className="text-decoration-none">
-                    Home
-                  </Link>
-                </li>
-                <li className="breadcrumb-item">
-                  <Link to="/administration" className="text-decoration-none">
-                  Debit / Credit Card Report
-                  </Link>
-                </li>
-                <li className="breadcrumb-item active" aria-current="page">
-                Balance List
-                </li>
-              </ol>
-            </nav>
-          </div>
+       
+        <div className="mb-4">
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link >Debit / Credit Card Report
+            </Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>Balance List</span>
+          </nav>
         </div>
 
         {/* Cards Grid */}

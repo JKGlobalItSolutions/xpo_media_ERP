@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import "bootstrap/dist/css/bootstrap.min.css";
 import './Styles/BillingWindow.css';
 import MainContentPage from '../../components/MainContent/MainContentPage';
+import { Link } from "react-router-dom";
+
 
 const styles = {
   headerBg: {
@@ -45,6 +47,16 @@ const BillingEntry = () => {
 
   return (
     <MainContentPage>
+        <div className="mb-4">
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link >Transaction
+            </Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>Billing Entry</span>
+          </nav>
+        </div>
       <div className="billing-container vh-100 d-flex flex-column">
         <div className="card flex-grow-1">
           <div className="card-header py-1" style={styles.headerBg}>

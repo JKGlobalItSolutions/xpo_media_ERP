@@ -4,6 +4,8 @@ import { useState } from "react"
 import "bootstrap/dist/css/bootstrap.min.css"
 import { Calendar } from "react-bootstrap-icons"
 import MainContentPage from "../../components/MainContent/MainContentPage"
+import { Link } from "react-router-dom";
+
 
 const DayDCReport = () => {
   const [selectedDate, setSelectedDate] = useState("")
@@ -13,23 +15,17 @@ const DayDCReport = () => {
     <MainContentPage>
       <div className="container-fluid p-0">
         {/* Breadcrumb */}
-        <nav aria-label="breadcrumb" className="mb-3">
-          <ol className="breadcrumb">
-            <li className="breadcrumb-item">
-              <a href="/" className="text-decoration-none">
-                Home
-              </a>
-            </li>
-            <li className="breadcrumb-item">
-              <a href="#" className="text-decoration-none">
-                Debit / Credit Card Report
-              </a>
-            </li>
-            <li className="breadcrumb-item active" aria-current="page">
-              Period D/C Report ( Ledger )
-            </li>
-          </ol>
-        </nav>
+       
+        <div className="mb-4">
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link >Debit / Credit Card Report
+            </Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>Day D/C Report ( Ledger )</span>
+          </nav>
+        </div>
 
         {/* Main Content */}
         <div className="card shadow-sm">
