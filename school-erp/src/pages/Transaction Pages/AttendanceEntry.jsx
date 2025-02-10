@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import MainContentPage from "../../components/MainContent/MainContentPage"
+import { Link } from "react-router-dom";
+
 
 const AttendanceEntry = () => {
   const [formData, setFormData] = useState({
@@ -32,6 +34,17 @@ const AttendanceEntry = () => {
 
   return (
     <MainContentPage>
+      <div className="mb-4">
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link >Transaction
+            </Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>Attendance Entry Window
+            </span>
+          </nav>
+        </div>
       <div className="bg-white rounded shadow p-0">
         {/* Header */}
         <div className="bg-primary text-white p-3 rounded-top mb-4">

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MainContentPage from '../../components/MainContent/MainContentPage';
 import { Form, Button, Row, Col, Container } from 'react-bootstrap';
 
+
 const BusBalanceReport = () => {
   const [formData, setFormData] = useState({
     standard: false,
@@ -35,6 +36,16 @@ const BusBalanceReport = () => {
 
   return (
     <MainContentPage>
+      <div className="mb-4">
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link >Transaction
+            </Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>Bus Balance Report</span>
+          </nav>
+        </div>
       <Container fluid className="px-0 px-lg-0">
         <Row>
           <Col xs={12}>

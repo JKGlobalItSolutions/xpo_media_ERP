@@ -30,27 +30,15 @@ const PaymentSetup = () => {
         </div>
 
         {/* Breadcrumb Navigation */}
-        <div className="row mb-4">
-          <div className="col-12">
-            <nav aria-label="breadcrumb">
-              <ol className="breadcrumb m-0">
-                <li className="breadcrumb-item">
-                  <Link to="/home" className="text-decoration-none">
-                    Home
-                  </Link>
-                </li>
-                <li className="breadcrumb-item">
-                  <Link to="/administration" className="text-decoration-none">
-                    Administration
-                  </Link>
-                </li>
-                <li className="breadcrumb-item active" aria-current="page">
-                  Payment Setup
-                </li>
-              </ol>
-            </nav>
-          </div>
-        </div>
+        <div className="mb-4">
+                <nav className="custom-breadcrumb py-1 py-lg-3">
+                  <Link to="/home">Home</Link>
+                  <span className="separator mx-2">&gt;</span>
+                  <Link>Administration</Link>
+                  <span className="separator mx-2">&gt;</span>
+                  <span>Payment Report</span>
+                </nav>
+              </div>
 
         {/* Cards Grid */}
         <div className="row g-4">

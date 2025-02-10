@@ -23,13 +23,15 @@ const PeriodExpensesReport = () => {
           <Col xs={12}>
             <div className="course-setup-container">
               {/* Breadcrumb Navigation */}
-              <nav className=" py-1 py-lg-3">
-                <Link className='text-decoration-none' to="/home">Home</Link>
-                <span className="separator ms-2 ">&gt;</span>
-                <Link to="/payment-report" className='ms-2 text-decoration-none ' >Payment Reports</Link>
-                <span className="separator ms-2  ">&gt;</span>
-                <span className=" ms-2 current col-12  ">Period  Expenses Report</span>
-              </nav>
+               <div className="mb-4">
+                           <nav className="custom-breadcrumb py-1 py-lg-3">
+                             <Link to="/home">Home</Link>
+                             <span className="separator mx-2">&gt;</span>
+                             <Link to="/payment-report" >Payment Report</Link>
+                             <span className="separator mx-2">&gt;</span>
+                             <span>Period Expense Report</span>
+                           </nav>
+                         </div>
 
               <div className="form-card mt-3">
                 {/* Header */}
