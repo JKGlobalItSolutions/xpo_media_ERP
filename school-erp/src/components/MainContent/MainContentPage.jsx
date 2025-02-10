@@ -29,41 +29,44 @@ function MainContentPage({ children }) {
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#f3f4f6" }}>
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} isMobile={isMobile} />
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", backgroundColor: "#f3f4f6" }}>
+      {/* Navbar outside of main content */}
+      <TopNavbar toggleSidebar={toggleSidebar} isMobile={isMobile} />
+      
+      <div style={{ display: "flex", flex: 1 }}>
+        {/* Sidebar */}
+        <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} isMobile={isMobile} />
 
-      {/* Main Content Area */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          flex: 1,
-          marginLeft: isMobile || !isSidebarOpen ? 0 : "280px", // Adjust based on sidebar state
-        }}
-      >
-        {/* Navbar */}
-        <TopNavbar toggleSidebar={toggleSidebar} isMobile={isMobile} />
-
-        {/* Main Content */}
-        <main
+        {/* Main Content Area */}
+        <div
           style={{
-            flex: 1,
             display: "flex",
             flexDirection: "column",
-            backgroundColor: "#f3f4f6",
-            padding: isMobile ? "12px" : "32px", // Adjust padding for mobile and larger screens
+            flex: 1,
+            marginLeft: isMobile || !isSidebarOpen ? 0 : "280px", // Adjust based on sidebar state
+            maxWidth: isMobile ? "100%" : "auto", // Limit width on mobile
+            overflowX: "auto", // Enable horizontal scrolling if content exceeds width
           }}
         >
-          <div style={{ flex: 1 }}>{children}</div>
-          <div className="text-center text-lg-start">
-            <Footer />
-          </div>
-        </main>
+          <main
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "#f3f4f6",
+              padding: isMobile ? "12px" : "32px", // Adjust padding for mobile and larger screens
+              overflowX: "auto", // Enable horizontal scrolling for main content
+            }}
+          >
+            <div style={{ flex: 1 }}>{children}</div>
+            <div className="text-center text-lg-start">
+              <Footer />
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   )
 }
 
 export default MainContentPage
-
