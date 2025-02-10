@@ -168,17 +168,18 @@ const AttendanceEntry = () => {
 
         {/* Buttons Section */}
         <div className="d-flex flex-wrap justify-content-center gap-3 mt-4 mb-4">
-          <button className="btn btn-primary flex-grow-1 flex-md-grow-0" style={{ backgroundColor: "#0B3D7B" }}>
+          <button className="btn custom-btn-clr flex-grow-1 flex-md-grow-0">
             Insert
           </button>
-          <button className="btn btn-primary flex-grow-1 flex-md-grow-0" style={{ backgroundColor: "#0B3D7B" }}>
+          <button className="btn custom-btn-clr  flex-grow-1 flex-md-grow-0" >
             Save
           </button>
-          <button className="btn btn-primary flex-grow-1 flex-md-grow-0" style={{ backgroundColor: "#0B3D7B" }}>
+          <button className="btn custom-btn-clr flex-grow-1 flex-md-grow-0" >
             View
           </button>
           <button className="btn btn-secondary flex-grow-1 flex-md-grow-0">Cancel</button>
         </div>
+        <br className="d-none d-lg-block" />
 
         {/* Inline Styles */}
         <style jsx>{`

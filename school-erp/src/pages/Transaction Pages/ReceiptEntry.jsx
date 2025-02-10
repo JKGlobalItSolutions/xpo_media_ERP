@@ -67,12 +67,12 @@ const ReceiptEntry = () => {
         {/* Buttons */}
         <div className="d-flex flex-wrap justify-content-center gap-3 p-3">
           <button
-            className="btn btn-primary flex-grow-1 flex-md-grow-0"
-            style={{ backgroundColor: '#0B3D7B' }}
+            className="btn custom-btn-clr flex-grow-1 flex-md-grow-0"
+           
           >
             Insert
           </button>
-          <button className="btn btn-primary flex-grow-1 flex-md-grow-0">Save</button>
+          <button className="btn custom-btn-clr flex-grow-1 flex-md-grow-0">Save</button>
           <button className="btn btn-secondary flex-grow-1 flex-md-grow-0">Cancel</button>
         </div>
 

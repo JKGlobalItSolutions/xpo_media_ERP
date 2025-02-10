@@ -111,13 +111,13 @@ const IndividualPaid = () => {
             </table>
           </div>
           <div className="d-flex flex-wrap justify-content-center gap-3 mb-4 mt-3">
-            <button style={{ backgroundColor: "#0B3D7B" }} className="btn btn-primary w-100 w-md-auto">
+            <button className="btn custom-btn-clr w-20 w-md-auto">
               Softcopy
             </button>
-            <button className="btn btn-primary w-100 w-md-auto">
+            <button className="btn custom-btn-clr  w-20 w-md-auto">
               Hardcopy
             </button>
-            <button className="btn btn-secondary w-100 w-md-auto">
+            <button className="btn  btn-secondary w-20 w-md-auto">
               Cancel
             </button>
           </div>

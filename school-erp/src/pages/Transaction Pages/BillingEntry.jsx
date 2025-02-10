@@ -11,11 +11,9 @@ const styles = {
     color: 'white',
   },
   customBtn: {
-    backgroundColor: '#0B3D7B',
+    background: 'linear-gradient(180deg, #1470E1 0%, #0B3D7B 100%)',
+    border:'none' ,
     color: 'white',
-    border: 'none',
-    padding: '0.25rem 0.5rem',
-    fontSize: '0.75rem',
   },
 };
 
