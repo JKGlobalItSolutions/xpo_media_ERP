@@ -3,4 +3,10 @@
     border: none;
     color: white;
   }
+  .custom-btn-clr:hover {
+    background: linear-gradient(180deg, #0B3D7B 0%, #1470E1 100%);
+    color: white;
+}
+
+  
   
