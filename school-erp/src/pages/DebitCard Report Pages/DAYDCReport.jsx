@@ -42,7 +42,7 @@ const DayDCReport = () => {
           <div className="card-body p-4">
             <div className="row">
               {/* Date Selection */}
-              <div className="col-12 mb-4">
+              <div className="col-12 col-md-6 mb-4">
                 <label className="form-label">Select Report Date</label>
                 <div className="input-group">
                   <input
@@ -58,8 +58,9 @@ const DayDCReport = () => {
               </div>
 
               {/* Radio Buttons */}
-              <div className="col-12 mb-4">
-                <div className="d-flex gap-4">
+              <div className="col-12 col-md-6 mb-4">
+                <label className="form-label">Select Report Type</label>
+                <div className="d-flex flex-column flex-md-row gap-3">
                   <div className="form-check">
                     <input
                       type="radio"
@@ -93,7 +94,7 @@ const DayDCReport = () => {
 
               {/* Buttons */}
               <div className="col-12">
-                <div className="d-flex gap-2">
+                <div className="d-flex flex-column flex-md-row gap-2">
                   <button
                     className="btn text-white px-4 custom-btn-clr"
                     onClick={() => console.log("Generate clicked")}
@@ -106,7 +107,7 @@ const DayDCReport = () => {
                   >
                     View
                   </button>
-                  <button className="btn btn-secondary px-4" onClick={() => console.log("Cancel clicked")}>
+                  <button className="btn btn-secondary px-4" onClick={() => console.log("Cancel clicked")}> 
                     Cancel
                   </button>
                 </div>
@@ -120,4 +121,3 @@ const DayDCReport = () => {
 }
 
 export default DayDCReport
-

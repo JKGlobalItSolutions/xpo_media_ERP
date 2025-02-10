@@ -47,7 +47,7 @@ const PeriodDCReport = () => {
           <div className="card-body p-4">
             <div className="row">
               {/* Start Date */}
-              <div className="col-12 mb-4">
+              <div className="col-12 col-md-6 mb-4">
                 <label className="form-label">Select Starting Date</label>
                 <div className="input-group">
                   <input
@@ -63,7 +63,7 @@ const PeriodDCReport = () => {
               </div>
 
               {/* End Date */}
-              <div className="col-12 mb-4">
+              <div className="col-12 col-md-6 mb-4">
                 <label className="form-label">Select Ending Date</label>
                 <div className="input-group">
                   <input
@@ -80,7 +80,7 @@ const PeriodDCReport = () => {
 
               {/* Select Head Radio and Dropdown */}
               <div className="col-12 mb-4">
-                <div className="d-flex align-items-center gap-3 mb-2">
+                <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 mb-2">
                   <div className="form-check">
                     <input
                       type="radio"
@@ -112,7 +112,7 @@ const PeriodDCReport = () => {
 
               {/* Buttons */}
               <div className="col-12">
-                <div className="d-flex gap-2">
+                <div className="d-flex flex-column flex-md-row gap-2">
                   <button
                     className="btn text-white px-4 custom-btn-clr"
                     onClick={() => console.log("Generate clicked")}
@@ -125,7 +125,7 @@ const PeriodDCReport = () => {
                   >
                     View
                   </button>
-                  <button className="btn btn-secondary px-4" onClick={() => console.log("Cancel clicked")}>
+                  <button className="btn btn-secondary px-4" onClick={() => console.log("Cancel clicked")}> 
                     Cancel
                   </button>
                 </div>
@@ -139,4 +139,3 @@ const PeriodDCReport = () => {
 }
 
 export default PeriodDCReport
-

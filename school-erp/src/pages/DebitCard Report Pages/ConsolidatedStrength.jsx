@@ -8,7 +8,7 @@ import { Link } from "react-router-dom"
 const ConsolidatedStrength = () => {
   return (
     <MainContentPage>
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto p-lg-4">
         {/* Breadcrumb */}
         <div className="mb-4">
           <h2 className="mb-2">Promotion Higher</h2>

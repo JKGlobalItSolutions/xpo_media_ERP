@@ -43,7 +43,7 @@ const BankLedger = () => {
           <div className="card-body p-4">
             <div className="row">
               {/* Starting Date */}
-              <div className="col-12 mb-4">
+              <div className="col-12 col-md-6 mb-4">
                 <label className="form-label">Select Starting Date</label>
                 <div className="input-group">
                   <input
@@ -59,7 +59,7 @@ const BankLedger = () => {
               </div>
 
               {/* Ending Date */}
-              <div className="col-12 mb-4">
+              <div className="col-12 col-md-6 mb-4">
                 <label className="form-label">Select Ending Date</label>
                 <div className="input-group">
                   <input
@@ -91,7 +91,7 @@ const BankLedger = () => {
 
               {/* Buttons */}
               <div className="col-12">
-                <div className="d-flex gap-2">
+                <div className="d-flex flex-column flex-md-row gap-2">
                   <button
                     className="btn text-white px-4 custom-btn-clr"
                     onClick={() => console.log("Generate clicked")}
@@ -104,7 +104,10 @@ const BankLedger = () => {
                   >
                     View
                   </button>
-                  <button className="btn btn-secondary px-4" onClick={() => console.log("Cancel clicked")}>
+                  <button 
+                    className="btn btn-secondary px-4" 
+                    onClick={() => console.log("Cancel clicked")}
+                  >
                     Cancel
                   </button>
                 </div>

@@ -150,22 +150,19 @@ const MembersManagement = () => {
         <Card className="shadow-sm">
           <Card.Body>
             {/* Search and Filter Section */}
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <div className="d-flex gap-2" style={{ maxWidth: "400px" }}>
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+              <div className="d-flex flex-column flex-md-row gap-2 mb-3 mb-md-0" style={{ maxWidth: "100%" }}>
                 <Form.Control
                   type="text"
                   placeholder="Search by Admission no, Student Name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  className="mb-2 mb-md-0"
                 />
                 <Button className="custom-btn-clr">SEARCH</Button>
               </div>
               <div className="d-flex gap-2">
-                <Button
-                  variant="primary"
-                  className="custom-btn-clr"
-                  onClick={() => setShowFilter(true)}
-                >
+                <Button variant="primary" className="custom-btn-clr" onClick={() => setShowFilter(true)}>
                   <FaFilter className="me-2" />
                   Filter
                 </Button>
@@ -218,7 +215,7 @@ const MembersManagement = () => {
             </div>
 
             {/* Pagination */}
-            <div className="d-flex justify-content-end gap-2 mt-4">
+            <div className="d-flex justify-content-center justify-content-md-end flex-wrap gap-2 mt-4">
               <Button variant="outline-primary" disabled>
                 Previous
               </Button>
