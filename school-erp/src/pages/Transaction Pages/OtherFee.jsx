@@ -1,4 +1,4 @@
-// OtherFee.jsx
+'use client';
 
 import React from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -9,102 +9,97 @@ const styles = {
   headerBg: {
     backgroundColor: '#0B3D7B',
     color: 'white',
-    padding: '15px',
-    borderRadius: '4px 4px 0 0'
   },
-  formSection: {
+  customBtn: {
     backgroundColor: '#0B3D7B',
     color: 'white',
-    padding: '20px',
-    borderRadius: '4px',
-    marginBottom: '20px'
+    border: 'none',
+    padding: '0.25rem 0.5rem',
+    fontSize: '0.75rem',
   },
-  tableHeader: {
-    backgroundColor: '#0B3D7B',
-    color: 'white'
-  }
 };
 
 const OtherFee = () => {
   return (
     <MainContentPage>
-      <div className="other-fee-container">
-        <div className="card">
-          <div style={styles.headerBg}>
-            <h4 className="mb-0">Other Fee / Miscellaneous Fee</h4>
+      <div className="other-fee-container vh-100 d-flex flex-column">
+        <div className="card flex-grow-1">
+          <div className="card-header py-1" style={styles.headerBg}>
+            <h6 className="mb-0">Other Fee / Miscellaneous Fee</h6>
           </div>
-          
-          <div className="card-body">
-            <div className="row">
-              {/* Left Column */}
-              <div className="col-md-6">
-                <div style={styles.formSection}>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Bill Number</label>
-                    <input type="text" className="form-control" />
+          <div className="card-body p-2">
+            <form className="h-100 d-flex flex-column">
+              <div className="row g-2">
+                <div className="col-md-6">
+                  {['Bill Number', 'Admin Number', 'Student Name'].map((label, index) => (
+                    <div className="mb-1" key={index}>
+                      <label className="form-label small mb-0 text-dark">{label}</label>
+                      <input type="text" className="form-control form-control-sm py-0" />
+                    </div>
+                  ))}
+                </div>
+                <div className="col-md-6">
+                  {['Standard', 'Section', 'Date'].map((label, index) => (
+                    <div className="mb-1" key={index}>
+                      <label className="form-label small mb-0 text-dark">{label}</label>
+                      <input type={label === 'Date' ? 'date' : 'text'} className="form-control form-control-sm py-0" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-1">
+                <label className="form-label small mb-0 text-dark">Fee Description</label>
+                <select className="form-select form-select-sm py-0">
+                  <option>Select Fee Description</option>
+                </select>
+              </div>
+              
+              <div className="row g-2">
+                <div className="col-md-6">
+                  {['Amount', 'Qty/Nos', 'Total Amount', 'Balance Amount'].map((label, index) => (
+                    <div className="mb-1" key={index}>
+                      <label className="form-label small mb-0 text-dark">{label}</label>
+                      <input type="number" className="form-control form-control-sm py-0" readOnly={label.includes('Total') || label.includes('Balance')} />
+                    </div>
+                  ))}
+                </div>
+                <div className="col-md-6">
+                  <div className="mb-1">
+                    <label className="form-label small mb-0 text-dark">Payment Mode</label>
+                    <div>
+                      {['Online', 'Cash'].map((mode, index) => (
+                        <div className="form-check form-check-inline" key={index}>
+                          <input className="form-check-input" type="radio" name="paymentMode" value={mode} defaultChecked={mode === 'Online'} />
+                          <label className="form-check-label small">{mode}</label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Admin Number</label>
-                    <select className="form-select">
-                      <option>Select Admin Number</option>
-                    </select>
+                  <div className="mb-1">
+                    <label className="form-label small mb-0 text-dark">Reference Number</label>
+                    <input type="text" className="form-control form-control-sm py-0" />
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Student Name</label>
-                    <select className="form-select">
-                      <option>Select Student Name</option>
+                  <div className="mb-1">
+                    <label className="form-label small mb-0 text-dark">Select Operator Name</label>
+                    <select className="form-select form-select-sm py-0">
+                      <option>Select Operator</option>
                     </select>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column */}
-              <div className="col-md-6">
-                <div style={styles.formSection}>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Standard</label>
-                    <select className="form-select">
-                      <option>Select Standard</option>
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Section</label>
-                    <select className="form-select">
-                      <option>Select Section</option>
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Date</label>
-                    <input type="date" className="form-select" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Fee Description Section */}
-            <div className="mb-4">
-              <label className="form-label text-primary">Fee Description</label>
-              <select className="form-select mb-3">
-                <option>Select Fee Description</option>
-              </select>
-
-              <div className="table-responsive">
-                <table className="table table-bordered" style={{ minWidth: '700px' }}>
+              <div className="table-responsive mt-2">
+                <table className="table table-bordered table-sm small">
                   <thead>
-                    <tr style={styles.tableHeader}>
-                      <th style={{ minWidth: '100px' }}>Description</th>
-                      <th style={{ minWidth: '100px' }}>Amount</th>
-                      <th style={{ minWidth: '100px' }}>Concession</th>
-                      <th style={{ minWidth: '100px' }}>Balance</th>
+                    <tr style={styles.headerBg}>
+                      <th>Description</th>
+                      <th>Amount</th>
+                      <th>Concession</th>
+                      <th>Balance</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                    </tr>
                     <tr>
                       <td></td>
                       <td></td>
@@ -115,75 +110,14 @@ const OtherFee = () => {
                 </table>
               </div>
 
-              <div className="d-flex align-items-center mb-3">
-                <label className="form-label text-primary me-3">Total</label>
-                <input type="text" className="form-control w-25" readOnly />
+              <div className="d-flex flex-wrap gap-1 mt-auto">
+                {['Insert', 'View', 'Bill Cancel', 'Save', 'PayDetails', 'Row Del', 'Print', 'Close'].map((btnText, index) => (
+                  <button type="button" className="btn btn-sm" style={styles.customBtn} key={index}>
+                    {btnText}
+                  </button>
+                ))}
               </div>
-            </div>
-
-            {/* Right Side Form Fields */}
-            <div className="row">
-              <div className="col-md-6">
-                <div style={styles.formSection}>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Amount</label>
-                    <input type="number" className="form-control" />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Qty/Nos</label>
-                    <input type="number" className="form-control" />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Total Amount</label>
-                    <input type="number" className="form-control" readOnly />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Balance Amount</label>
-                    <input type="number" className="form-control" readOnly />
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-6">
-                <div style={styles.formSection}>
-                  <div className="mb-4">
-                    <label className="form-label text-light">Payment Mode</label>
-                    <div>
-                      <div className="form-check form-check-inline">
-                        <input className="form-check-input" type="radio" name="paymentMode" id="online" defaultChecked />
-                        <label className="form-check-label" htmlFor="online">Online</label>
-                      </div>
-                      <div className="form-check form-check-inline">
-                        <input className="form-check-input" type="radio" name="paymentMode" id="cash" />
-                        <label className="form-check-label" htmlFor="cash">Cash</label>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Reference Number</label>
-                    <input type="text" className="form-control" />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label text-light">Select Operator Name</label>
-                    <select className="form-select">
-                      <option>Select Operator</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="d-flex flex-wrap gap-2">
-              <button type="button" className="btn btn-primary">Insert</button>
-              <button type="button" className="btn btn-primary">View</button>
-              <button type="button" className="btn btn-primary">Bill Cancel</button>
-              <button type="button" className="btn btn-primary">Save</button>
-              <button type="button" className="btn btn-primary">PayDetails</button>
-              <button type="button" className="btn btn-primary">Row Del</button>
-              <button type="button" className="btn btn-primary">Print</button>
-              <button type="button" className="btn btn-secondary">Close</button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
