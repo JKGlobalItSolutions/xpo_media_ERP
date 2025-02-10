@@ -112,6 +112,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
   const [activeItem, setActiveItem] = useState(location.pathname)
   const [expandedItem, setExpandedItem] = useState(null)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  //const [sidebarOpen, setSidebarOpen] = useState(!isMobile) // Removed -  Now using isOpen prop
 
   useEffect(() => {
     const activeParent = menuItems.find(
@@ -121,6 +122,12 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       setExpandedItem(activeParent.id)
     }
   }, [location.pathname])
+
+  //useEffect(() => {
+  //  if (!isMobile) {
+  //    setSidebarOpen(true)
+  //  }
+  //}, [isMobile]) // Removed - Now using isOpen prop
 
   const handleLogoutClick = () => {
     setShowLogoutModal(true)
@@ -158,15 +165,10 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "2-1", title: "• Standard/Course Setup", path: "/admin/standard-setup" },
         { id: "2-2", title: "• Fee Head Setup", path: "/admin/fee-setup" },
         { id: "2-3", title: "• Tuition Fee Setup", path: "/admin/tuition-setup" },
-        // { id: "2-4", title: "• Subject Head", path: "/admin/subject-head" },
-        // { id: "2-5", title: "• Course Head", path: "/admin/course-head" },
         { id: "2-6", title: "• Community and Caste Setup", path: "/admin/community-setup" },
         { id: "2-7", title: "• Parent Occupation Setup", path: "/admin/occupation-setup" },
         { id: "2-8", title: "• Receipt Setup", path: "/admin/receipt-setup" },
         { id: "2-9", title: "• Payment Setup", path: "/admin/payment-setup" },
-        // { id: "2-10", title: "• Staff Master", path: "/admin/staff-master" },
-        // { id: "2-11", title: "• Flash Screen", path: "/admin/flash-screen" },
-        // { id: "2-12", title: "• Password Setup", path: "/admin/password-setup" },
         { id: "2-13", title: "• Certificate Preparation", path: "/admin/certificate" },
       ],
     },
@@ -289,7 +291,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       icon: logoutIcon,
       path: "/logout",
       subItems: [],
-      onClick: handleLogoutClick, // Updated to show modal instead of direct logout
+      onClick: handleLogoutClick,
     },
   ]
 

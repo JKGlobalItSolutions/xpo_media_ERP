@@ -1,8 +1,10 @@
+"use client"
+
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Container, Table, Card, Row, Col, Form, Button, Modal, Pagination } from "react-bootstrap"
-import { FaEdit, FaEye, FaFilter, FaTable, FaTh } from "react-icons/fa"
+import { FaEdit, FaFilter, FaTable, FaTh } from "react-icons/fa"
 
 const StudentDetails = () => {
   const [students] = useState([
@@ -202,18 +204,16 @@ const StudentDetails = () => {
             {/* Title and Search Section */}
             <div className="mb-4">
               <h5 className="text-primary mb-3">All Student Detail</h5>
-              <div className="d-flex justify-content-between align-items-center">
-                <div className="d-flex gap-2" style={{ maxWidth: "400px" }}>
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-center">
+                <div className="d-flex flex-column flex-md-row gap-2 mb-3 mb-md-0 w-100 w-md-auto">
                   <Form.Control
                     type="text"
                     placeholder="Search by class, Section, Name & Teacher"
                     className="flex-grow-1"
                   />
-                  <Button className="custom-btn-clr">
-                    SEARCH
-                  </Button>
+                  <Button className="custom-btn-clr w-auto w-md-auto">SEARCH</Button>
                 </div>
-                <div className="d-flex gap-2">
+                <div className="d-flex gap-2 justify-content-lg-end justify-content-center w-100 w-md-auto">
                   <Button
                     variant={viewType === "table" ? "primary" : "outline-primary"}
                     onClick={() => setViewType("table")}
@@ -292,48 +292,20 @@ const StudentDetails = () => {
                 <Table className="table-bordered">
                   <thead>
                     <tr>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Student Photo
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Admission
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Name
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Class
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Section
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Roll Number
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Date of Birth
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Gender
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Parent/Guardian Name
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Contact Information
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Fees Detail
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Address
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Enrollment Date
-                      </th>
-                      <th className="py-2 text-white custom-btn-clr">
-                        Action
-                      </th>
+                      <th className="py-2 text-white custom-btn-clr">Student Photo</th>
+                      <th className="py-2 text-white custom-btn-clr">Admission</th>
+                      <th className="py-2 text-white custom-btn-clr">Name</th>
+                      <th className="py-2 text-white custom-btn-clr">Class</th>
+                      <th className="py-2 text-white custom-btn-clr">Section</th>
+                      <th className="py-2 text-white custom-btn-clr">Roll Number</th>
+                      <th className="py-2 text-white custom-btn-clr">Date of Birth</th>
+                      <th className="py-2 text-white custom-btn-clr">Gender</th>
+                      <th className="py-2 text-white custom-btn-clr">Parent/Guardian Name</th>
+                      <th className="py-2 text-white custom-btn-clr">Contact Information</th>
+                      <th className="py-2 text-white custom-btn-clr">Fees Detail</th>
+                      <th className="py-2 text-white custom-btn-clr">Address</th>
+                      <th className="py-2 text-white custom-btn-clr">Enrollment Date</th>
+                      <th className="py-2 text-white custom-btn-clr">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -383,17 +355,15 @@ const StudentDetails = () => {
               </div>
             )}
 
-            {/* Updated Pagination */}
-            <div className="d-flex justify-content-end mt-4">
-              <Pagination>
-                <Pagination.Item>Previous</Pagination.Item>
-                <Pagination.Item active style={{ backgroundColor: "#004AAD" }}>
-                  1
-                </Pagination.Item>
-                <Pagination.Item>2</Pagination.Item>
-                <Pagination.Item>3</Pagination.Item>
-                <Pagination.Item>Next</Pagination.Item>
-              </Pagination>
+            {/* Pagination */}
+            <div className="d-flex justify-content-end gap-1 mt-4">
+              <Button variant="outline-primary" disabled>
+                Previous
+              </Button>
+              <Button className="custom-btn-clr">1</Button>
+              <Button variant="outline-primary">2</Button>
+              <Button variant="outline-primary">3</Button>
+              <Button variant="outline-primary">Next</Button>
             </div>
           </Card.Body>
         </Card>
@@ -406,7 +376,7 @@ const StudentDetails = () => {
           <Modal.Body>
             <Form>
               <Row>
-                <Col md={6}>
+                <Col xs={12} md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>Class</Form.Label>
                     <Form.Select name="class" value={filterData.class} onChange={handleFilterChange}>
@@ -417,7 +387,7 @@ const StudentDetails = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={6}>
+                <Col xs={12} md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>Section</Form.Label>
                     <Form.Select name="section" value={filterData.section} onChange={handleFilterChange}>
@@ -431,7 +401,7 @@ const StudentDetails = () => {
               </Row>
 
               <Row>
-                <Col md={6}>
+                <Col xs={12} md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>Date of birth</Form.Label>
                     <Form.Control
@@ -442,7 +412,7 @@ const StudentDetails = () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={6}>
+                <Col xs={12} md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>Enrollment Date</Form.Label>
                     <Form.Control
@@ -476,16 +446,16 @@ const StudentDetails = () => {
               </Form.Group>
             </Form>
           </Modal.Body>
-          <Modal.Footer className="justify-content-between">
+          <Modal.Footer className="flex-column flex-md-row justify-content-between">
             <Button
               variant="primary"
               onClick={handleFilterSubmit}
               style={{ backgroundColor: "#004AAD" }}
-              className="px-4"
+              className="px-4 w-100 w-md-auto mb-2 mb-md-0"
             >
               Show applied filters
             </Button>
-            <Button variant="danger" onClick={handleFilterReset} className="px-4">
+            <Button variant="danger" onClick={handleFilterReset} className="px-4 w-100 w-md-auto">
               Reset
             </Button>
           </Modal.Footer>

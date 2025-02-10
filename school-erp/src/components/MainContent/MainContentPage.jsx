@@ -14,9 +14,7 @@ function MainContentPage({ children }) {
     const handleResize = () => {
       const newIsMobile = window.innerWidth < 768
       setIsMobile(newIsMobile)
-      if (!newIsMobile) {
-        setIsSidebarOpen(true) // Keep sidebar open on larger screens
-      }
+      setIsSidebarOpen(!newIsMobile) // Close sidebar on mobile, open on larger screens
     }
 
     window.addEventListener("resize", handleResize)
@@ -25,14 +23,21 @@ function MainContentPage({ children }) {
   }, [])
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
+    setIsSidebarOpen((prev) => !prev)
+  }
+
+  // Close sidebar when clicking outside on mobile
+  const handleContentClick = () => {
+    if (isMobile && isSidebarOpen) {
+      setIsSidebarOpen(false)
+    }
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", backgroundColor: "#f3f4f6" }}>
       {/* Navbar outside of main content */}
       <TopNavbar toggleSidebar={toggleSidebar} isMobile={isMobile} />
-      
+
       <div style={{ display: "flex", flex: 1 }}>
         {/* Sidebar */}
         <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} isMobile={isMobile} />
@@ -47,6 +52,7 @@ function MainContentPage({ children }) {
             maxWidth: isMobile ? "100%" : "auto", // Limit width on mobile
             overflowX: "auto", // Enable horizontal scrolling if content exceeds width
           }}
+          onClick={handleContentClick}
         >
           <main
             style={{
@@ -54,7 +60,7 @@ function MainContentPage({ children }) {
               display: "flex",
               flexDirection: "column",
               backgroundColor: "#f3f4f6",
-              padding: isMobile ? "12px" : "32px", // Adjust padding for mobile and larger screens
+              padding: isMobile ? "12px" : "32px",
               overflowX: "auto", // Enable horizontal scrolling for main content
             }}
           >
@@ -70,3 +76,4 @@ function MainContentPage({ children }) {
 }
 
 export default MainContentPage
+
