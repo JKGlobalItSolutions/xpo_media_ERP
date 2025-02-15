@@ -5,6 +5,7 @@ import "bootstrap/dist/css/bootstrap.min.css"
 import AdministrationRoute from "./Router/SubRouters/AdministrationRoute"
 import { ChevronRight } from "lucide-react";
 
+
 function App() {
   return (
     <AuthProvider>
