@@ -1,38 +1,183 @@
-import React, { useState } from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
-import leftprofile from "../../images/leftprofile.jpg";
-import logo from "../../images/Logo/logo.jpg";
-import { Link, useNavigate } from "react-router-dom";
-import { auth } from '../../Firebase/config';
-import { signInWithEmailAndPassword } from "firebase/auth";
+"use client"
+
+import { useState } from "react"
+import "bootstrap/dist/css/bootstrap.min.css"
+import leftprofile from "../../images/leftprofile.jpg"
+import logo from "../../images/Logo/logo.jpg"
+import { Link, useNavigate } from "react-router-dom"
+import { auth, db } from "../../Firebase/config"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { doc, setDoc, getDoc } from "firebase/firestore"
+
+// SchoolNameModal Component
+function SchoolNameModal({ isOpen, onClose, onConfirm }) {
+  const [schoolName, setSchoolName] = useState("")
+
+  if (!isOpen) return null
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onConfirm(schoolName)
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Enter School Name</h2>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={schoolName}
+            onChange={(e) => setSchoolName(e.target.value)}
+            placeholder="Enter your school name"
+            className="modal-input"
+            required
+          />
+          <div className="modal-buttons">
+            <button type="submit" className="modal-button confirm">
+              Submit
+            </button>
+            <button type="button" className="modal-button cancel" onClick={onClose}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+      <style>
+        {`
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1100;
+          }
+
+          .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+          }
+
+          .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+          }
+
+          .modal-input {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+          }
+
+          .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+          }
+
+          .modal-button {
+            padding: 0.5rem 2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+          }
+
+          .modal-button:hover {
+            opacity: 0.9;
+          }
+
+          .modal-button.confirm {
+            background-color: #0B3D7B;
+            color: white;
+          }
+
+          .modal-button.cancel {
+            background-color: #6c757d;
+            color: white;
+          }
+        `}
+      </style>
+    </div>
+  )
+}
 
 function Login() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-  });
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
+  })
+  const [error, setError] = useState("")
+  const [showModal, setShowModal] = useState(false)
+  const [user, setUser] = useState(null)
+  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault()
+    setError("")
     try {
-      await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      // If successful, navigate to home page
-      navigate("/home");
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password)
+      const user = userCredential.user
+      setUser(user)
+
+      // Check if SchoolName exists
+      const userDoc = await getDoc(doc(db, "Schools", user.uid))
+      if (userDoc.exists() && userDoc.data().SchoolName) {
+        // If SchoolName exists, navigate to home page
+        navigate("/home")
+      } else {
+        // If SchoolName doesn't exist, show the modal
+        setShowModal(true)
+      }
     } catch (error) {
-      setError("Failed to log in. Please check your credentials.");
-      console.error("Login error:", error);
+      setError("Failed to log in. Please check your credentials.")
+      console.error("Login error:", error)
     }
-  };
+  }
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    });
-  };
+    })
+  }
+
+  const handleSchoolNameSubmit = async (schoolName) => {
+    try {
+      await setDoc(
+        doc(db, "Schools", user.uid),
+        {
+          email: user.email,
+          SchoolName: schoolName,
+        },
+        { merge: true },
+      )
+      setShowModal(false)
+      navigate("/home")
+    } catch (error) {
+      console.error("Error saving school name:", error)
+      setError("Failed to save school name. Please try again.")
+    }
+  }
+
+  const handleModalClose = () => {
+    setShowModal(false)
+    // You might want to handle this case, e.g., by logging out the user
+    // or redirecting them to a different page
+  }
 
   return (
     <div className="container-fluid p-0" style={{ height: "100vh", overflow: "hidden" }}>
@@ -53,7 +198,10 @@ function Login() {
           </div>
         </div>
         {/* Right side login form */}
-        <div className="col-lg-6 col-md-12 d-flex align-items-center justify-content-center p-4" style={{ background:"linear-gradient(180deg, #1470E1 0%, #0B3D7B 100%)" }}>
+        <div
+          className="col-lg-6 col-md-12 d-flex align-items-center justify-content-center p-4"
+          style={{ background: "linear-gradient(180deg, #1470E1 0%, #0B3D7B 100%)" }}
+        >
           <div className="w-100" style={{ maxWidth: "400px" }}>
             <div className="text-center mb-4">
               <img
@@ -148,8 +296,10 @@ function Login() {
           </div>
         </div>
       </div>
+      <SchoolNameModal isOpen={showModal} onClose={handleModalClose} onConfirm={handleSchoolNameSubmit} />
     </div>
-  );
+  )
 }
 
-export default Login;
+export default Login
+
