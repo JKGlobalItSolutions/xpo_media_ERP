@@ -9,11 +9,12 @@ import NewBusBill from '../../pages/Transport Pages/NewBusBill';
 import PeriodBusCollection from '../../pages/Transport Pages/PeriodBusCollection';
 import BusBalanceReport from '../../pages/Transport Pages/BusBalanceReport';
 import PlacewiseReport from '../../pages/Transport Pages/Placewisereport';
+import BusVanFeeHeadSetup from '../../pages/Transport Pages/BusVanFee';
 
 function TransportRoute() {
   return (
     <Routes>
-      <Route path="bus-van-fee" element={< BusVanFee/>} />    
+      <Route path="bus-van-fee" element={< BusVanFeeHeadSetup/>} />    
       <Route path="place-setup" element={< PlaceSetup/>} />    
       <Route path="bus-fee-setup" element={< BusFeeSetup/>} />    
       <Route path="new-bus-bill" element={< NewBusBill/>} />    
