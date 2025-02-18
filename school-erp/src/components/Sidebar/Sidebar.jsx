@@ -169,6 +169,8 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "2-5", title: "• Students Category", path: "/admin/Students-Category" },
         { id: "2-6", title: "• Community and Caste Setup", path: "/admin/community-setup" },
         { id: "2-7", title: "• Parent Occupation Setup", path: "/admin/occupation-setup" },
+        { id: "2-7", title: "• Mother Tongue", path: "/admin/Mother-Tongue-Setup" },
+        { id: "2-7", title: "• State And District Management", path: "/admin/State-And-District-Management" },
         { id: "2-8", title: "• Receipt Setup", path: "/admin/receipt-setup" },
         { id: "2-9", title: "• Payment Setup", path: "/admin/payment-setup" },
         { id: "2-10", title: "• Staff Master", path: "/admin/staff-master" },

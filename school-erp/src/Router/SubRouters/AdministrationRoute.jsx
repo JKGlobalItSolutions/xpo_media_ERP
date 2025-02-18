@@ -20,6 +20,8 @@ import StaffMaster from '../../pages/Administration Pages/MainPages/StaffMaster'
 import PasswordSetup from '../../pages/Administration Pages/MainPages/PasswordSetup';
 import SupplierSetup from '../../pages/Administration Pages/MainPages/SupplierSetup';
 import StudentsCategory from '../../pages/Administration Pages/MainPages/StudentsCategory';
+import StateAndDistrictManagement from '../../pages/Administration Pages/MainPages/StateAndDistrictManagement';
+import MotherTongueSetup from '../../pages/Administration Pages/MainPages/MotherTongueSetup';
 
 
 
@@ -46,6 +48,8 @@ function AdministrationRoute() {
       <Route path="course-certificate" element={<CourseCertificate />} />
       <Route path="experience-certificate" element={<ExperienceCertificate/>} />
       <Route path="supplier-Setup" element={<SupplierSetup/>} />
+      <Route path="State-And-District-Management" element={<StateAndDistrictManagement/>} />
+      <Route path="Mother-Tongue-Setup" element={<MotherTongueSetup/>} />
     
     </Routes>
   );
