@@ -14,6 +14,7 @@ import PaymentReport from "../pages/MainPages/PaymentReport";
 import PaymentReportRoute from "./SubRouters/PaymentReportRoute";
 import DebitCardReportRoute from "./SubRouters/DebitCardReportRoute";
 import LibraryManagementRoute from "./SubRouters/LibraryManagementRoute";
+import BookRoutes from "./SubRouters/BookRoutes";
 
 
 function MainRouter() {
@@ -126,6 +127,14 @@ function MainRouter() {
         element={
           <PublicRoute>
             <LibraryManagementRoute />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/book/*"
+        element={
+          <PublicRoute>
+            <BookRoutes />
           </PublicRoute>
         }
       />
