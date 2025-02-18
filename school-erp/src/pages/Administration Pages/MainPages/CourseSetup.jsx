@@ -13,13 +13,13 @@ import "react-toastify/dist/ReactToastify.css"
 
 // Add Course Modal Component
 const AddCourseModal = ({ isOpen, onClose, onConfirm }) => {
-  const [className, setClassName] = useState("")
+  const [standard, setStandard] = useState("")
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(className)
-    setClassName("")
+    onConfirm(standard)
+    setStandard("")
   }
 
   return (
@@ -30,8 +30,8 @@ const AddCourseModal = ({ isOpen, onClose, onConfirm }) => {
           <Form.Control
             type="text"
             placeholder="Enter Standard/Course Name"
-            value={className}
-            onChange={(e) => setClassName(e.target.value)}
+            value={standard}
+            onChange={(e) => setStandard(e.target.value)}
             className="custom-input"
           />
         </div>
@@ -50,18 +50,18 @@ const AddCourseModal = ({ isOpen, onClose, onConfirm }) => {
 
 // Edit Course Modal Component
 const EditCourseModal = ({ isOpen, onClose, onConfirm, course }) => {
-  const [className, setClassName] = useState(course?.name || "")
+  const [standard, setStandard] = useState(course?.standard || "")
 
   useEffect(() => {
     if (course) {
-      setClassName(course.name)
+      setStandard(course.standard)
     }
   }, [course])
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(course.id, className)
+    onConfirm(course.id, standard)
   }
 
   return (
@@ -72,8 +72,8 @@ const EditCourseModal = ({ isOpen, onClose, onConfirm, course }) => {
           <Form.Control
             type="text"
             placeholder="Enter Standard/Course Name"
-            value={className}
-            onChange={(e) => setClassName(e.target.value)}
+            value={standard}
+            onChange={(e) => setStandard(e.target.value)}
             className="custom-input"
           />
         </div>
@@ -100,7 +100,7 @@ const DeleteCourseModal = ({ isOpen, onClose, onConfirm, course }) => {
         <h2 className="modal-title">Delete Course</h2>
         <div className="modal-body text-center">
           <p>Are you sure you want to delete this course?</p>
-          <p className="fw-bold">{course?.name}</p>
+          <p className="fw-bold">{course?.standard}</p>
         </div>
         <div className="modal-buttons">
           <Button className="modal-button delete" onClick={() => onConfirm(course.id)}>
@@ -207,7 +207,7 @@ const CourseSetup = () => {
     }
   }
 
-  const handleAddCourse = async (className) => {
+  const handleAddCourse = async (standard) => {
     if (!administrationId) {
       toast.error("Administration not initialized. Please try again.", {
         position: "top-right",
@@ -223,7 +223,7 @@ const CourseSetup = () => {
 
     try {
       const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
-      const docRef = await addDoc(coursesRef, { name: className })
+      const docRef = await addDoc(coursesRef, { standard: standard })
       console.log("Course added with ID:", docRef.id)
       setIsAddModalOpen(false)
       toast.success("Course added successfully!", {
@@ -251,7 +251,7 @@ const CourseSetup = () => {
     }
   }
 
-  const handleEditCourse = async (courseId, newName) => {
+  const handleEditCourse = async (courseId, newStandard) => {
     if (!administrationId) {
       toast.error("Administration not initialized. Please try again.", {
         position: "top-right",
@@ -275,7 +275,7 @@ const CourseSetup = () => {
         "Courses",
         courseId,
       )
-      await updateDoc(courseRef, { name: newName })
+      await updateDoc(courseRef, { standard: newStandard })
       console.log("Course updated:", courseId)
       setIsEditModalOpen(false)
       setSelectedCourse(null)
@@ -332,8 +332,7 @@ const CourseSetup = () => {
       console.log("Course deleted:", courseId)
       setIsDeleteModalOpen(false)
       setSelectedCourse(null)
-      toast.error("Course deleted successfully!", {
-        // Changed to success from error
+      toast.success("Course deleted successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -367,7 +366,7 @@ const CourseSetup = () => {
     setIsDeleteModalOpen(true)
   }
 
-  const filteredCourses = courses.filter((course) => course.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredCourses = courses.filter((course) => course.standard.toLowerCase().includes(searchTerm.toLowerCase()))
 
   return (
     <MainContentPage>
@@ -416,7 +415,7 @@ const CourseSetup = () => {
                       <tbody>
                         {filteredCourses.map((course) => (
                           <tr key={course.id}>
-                            <td>{course.name}</td>
+                            <td>{course.standard}</td>
                             <td>
                               <Button
                                 variant="link"
