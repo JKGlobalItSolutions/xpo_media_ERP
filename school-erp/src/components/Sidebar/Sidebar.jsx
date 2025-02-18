@@ -166,7 +166,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "2-2", title: "• Fee Head Setup", path: "/admin/fee-setup" },
         { id: "2-3", title: "• Tuition Fee Setup", path: "/admin/tuition-setup" },
         { id: "2-4", title: "• Subject Head", path: "/admin/Subject-Head" },
-        { id: "2-5", title: "• Course Head", path: "/admin/Course-Head" },
+        { id: "2-5", title: "• Students Category", path: "/admin/Students-Category" },
         { id: "2-6", title: "• Community and Caste Setup", path: "/admin/community-setup" },
         { id: "2-7", title: "• Parent Occupation Setup", path: "/admin/occupation-setup" },
         { id: "2-8", title: "• Receipt Setup", path: "/admin/receipt-setup" },

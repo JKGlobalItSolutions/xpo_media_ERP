@@ -15,16 +15,11 @@ import CertificatePreparation from '../../pages/Administration Pages/MainPages/C
 import AttendanceCertificate from '../../pages/Administration Pages/CertificatePreparationPages/Attendancecertificate';
 import CourseCertificate from '../../pages/Administration Pages/CertificatePreparationPages/CourseCertificate';
 import ExperienceCertificate from '../../pages/Administration Pages/CertificatePreparationPages/ExperienceCertificate';
-import CourseHead from '../../pages/Administration Pages/MainPages/CourseHead';
 import SubjectHead from '../../pages/Administration Pages/MainPages/SubjectHead';
 import StaffMaster from '../../pages/Administration Pages/MainPages/StaffMaster';
 import PasswordSetup from '../../pages/Administration Pages/MainPages/PasswordSetup';
 import SupplierSetup from '../../pages/Administration Pages/MainPages/SupplierSetup';
-import ItemBookSetup from '../../pages/Administration Pages/MainPages/Item-Book-Setup';
-import CategoryHead from '../../pages/Administration Pages/MainPages/CategoryHead';
-import CustomerStaffMaster from '../../pages/Administration Pages/MainPages/Customer-Staff-Master';
-import BookMaster from '../../pages/Administration Pages/MainPages/Book-Master';
-import BookSetupClassWise from '../../pages/Administration Pages/MainPages/BookSetupClassWise';
+import StudentsCategory from '../../pages/Administration Pages/MainPages/StudentsCategory';
 
 
 
@@ -35,7 +30,7 @@ function AdministrationRoute() {
       <Route path="fee-setup" element={<FeeHeadSetup />} />
       <Route path="password-setup" element={<PasswordSetup />} />
       <Route path="tuition-setup" element={<TutionFeeSetup />} />
-      <Route path="Course-Head" element={<CourseHead />} />
+      <Route path="Students-Category" element={<StudentsCategory />} />
       <Route path="Subject-Head" element={<SubjectHead />} />
       <Route path="community-setup" element={<CommunityAndCasteSetup />} />
       <Route path="occupation-setup" element={<ParentOccupationSetup />} />

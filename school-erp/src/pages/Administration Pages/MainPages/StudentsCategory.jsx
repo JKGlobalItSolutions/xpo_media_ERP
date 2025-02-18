@@ -11,27 +11,27 @@ import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
-// Add Parent Occupation Modal Component
-const AddParentOccupationModal = ({ isOpen, onClose, onConfirm }) => {
-  const [occupationName, setOccupationName] = useState("")
+// Add Student Category Modal Component
+const AddStudentCategoryModal = ({ isOpen, onClose, onConfirm }) => {
+  const [categoryName, setCategoryName] = useState("")
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(occupationName)
-    setOccupationName("")
+    onConfirm(categoryName)
+    setCategoryName("")
   }
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2 className="modal-title">Add Parent Occupation</h2>
+        <h2 className="modal-title">Add Students Category</h2>
         <div className="modal-body">
           <Form.Control
             type="text"
-            placeholder="Enter Parent Occupation"
-            value={occupationName}
-            onChange={(e) => setOccupationName(e.target.value)}
+            placeholder="Enter Students Category"
+            value={categoryName}
+            onChange={(e) => setCategoryName(e.target.value)}
             className="custom-input"
           />
         </div>
@@ -48,32 +48,32 @@ const AddParentOccupationModal = ({ isOpen, onClose, onConfirm }) => {
   )
 }
 
-// Edit Parent Occupation Modal Component
-const EditParentOccupationModal = ({ isOpen, onClose, onConfirm, occupation }) => {
-  const [occupationName, setOccupationName] = useState(occupation?.name || "")
+// Edit Student Category Modal Component
+const EditStudentCategoryModal = ({ isOpen, onClose, onConfirm, category }) => {
+  const [categoryName, setCategoryName] = useState(category?.StudentCategoryName || "")
 
   useEffect(() => {
-    if (occupation) {
-      setOccupationName(occupation.name)
+    if (category) {
+      setCategoryName(category.StudentCategoryName)
     }
-  }, [occupation])
+  }, [category])
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(occupation.id, occupationName)
+    onConfirm(category.id, categoryName)
   }
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2 className="modal-title">Edit Parent Occupation</h2>
+        <h2 className="modal-title">Edit Students Category</h2>
         <div className="modal-body">
           <Form.Control
             type="text"
-            placeholder="Enter Parent Occupation"
-            value={occupationName}
-            onChange={(e) => setOccupationName(e.target.value)}
+            placeholder="Enter Students Category"
+            value={categoryName}
+            onChange={(e) => setCategoryName(e.target.value)}
             className="custom-input"
           />
         </div>
@@ -90,20 +90,20 @@ const EditParentOccupationModal = ({ isOpen, onClose, onConfirm, occupation }) =
   )
 }
 
-// Delete Parent Occupation Modal Component
-const DeleteParentOccupationModal = ({ isOpen, onClose, onConfirm, occupation }) => {
+// Delete Student Category Modal Component
+const DeleteStudentCategoryModal = ({ isOpen, onClose, onConfirm, category }) => {
   if (!isOpen) return null
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2 className="modal-title">Delete Parent Occupation</h2>
+        <h2 className="modal-title">Delete Students Category</h2>
         <div className="modal-body text-center">
-          <p>Are you sure you want to delete this parent occupation?</p>
-          <p className="fw-bold">{occupation?.name}</p>
+          <p>Are you sure you want to delete this student category?</p>
+          <p className="fw-bold">{category?.StudentCategoryName}</p>
         </div>
         <div className="modal-buttons">
-          <Button className="modal-button delete" onClick={() => onConfirm(occupation.id)}>
+          <Button className="modal-button delete" onClick={() => onConfirm(category.id)}>
             Delete
           </Button>
           <Button className="modal-button cancel" onClick={onClose}>
@@ -115,13 +115,13 @@ const DeleteParentOccupationModal = ({ isOpen, onClose, onConfirm, occupation })
   )
 }
 
-const ParentOccupationSetup = () => {
+const StudentsCategory = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [selectedOccupation, setSelectedOccupation] = useState(null)
+  const [selectedCategory, setSelectedCategory] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [occupations, setOccupations] = useState([])
+  const [categories, setCategories] = useState([])
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const [administrationId, setAdministrationId] = useState(null)
@@ -134,7 +134,7 @@ const ParentOccupationSetup = () => {
         await fetchAdministrationId()
       } else {
         console.log("User is not authenticated")
-        toast.error("Please log in to view and manage parent occupations.", {
+        toast.error("Please log in to view and manage student categories.", {
           position: "top-right",
           autoClose: 1000,
           hideProgressBar: false,
@@ -151,7 +151,7 @@ const ParentOccupationSetup = () => {
 
   useEffect(() => {
     if (administrationId) {
-      fetchOccupations()
+      fetchCategories()
     }
   }, [administrationId])
 
@@ -183,26 +183,26 @@ const ParentOccupationSetup = () => {
     }
   }
 
-  const fetchOccupations = async () => {
+  const fetchCategories = async () => {
     if (!administrationId) return
 
     setError(null)
     try {
-      const occupationsRef = collection(
+      const categoriesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "ParentOccupation",
+        "StudentCategory",
       )
-      const querySnapshot = await getDocs(occupationsRef)
-      const occupationsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log("Fetched occupations:", occupationsData)
-      setOccupations(occupationsData)
+      const querySnapshot = await getDocs(categoriesRef)
+      const categoriesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log("Fetched categories:", categoriesData)
+      setCategories(categoriesData)
     } catch (error) {
-      console.error("Error fetching occupations:", error)
-      toast.error("Failed to fetch occupations. Please try again.", {
+      console.error("Error fetching categories:", error)
+      toast.error("Failed to fetch categories. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -214,7 +214,7 @@ const ParentOccupationSetup = () => {
     }
   }
 
-  const handleAddOccupation = async (occupationName) => {
+  const handleAddCategory = async (categoryName) => {
     if (!administrationId) {
       toast.error("Administration not initialized. Please try again.", {
         position: "top-right",
@@ -229,18 +229,18 @@ const ParentOccupationSetup = () => {
     }
 
     try {
-      const occupationsRef = collection(
+      const categoriesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "ParentOccupation",
+        "StudentCategory",
       )
-      const docRef = await addDoc(occupationsRef, { name: occupationName })
-      console.log("Parent Occupation added with ID:", docRef.id)
+      const docRef = await addDoc(categoriesRef, { StudentCategoryName: categoryName })
+      console.log("Category added with ID:", docRef.id)
       setIsAddModalOpen(false)
-      toast.success("Parent Occupation added successfully!", {
+      toast.success("Category added successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -250,10 +250,10 @@ const ParentOccupationSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
-      await fetchOccupations()
+      await fetchCategories()
     } catch (error) {
-      console.error("Error adding parent occupation:", error)
-      toast.error("Failed to add parent occupation. Please try again.", {
+      console.error("Error adding category:", error)
+      toast.error("Failed to add category. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -265,7 +265,7 @@ const ParentOccupationSetup = () => {
     }
   }
 
-  const handleEditOccupation = async (occupationId, newName) => {
+  const handleEditCategory = async (categoryId, newName) => {
     if (!administrationId) {
       toast.error("Administration not initialized. Please try again.", {
         position: "top-right",
@@ -280,20 +280,20 @@ const ParentOccupationSetup = () => {
     }
 
     try {
-      const occupationRef = doc(
+      const categoryRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "ParentOccupation",
-        occupationId,
+        "StudentCategory",
+        categoryId,
       )
-      await updateDoc(occupationRef, { name: newName })
-      console.log("Parent Occupation updated:", occupationId)
+      await updateDoc(categoryRef, { StudentCategoryName: newName })
+      console.log("Category updated:", categoryId)
       setIsEditModalOpen(false)
-      setSelectedOccupation(null)
-      toast.success("Parent Occupation updated successfully!", {
+      setSelectedCategory(null)
+      toast.success("Category updated successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -303,10 +303,10 @@ const ParentOccupationSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
-      await fetchOccupations()
+      await fetchCategories()
     } catch (error) {
-      console.error("Error updating parent occupation:", error)
-      toast.error("Failed to update parent occupation. Please try again.", {
+      console.error("Error updating category:", error)
+      toast.error("Failed to update category. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -318,7 +318,7 @@ const ParentOccupationSetup = () => {
     }
   }
 
-  const handleDeleteOccupation = async (occupationId) => {
+  const handleDeleteCategory = async (categoryId) => {
     if (!administrationId) {
       toast.error("Administration not initialized. Please try again.", {
         position: "top-right",
@@ -333,20 +333,20 @@ const ParentOccupationSetup = () => {
     }
 
     try {
-      const occupationRef = doc(
+      const categoryRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "ParentOccupation",
-        occupationId,
+        "StudentCategory",
+        categoryId,
       )
-      await deleteDoc(occupationRef)
-      console.log("Parent Occupation deleted:", occupationId)
+      await deleteDoc(categoryRef)
+      console.log("Category deleted:", categoryId)
       setIsDeleteModalOpen(false)
-      setSelectedOccupation(null)
-      toast.success("Parent Occupation deleted successfully!", {
+      setSelectedCategory(null)
+      toast.success("Category deleted successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -354,12 +354,11 @@ const ParentOccupationSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-        style: { background: "#0B3D7B", color: "white" },
       })
-      await fetchOccupations()
+      await fetchCategories()
     } catch (error) {
-      console.error("Error deleting parent occupation:", error)
-      toast.error("Failed to delete parent occupation. Please try again.", {
+      console.error("Error deleting category:", error)
+      toast.error("Failed to delete category. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -371,18 +370,18 @@ const ParentOccupationSetup = () => {
     }
   }
 
-  const openEditModal = (occupation) => {
-    setSelectedOccupation(occupation)
+  const openEditModal = (category) => {
+    setSelectedCategory(category)
     setIsEditModalOpen(true)
   }
 
-  const openDeleteModal = (occupation) => {
-    setSelectedOccupation(occupation)
+  const openDeleteModal = (category) => {
+    setSelectedCategory(category)
     setIsDeleteModalOpen(true)
   }
 
-  const filteredOccupations = occupations.filter((occupation) =>
-    occupation.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  const filteredCategories = categories.filter((category) =>
+    category.StudentCategoryName.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -394,18 +393,18 @@ const ParentOccupationSetup = () => {
           <span className="separator">&gt;</span>
           <span>Administration</span>
           <span className="separator">&gt;</span>
-          <span className="current col-12">Parent Occupation Setup</span>
+          <span className="current col-12">Create Students Category</span>
         </nav>
         <Row>
           <Col xs={12}>
-            <div className="occupation-setup-container">
+            <div className="category-setup-container">
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Create Parent Occupation Setup</h2>
-                  <h6 className="m-0 d-lg-none">Create Parent Occupation Setup</h6>
+                  <h2 className="m-0 d-none d-lg-block">Create Students Category</h2>
+                  <h6 className="m-0 d-lg-none">Create Students Category</h6>
                   <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
-                    + Add Parent Occupation
+                    + Add Students Category
                   </Button>
                 </div>
 
@@ -414,37 +413,37 @@ const ParentOccupationSetup = () => {
                   {/* Search Bar */}
                   <Form.Control
                     type="text"
-                    placeholder="Search by Parent Occupation"
+                    placeholder="Search by Students Category"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="custom-search mb-3"
                   />
 
-                  {/* Occupation Table */}
+                  {/* Category Table */}
                   <div className="table-responsive">
                     <Table bordered hover>
                       <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
                         <tr>
-                          <th>Parent Occupation</th>
+                          <th>Category Name</th>
                           <th>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredOccupations.map((occupation) => (
-                          <tr key={occupation.id}>
-                            <td>{occupation.name}</td>
+                        {filteredCategories.map((category) => (
+                          <tr key={category.id}>
+                            <td>{category.StudentCategoryName}</td>
                             <td>
                               <Button
                                 variant="link"
                                 className="action-button edit-button me-2"
-                                onClick={() => openEditModal(occupation)}
+                                onClick={() => openEditModal(category)}
                               >
                                 <FaEdit />
                               </Button>
                               <Button
                                 variant="link"
                                 className="action-button delete-button"
-                                onClick={() => openDeleteModal(occupation)}
+                                onClick={() => openDeleteModal(category)}
                               >
                                 <FaTrash />
                               </Button>
@@ -462,28 +461,28 @@ const ParentOccupationSetup = () => {
       </Container>
 
       {/* Modals */}
-      <AddParentOccupationModal
+      <AddStudentCategoryModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onConfirm={handleAddOccupation}
+        onConfirm={handleAddCategory}
       />
-      <EditParentOccupationModal
+      <EditStudentCategoryModal
         isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false)
-          setSelectedOccupation(null)
+          setSelectedCategory(null)
         }}
-        onConfirm={handleEditOccupation}
-        occupation={selectedOccupation}
+        onConfirm={handleEditCategory}
+        category={selectedCategory}
       />
-      <DeleteParentOccupationModal
+      <DeleteStudentCategoryModal
         isOpen={isDeleteModalOpen}
         onClose={() => {
           setIsDeleteModalOpen(false)
-          setSelectedOccupation(null)
+          setSelectedCategory(null)
         }}
-        onConfirm={handleDeleteOccupation}
-        occupation={selectedOccupation}
+        onConfirm={handleDeleteCategory}
+        category={selectedCategory}
       />
 
       {/* Toastify Container */}
@@ -491,7 +490,7 @@ const ParentOccupationSetup = () => {
 
       <style>
         {`
-          .occupation-setup-container {
+          .category-setup-container {
             background-color: #fff;
           }
 
@@ -665,5 +664,5 @@ const ParentOccupationSetup = () => {
   )
 }
 
-export default ParentOccupationSetup
+export default StudentsCategory
 
