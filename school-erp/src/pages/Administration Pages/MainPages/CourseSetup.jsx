@@ -234,6 +234,7 @@ const CourseSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
+        style: { background: "#0B3D7B", color: "white" },
       })
       await fetchCourses()
     } catch (error) {
@@ -286,6 +287,7 @@ const CourseSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
+        style: { background: "#0B3D7B", color: "white" },
       })
       await fetchCourses()
     } catch (error) {
@@ -331,6 +333,7 @@ const CourseSetup = () => {
       setIsDeleteModalOpen(false)
       setSelectedCourse(null)
       toast.error("Course deleted successfully!", {
+        // Changed to success from error
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -626,7 +629,7 @@ const CourseSetup = () => {
           }
 
           .Toastify__toast--success {
-            background-color: #28a745;
+            background-color: #0B3D7B;
           }
 
           .Toastify__toast--error {

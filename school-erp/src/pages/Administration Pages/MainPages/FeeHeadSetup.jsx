@@ -1,10 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
+import { db, auth } from "../../../Firebase/config"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { useAuthContext } from "../../../context/AuthContext"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 
 // Add Fee Head Modal Component
 const AddFeeHeadModal = ({ isOpen, onClose, onConfirm }) => {
@@ -63,12 +68,17 @@ const EditFeeHeadModal = ({ isOpen, onClose, onConfirm, feeHeadData }) => {
   const [feeHead, setFeeHead] = useState(feeHeadData?.feeHead || "")
   const [accountHead, setAccountHead] = useState(feeHeadData?.accountHead || "")
 
+  useEffect(() => {
+    if (feeHeadData) {
+      setFeeHead(feeHeadData.feeHead)
+      setAccountHead(feeHeadData.accountHead)
+    }
+  }, [feeHeadData])
+
   if (!isOpen) return null
 
   const handleSubmit = () => {
     onConfirm(feeHeadData.id, { feeHead, accountHead })
-    setFeeHead("")
-    setAccountHead("")
   }
 
   return (
@@ -139,27 +149,252 @@ const FeeHeadSetup = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedFeeHead, setSelectedFeeHead] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [feeHeads, setFeeHeads] = useState([
-    { id: 1, feeHead: "1 term", accountHead: "Term Fee Account" },
-    { id: 2, feeHead: "Annual Fee", accountHead: "Annual Fee Account" },
-  ])
+  const [feeHeads, setFeeHeads] = useState([])
+  const [error, setError] = useState(null)
+  const [administrationId, setAdministrationId] = useState(null)
+  const { user } = useAuthContext()
 
-  const handleAddFeeHead = (newFeeHead) => {
-    const newId = Math.max(...feeHeads.map((fh) => fh.id), 0) + 1
-    setFeeHeads([...feeHeads, { id: newId, ...newFeeHead }])
-    setIsAddModalOpen(false)
+  useEffect(() => {
+    const checkAuthAndFetchData = async () => {
+      if (auth.currentUser) {
+        console.log("User is authenticated:", auth.currentUser.uid)
+        await fetchAdministrationId()
+      } else {
+        console.log("User is not authenticated")
+        toast.error("Please log in to view and manage fee heads.", {
+          position: "top-right",
+          autoClose: 1000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
+      }
+    }
+
+    checkAuthAndFetchData()
+  }, [])
+
+  useEffect(() => {
+    if (administrationId) {
+      fetchFeeHeads()
+    }
+  }, [administrationId])
+
+  const fetchAdministrationId = async () => {
+    try {
+      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
+      const q = query(adminRef, limit(1))
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        // If no Administration document exists, create one
+        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
+        setAdministrationId(newAdminRef.id)
+      } else {
+        // Use the ID of the first (and presumably only) Administration document
+        setAdministrationId(querySnapshot.docs[0].id)
+      }
+    } catch (error) {
+      console.error("Error fetching/creating Administration ID:", error)
+      toast.error("Failed to initialize. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
   }
 
-  const handleEditFeeHead = (id, updatedFeeHead) => {
-    setFeeHeads(feeHeads.map((fh) => (fh.id === id ? { ...fh, ...updatedFeeHead } : fh)))
-    setIsEditModalOpen(false)
-    setSelectedFeeHead(null)
+  const fetchFeeHeads = async () => {
+    if (!administrationId) return
+
+    setError(null)
+    try {
+      const feeHeadsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "FeeHeadSetup",
+      )
+      const querySnapshot = await getDocs(feeHeadsRef)
+      const feeHeadsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log("Fetched fee heads:", feeHeadsData)
+      setFeeHeads(feeHeadsData)
+    } catch (error) {
+      console.error("Error fetching fee heads:", error)
+      toast.error("Failed to fetch fee heads. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
   }
 
-  const handleDeleteFeeHead = (id) => {
-    setFeeHeads(feeHeads.filter((fh) => fh.id !== id))
-    setIsDeleteModalOpen(false)
-    setSelectedFeeHead(null)
+  const handleAddFeeHead = async (newFeeHead) => {
+    if (!administrationId) {
+      toast.error("Administration not initialized. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    try {
+      const feeHeadsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "FeeHeadSetup",
+      )
+      const docRef = await addDoc(feeHeadsRef, newFeeHead)
+      console.log("Fee head added with ID:", docRef.id)
+      setIsAddModalOpen(false)
+      toast.success("Fee head added successfully!", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        style: { background: "#0B3D7B", color: "white" },
+      })
+      await fetchFeeHeads()
+    } catch (error) {
+      console.error("Error adding fee head:", error)
+      toast.error("Failed to add fee head. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const handleEditFeeHead = async (id, updatedFeeHead) => {
+    if (!administrationId) {
+      toast.error("Administration not initialized. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    try {
+      const feeHeadRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "FeeHeadSetup",
+        id,
+      )
+      await updateDoc(feeHeadRef, updatedFeeHead)
+      console.log("Fee head updated:", id)
+      setIsEditModalOpen(false)
+      setSelectedFeeHead(null)
+      toast.success("Fee head updated successfully!", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        style: { background: "#0B3D7B", color: "white" },
+      })
+      await fetchFeeHeads()
+    } catch (error) {
+      console.error("Error updating fee head:", error)
+      toast.error("Failed to update fee head. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const handleDeleteFeeHead = async (id) => {
+    if (!administrationId) {
+      toast.error("Administration not initialized. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    try {
+      const feeHeadRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "FeeHeadSetup",
+        id,
+      )
+      await deleteDoc(feeHeadRef)
+      console.log("Fee head deleted:", id)
+      setIsDeleteModalOpen(false)
+      setSelectedFeeHead(null)
+      toast.error("Fee head deleted successfully!", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      await fetchFeeHeads()
+    } catch (error) {
+      console.error("Error deleting fee head:", error)
+      toast.error("Failed to delete fee head. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
   }
 
   const openEditModal = (feeHead) => {
@@ -276,6 +511,9 @@ const FeeHeadSetup = () => {
         onConfirm={handleDeleteFeeHead}
         feeHeadData={selectedFeeHead}
       />
+
+      {/* Toastify Container */}
+      <ToastContainer />
 
       <style>
         {`
@@ -424,6 +662,28 @@ const FeeHeadSetup = () => {
             padding: 0.5rem;
             border: 1px solid #ced4da;
             border-radius: 4px;
+          }
+
+          /* Toastify custom styles */
+          .Toastify__toast-container {
+            z-index: 9999;
+          }
+
+          .Toastify__toast {
+            background-color: #0B3D7B;
+            color: white;
+          }
+
+          .Toastify__toast--success {
+            background-color: #0B3D7B;
+          }
+
+          .Toastify__toast--error {
+            background-color: #dc3545;
+          }
+
+          .Toastify__progress-bar {
+            background-color: rgba(255, 255, 255, 0.7);
           }
         `}
       </style>
