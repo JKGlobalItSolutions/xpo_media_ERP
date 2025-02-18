@@ -46,7 +46,7 @@ const BookSetupClassWise = () => {
                 <h3 style={{ color: '#0B3D7B', marginBottom: '20px', borderBottom: '2px solid #0B3D7B', paddingBottom: '10px' }}>Student Book Setup</h3>
                 <Form onSubmit={handleSubmit}>
                   <Row>
-                    <Col md={6}>
+                    <Col md={6} className="mb-3">
                       <Form.Group controlId="formStandard">
                         <Form.Label style={{ fontWeight: 'bold', color: '#0B3D7B' }}>Select Standard</Form.Label>
                         <Form.Control
@@ -63,7 +63,7 @@ const BookSetupClassWise = () => {
                         </Form.Control>
                       </Form.Group>
                     </Col>
-                    <Col md={6}>
+                    <Col md={6} className="mb-3">
                       <Form.Group controlId="formBookName">
                         <Form.Label style={{ fontWeight: 'bold', color: '#0B3D7B' }}>Select Book Name</Form.Label>
                         <Form.Control
@@ -77,8 +77,8 @@ const BookSetupClassWise = () => {
                       </Form.Group>
                     </Col>
                   </Row>
-                  <Row className="mt-3">
-                    <Col md={6}>
+                  <Row>
+                    <Col md={6} className="mb-3">
                       <Form.Group controlId="formFeeHeading">
                         <Form.Label style={{ fontWeight: 'bold', color: '#0B3D7B' }}>Select Fee Heading</Form.Label>
                         <Form.Control
@@ -95,7 +95,7 @@ const BookSetupClassWise = () => {
                         </Form.Control>
                       </Form.Group>
                     </Col>
-                    <Col md={6}>
+                    <Col md={6} className="mb-3">
                       <Form.Group controlId="formAmount">
                         <Form.Label style={{ fontWeight: 'bold', color: '#0B3D7B' }}>Amount in Rs</Form.Label>
                         <Form.Control
@@ -124,30 +124,32 @@ const BookSetupClassWise = () => {
                 {/* Table Section */}
                 <div className="mt-5">
                   <h4 style={{ color: '#0B3D7B', marginBottom: '20px' }}>Book List</h4>
-                  <Table striped bordered hover>
-                    <thead style={{ backgroundColor: '#0B3D7B', color: '#fff' }}>
-                      <tr>
-                        <th>Standard</th>
-                        <th>Book Name</th>
-                        <th>Fee Heading</th>
-                        <th>Amount (Rs)</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>1</td>
-                        <td>2nd term feeNo's23000</td>
-                        <td>Fee Heading 1</td>
-                        <td>23000</td>
-                        <td>
-                          <Button variant="info" size="sm" style={{ marginRight: '5px' }}>Edit</Button>
-                          <Button variant="danger" size="sm">Delete</Button>
-                        </td>
-                      </tr>
-                      {/* Add more rows as needed */}
-                    </tbody>
-                  </Table>
+                  <div className="table-responsive">
+                    <Table striped bordered hover>
+                      <thead style={{ backgroundColor: '#0B3D7B', color: '#fff' }}>
+                        <tr>
+                          <th>Standard</th>
+                          <th>Book Name</th>
+                          <th>Fee Heading</th>
+                          <th>Amount (Rs)</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>2nd term feeNo's23000</td>
+                          <td>Fee Heading 1</td>
+                          <td>23000</td>
+                          <td>
+                            <Button variant="info" size="sm" style={{ marginRight: '5px' }}>Edit</Button>
+                            <Button variant="danger" size="sm">Delete</Button>
+                          </td>
+                        </tr>
+                        {/* Add more rows as needed */}
+                      </tbody>
+                    </Table>
+                  </div>
                 </div>
               </div>
             </div>

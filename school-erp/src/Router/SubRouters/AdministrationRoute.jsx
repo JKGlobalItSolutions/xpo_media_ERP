@@ -51,11 +51,7 @@ function AdministrationRoute() {
       <Route path="course-certificate" element={<CourseCertificate />} />
       <Route path="experience-certificate" element={<ExperienceCertificate/>} />
       <Route path="supplier-Setup" element={<SupplierSetup/>} />
-      <Route path="item-book-master" element={<ItemBookSetup/>} />
-      <Route path="category-head" element={<CategoryHead/>} />
-      <Route path="customer-staff-master" element={<CustomerStaffMaster/>} />
-      <Route path="Book-Master" element={<BookMaster/>} />
-      <Route path="Book-setup-class-wise" element={<BookSetupClassWise/>} />
+    
     </Routes>
   );
 }
