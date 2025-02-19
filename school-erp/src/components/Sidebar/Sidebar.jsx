@@ -237,6 +237,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       path: "/transport",
       subItems: [
         { id: "6-1", title: "• Bus / Van Fee Head Setup", path: "/transport/bus-van-fee" },
+        { id: "6-8", title: "• Driver Conductor Route Setup", path: "/transport/driver-conductor-setup" },
         { id: "6-2", title: "• Place Setup", path: "/transport/place-setup" },
         { id: "6-3", title: "• Bus Fee Setup", path: "/transport/bus-fee-setup" },
         { id: "6-4", title: "• New Bus Bill", path: "/transport/new-bus-bill" },

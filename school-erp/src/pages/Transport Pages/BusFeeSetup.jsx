@@ -12,16 +12,11 @@ import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
 // Add Bus Fee Modal Component
-const AddBusFeeModal = ({ isOpen, onClose, onConfirm }) => {
+const AddBusFeeModal = ({ isOpen, onClose, onConfirm, places, routes, feeHeads }) => {
   const [boardingPoint, setBoardingPoint] = useState("")
   const [routeNumber, setRouteNumber] = useState("")
   const [feeHeading, setFeeHeading] = useState("")
   const [fee, setFee] = useState("")
-
-  // Sample data for dropdowns
-  const boardingPoints = ["Point 1", "Point 2", "Point 3"]
-  const routeNumbers = ["Route 1", "Route 2", "Route 3"]
-  const feeHeadings = ["Term 1", "Term 2", "Annual"]
 
   if (!isOpen) return null
 
@@ -46,9 +41,9 @@ const AddBusFeeModal = ({ isOpen, onClose, onConfirm }) => {
               className="custom-input"
             >
               <option value="">Select Boarding Point</option>
-              {boardingPoints.map((point, index) => (
-                <option key={index} value={point}>
-                  {point}
+              {places.map((place) => (
+                <option key={place.id} value={place.placeName}>
+                  {place.placeName}
                 </option>
               ))}
             </Form.Select>
@@ -57,9 +52,9 @@ const AddBusFeeModal = ({ isOpen, onClose, onConfirm }) => {
             <Form.Label className="w-100 text-start">Select / Enter Route Number</Form.Label>
             <Form.Select value={routeNumber} onChange={(e) => setRouteNumber(e.target.value)} className="custom-input">
               <option value="">Select Route Number</option>
-              {routeNumbers.map((route, index) => (
-                <option key={index} value={route}>
-                  {route}
+              {routes.map((route) => (
+                <option key={route.id} value={route.route}>
+                  {route.route}
                 </option>
               ))}
             </Form.Select>
@@ -68,9 +63,9 @@ const AddBusFeeModal = ({ isOpen, onClose, onConfirm }) => {
             <Form.Label className="w-100 text-start">Select Fee Heading</Form.Label>
             <Form.Select value={feeHeading} onChange={(e) => setFeeHeading(e.target.value)} className="custom-input">
               <option value="">Select Fee Heading</option>
-              {feeHeadings.map((heading, index) => (
-                <option key={index} value={heading}>
-                  {heading}
+              {feeHeads.map((feeHead) => (
+                <option key={feeHead.id} value={feeHead.feeHead}>
+                  {feeHead.feeHead}
                 </option>
               ))}
             </Form.Select>
@@ -94,16 +89,11 @@ const AddBusFeeModal = ({ isOpen, onClose, onConfirm }) => {
 }
 
 // Edit Bus Fee Modal Component
-const EditBusFeeModal = ({ isOpen, onClose, onConfirm, feeData }) => {
+const EditBusFeeModal = ({ isOpen, onClose, onConfirm, feeData, places, routes, feeHeads }) => {
   const [boardingPoint, setBoardingPoint] = useState("")
   const [routeNumber, setRouteNumber] = useState("")
   const [feeHeading, setFeeHeading] = useState("")
   const [fee, setFee] = useState("")
-
-  // Sample data for dropdowns
-  const boardingPoints = ["Point 1", "Point 2", "Point 3"]
-  const routeNumbers = ["Route 1", "Route 2", "Route 3"]
-  const feeHeadings = ["Term 1", "Term 2", "Annual"]
 
   useEffect(() => {
     if (feeData) {
@@ -133,9 +123,9 @@ const EditBusFeeModal = ({ isOpen, onClose, onConfirm, feeData }) => {
               className="custom-input"
             >
               <option value="">Select Boarding Point</option>
-              {boardingPoints.map((point, index) => (
-                <option key={index} value={point}>
-                  {point}
+              {places.map((place) => (
+                <option key={place.id} value={place.placeName}>
+                  {place.placeName}
                 </option>
               ))}
             </Form.Select>
@@ -144,9 +134,9 @@ const EditBusFeeModal = ({ isOpen, onClose, onConfirm, feeData }) => {
             <Form.Label className="w-100 text-start">Select / Enter Route Number</Form.Label>
             <Form.Select value={routeNumber} onChange={(e) => setRouteNumber(e.target.value)} className="custom-input">
               <option value="">Select Route Number</option>
-              {routeNumbers.map((route, index) => (
-                <option key={index} value={route}>
-                  {route}
+              {routes.map((route) => (
+                <option key={route.id} value={route.route}>
+                  {route.route}
                 </option>
               ))}
             </Form.Select>
@@ -155,9 +145,9 @@ const EditBusFeeModal = ({ isOpen, onClose, onConfirm, feeData }) => {
             <Form.Label className="w-100 text-start">Select Fee Heading</Form.Label>
             <Form.Select value={feeHeading} onChange={(e) => setFeeHeading(e.target.value)} className="custom-input">
               <option value="">Select Fee Heading</option>
-              {feeHeadings.map((heading, index) => (
-                <option key={index} value={heading}>
-                  {heading}
+              {feeHeads.map((feeHead) => (
+                <option key={feeHead.id} value={feeHead.feeHead}>
+                  {feeHead.feeHead}
                 </option>
               ))}
             </Form.Select>
@@ -215,6 +205,9 @@ const BusFeeSetup = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [fees, setFees] = useState([])
   const [transportId, setTransportId] = useState(null)
+  const [places, setPlaces] = useState([])
+  const [routes, setRoutes] = useState([])
+  const [feeHeads, setFeeHeads] = useState([])
   const { user } = useAuthContext()
 
   useEffect(() => {
@@ -242,6 +235,9 @@ const BusFeeSetup = () => {
   useEffect(() => {
     if (transportId) {
       fetchFees()
+      fetchPlaces()
+      fetchRoutes()
+      fetchFeeHeads()
     }
   }, [transportId])
 
@@ -283,6 +279,82 @@ const BusFeeSetup = () => {
     } catch (error) {
       console.error("Error fetching fees:", error)
       toast.error("Failed to fetch fees. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const fetchPlaces = async () => {
+    if (!transportId) return
+
+    try {
+      const placesRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "PlaceSetup")
+      const querySnapshot = await getDocs(placesRef)
+      const placesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log("Fetched places:", placesData)
+      setPlaces(placesData)
+    } catch (error) {
+      console.error("Error fetching places:", error)
+      toast.error("Failed to fetch places. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const fetchRoutes = async () => {
+    if (!transportId) return
+
+    try {
+      const routesRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "RouteSetup")
+      const querySnapshot = await getDocs(routesRef)
+      const routesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log("Fetched routes:", routesData)
+      setRoutes(routesData)
+    } catch (error) {
+      console.error("Error fetching routes:", error)
+      toast.error("Failed to fetch routes. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const fetchFeeHeads = async () => {
+    if (!transportId) return
+
+    try {
+      const feeHeadsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Transport",
+        transportId,
+        "BusVanFeeHeadSetup",
+      )
+      const querySnapshot = await getDocs(feeHeadsRef)
+      const feeHeadsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log("Fetched fee heads:", feeHeadsData)
+      setFeeHeads(feeHeadsData)
+    } catch (error) {
+      console.error("Error fetching fee heads:", error)
+      toast.error("Failed to fetch fee heads. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -540,7 +612,14 @@ const BusFeeSetup = () => {
       </Container>
 
       {/* Modals */}
-      <AddBusFeeModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onConfirm={handleAddFee} />
+      <AddBusFeeModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onConfirm={handleAddFee}
+        places={places}
+        routes={routes}
+        feeHeads={feeHeads}
+      />
       <EditBusFeeModal
         isOpen={isEditModalOpen}
         onClose={() => {
@@ -549,6 +628,9 @@ const BusFeeSetup = () => {
         }}
         onConfirm={handleEditFee}
         feeData={selectedFee}
+        places={places}
+        routes={routes}
+        feeHeads={feeHeads}
       />
       <DeleteBusFeeModal
         isOpen={isDeleteModalOpen}

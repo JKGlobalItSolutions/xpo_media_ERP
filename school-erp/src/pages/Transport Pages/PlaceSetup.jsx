@@ -12,7 +12,7 @@ import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
 // Add Place Modal Component
-const AddPlaceModal = ({ isOpen, onClose, onConfirm }) => {
+const AddPlaceModal = ({ isOpen, onClose, onConfirm, drivers, conductors, routes }) => {
   const [placeName, setPlaceName] = useState("")
   const [routeNumber, setRouteNumber] = useState("")
   const [fee, setFee] = useState("")
@@ -45,13 +45,15 @@ const AddPlaceModal = ({ isOpen, onClose, onConfirm }) => {
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="w-100 text-start">Number Route</Form.Label>
-            <Form.Control
-              type="text"
-              value={routeNumber}
-              onChange={(e) => setRouteNumber(e.target.value)}
-              className="custom-input"
-            />
+            <Form.Label className="w-100 text-start">Route Number</Form.Label>
+            <Form.Select value={routeNumber} onChange={(e) => setRouteNumber(e.target.value)} className="custom-input">
+              <option value="">Select Route Number</option>
+              {routes.map((route) => (
+                <option key={route.id} value={route.route}>
+                  {route.route}
+                </option>
+              ))}
+            </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="w-100 text-start">Fee Van / Bus</Form.Label>
@@ -59,21 +61,29 @@ const AddPlaceModal = ({ isOpen, onClose, onConfirm }) => {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="w-100 text-start">Name Driver</Form.Label>
-            <Form.Control
-              type="text"
-              value={driverName}
-              onChange={(e) => setDriverName(e.target.value)}
-              className="custom-input"
-            />
+            <Form.Select value={driverName} onChange={(e) => setDriverName(e.target.value)} className="custom-input">
+              <option value="">Select Driver</option>
+              {drivers.map((driver) => (
+                <option key={driver.id} value={driver.driver}>
+                  {driver.driver}
+                </option>
+              ))}
+            </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="w-100 text-start">Name Conductor</Form.Label>
-            <Form.Control
-              type="text"
+            <Form.Select
               value={conductorName}
               onChange={(e) => setConductorName(e.target.value)}
               className="custom-input"
-            />
+            >
+              <option value="">Select Conductor</option>
+              {conductors.map((conductor) => (
+                <option key={conductor.id} value={conductor.conductor}>
+                  {conductor.conductor}
+                </option>
+              ))}
+            </Form.Select>
           </Form.Group>
         </div>
         <div className="modal-buttons">
@@ -90,7 +100,7 @@ const AddPlaceModal = ({ isOpen, onClose, onConfirm }) => {
 }
 
 // Edit Place Modal Component
-const EditPlaceModal = ({ isOpen, onClose, onConfirm, placeData }) => {
+const EditPlaceModal = ({ isOpen, onClose, onConfirm, placeData, drivers, conductors, routes }) => {
   const [placeName, setPlaceName] = useState("")
   const [routeNumber, setRouteNumber] = useState("")
   const [fee, setFee] = useState("")
@@ -110,7 +120,13 @@ const EditPlaceModal = ({ isOpen, onClose, onConfirm, placeData }) => {
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(placeData.id, { placeName, routeNumber, fee, driverName, conductorName })
+    onConfirm(placeData.id, {
+      placeName,
+      routeNumber,
+      fee,
+      driverName,
+      conductorName,
+    })
   }
 
   return (
@@ -128,13 +144,15 @@ const EditPlaceModal = ({ isOpen, onClose, onConfirm, placeData }) => {
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="w-100 text-start">Number Route</Form.Label>
-            <Form.Control
-              type="text"
-              value={routeNumber}
-              onChange={(e) => setRouteNumber(e.target.value)}
-              className="custom-input"
-            />
+            <Form.Label className="w-100 text-start">Route Number</Form.Label>
+            <Form.Select value={routeNumber} onChange={(e) => setRouteNumber(e.target.value)} className="custom-input">
+              <option value="">Select Route Number</option>
+              {routes.map((route) => (
+                <option key={route.id} value={route.route}>
+                  {route.route}
+                </option>
+              ))}
+            </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="w-100 text-start">Fee Van / Bus</Form.Label>
@@ -142,21 +160,29 @@ const EditPlaceModal = ({ isOpen, onClose, onConfirm, placeData }) => {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="w-100 text-start">Name Driver</Form.Label>
-            <Form.Control
-              type="text"
-              value={driverName}
-              onChange={(e) => setDriverName(e.target.value)}
-              className="custom-input"
-            />
+            <Form.Select value={driverName} onChange={(e) => setDriverName(e.target.value)} className="custom-input">
+              <option value="">Select Driver</option>
+              {drivers.map((driver) => (
+                <option key={driver.id} value={driver.driver}>
+                  {driver.driver}
+                </option>
+              ))}
+            </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="w-100 text-start">Name Conductor</Form.Label>
-            <Form.Control
-              type="text"
+            <Form.Select
               value={conductorName}
               onChange={(e) => setConductorName(e.target.value)}
               className="custom-input"
-            />
+            >
+              <option value="">Select Conductor</option>
+              {conductors.map((conductor) => (
+                <option key={conductor.id} value={conductor.conductor}>
+                  {conductor.conductor}
+                </option>
+              ))}
+            </Form.Select>
           </Form.Group>
         </div>
         <div className="modal-buttons">
@@ -205,6 +231,9 @@ const PlaceSetup = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [places, setPlaces] = useState([])
   const [transportId, setTransportId] = useState(null)
+  const [drivers, setDrivers] = useState([])
+  const [conductors, setConductors] = useState([])
+  const [routes, setRoutes] = useState([])
   const { user } = useAuthContext()
 
   useEffect(() => {
@@ -232,6 +261,9 @@ const PlaceSetup = () => {
   useEffect(() => {
     if (transportId) {
       fetchPlaces()
+      fetchDrivers()
+      fetchConductors()
+      fetchRoutes()
     }
   }, [transportId])
 
@@ -269,12 +301,93 @@ const PlaceSetup = () => {
     try {
       const placesRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "PlaceSetup")
       const querySnapshot = await getDocs(placesRef)
-      const placesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      const placesData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
       console.log("Fetched places:", placesData)
       setPlaces(placesData)
     } catch (error) {
       console.error("Error fetching places:", error)
       toast.error("Failed to fetch places. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const fetchDrivers = async () => {
+    if (!transportId) return
+
+    try {
+      const driversRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "DriverSetup")
+      const querySnapshot = await getDocs(driversRef)
+      const driversData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      console.log("Fetched drivers:", driversData)
+      setDrivers(driversData)
+    } catch (error) {
+      console.error("Error fetching drivers:", error)
+      toast.error("Failed to fetch drivers. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const fetchConductors = async () => {
+    if (!transportId) return
+
+    try {
+      const conductorsRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "ConductorSetup")
+      const querySnapshot = await getDocs(conductorsRef)
+      const conductorsData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      console.log("Fetched conductors:", conductorsData)
+      setConductors(conductorsData)
+    } catch (error) {
+      console.error("Error fetching conductors:", error)
+      toast.error("Failed to fetch conductors. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const fetchRoutes = async () => {
+    if (!transportId) return
+
+    try {
+      const routesRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "RouteSetup")
+      const querySnapshot = await getDocs(routesRef)
+      const routesData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      console.log("Fetched routes:", routesData)
+      setRoutes(routesData)
+    } catch (error) {
+      console.error("Error fetching routes:", error)
+      toast.error("Failed to fetch routes. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -520,7 +633,14 @@ const PlaceSetup = () => {
       </Container>
 
       {/* Modals */}
-      <AddPlaceModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onConfirm={handleAddPlace} />
+      <AddPlaceModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onConfirm={handleAddPlace}
+        drivers={drivers}
+        conductors={conductors}
+        routes={routes}
+      />
       <EditPlaceModal
         isOpen={isEditModalOpen}
         onClose={() => {
@@ -529,6 +649,9 @@ const PlaceSetup = () => {
         }}
         onConfirm={handleEditPlace}
         placeData={selectedPlace}
+        drivers={drivers}
+        conductors={conductors}
+        routes={routes}
       />
       <DeletePlaceModal
         isOpen={isDeleteModalOpen}
