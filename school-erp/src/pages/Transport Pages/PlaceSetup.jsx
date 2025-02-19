@@ -15,17 +15,15 @@ import "react-toastify/dist/ReactToastify.css"
 const AddPlaceModal = ({ isOpen, onClose, onConfirm, drivers, conductors, routes }) => {
   const [placeName, setPlaceName] = useState("")
   const [routeNumber, setRouteNumber] = useState("")
-  const [fee, setFee] = useState("")
   const [driverName, setDriverName] = useState("")
   const [conductorName, setConductorName] = useState("")
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm({ placeName, routeNumber, fee, driverName, conductorName })
+    onConfirm({ placeName, routeNumber, driverName, conductorName })
     setPlaceName("")
     setRouteNumber("")
-    setFee("")
     setDriverName("")
     setConductorName("")
   }
@@ -54,10 +52,6 @@ const AddPlaceModal = ({ isOpen, onClose, onConfirm, drivers, conductors, routes
                 </option>
               ))}
             </Form.Select>
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="w-100 text-start">Fee Van / Bus</Form.Label>
-            <Form.Control type="text" value={fee} onChange={(e) => setFee(e.target.value)} className="custom-input" />
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="w-100 text-start">Name Driver</Form.Label>
@@ -103,7 +97,6 @@ const AddPlaceModal = ({ isOpen, onClose, onConfirm, drivers, conductors, routes
 const EditPlaceModal = ({ isOpen, onClose, onConfirm, placeData, drivers, conductors, routes }) => {
   const [placeName, setPlaceName] = useState("")
   const [routeNumber, setRouteNumber] = useState("")
-  const [fee, setFee] = useState("")
   const [driverName, setDriverName] = useState("")
   const [conductorName, setConductorName] = useState("")
 
@@ -111,7 +104,6 @@ const EditPlaceModal = ({ isOpen, onClose, onConfirm, placeData, drivers, conduc
     if (placeData) {
       setPlaceName(placeData.placeName || "")
       setRouteNumber(placeData.routeNumber || "")
-      setFee(placeData.fee || "")
       setDriverName(placeData.driverName || "")
       setConductorName(placeData.conductorName || "")
     }
@@ -123,7 +115,6 @@ const EditPlaceModal = ({ isOpen, onClose, onConfirm, placeData, drivers, conduc
     onConfirm(placeData.id, {
       placeName,
       routeNumber,
-      fee,
       driverName,
       conductorName,
     })
@@ -153,10 +144,6 @@ const EditPlaceModal = ({ isOpen, onClose, onConfirm, placeData, drivers, conduc
                 </option>
               ))}
             </Form.Select>
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="w-100 text-start">Fee Van / Bus</Form.Label>
-            <Form.Control type="text" value={fee} onChange={(e) => setFee(e.target.value)} className="custom-input" />
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="w-100 text-start">Name Driver</Form.Label>
@@ -590,7 +577,6 @@ const PlaceSetup = () => {
                         <tr>
                           <th>Place Name</th>
                           <th>Route Number</th>
-                          <th>Fee</th>
                           <th>Driver Name</th>
                           <th>Conductor Name</th>
                           <th>Action</th>
@@ -601,7 +587,6 @@ const PlaceSetup = () => {
                           <tr key={place.id}>
                             <td>{place.placeName}</td>
                             <td>{place.routeNumber}</td>
-                            <td>{place.fee}</td>
                             <td>{place.driverName}</td>
                             <td>{place.conductorName}</td>
                             <td>
