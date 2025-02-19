@@ -5,8 +5,7 @@ import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { Calendar, Clock } from "lucide-react"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import BusLogo from "../../images/Logo/buslogo.png"
-import { Link } from "react-router-dom";
-
+import { Link } from "react-router-dom"
 
 const NewBusBill = () => {
   const [formData, setFormData] = useState({
@@ -41,31 +40,34 @@ const NewBusBill = () => {
 
   return (
     <MainContentPage>
-      <div className="mb-4">
-          <nav className="custom-breadcrumb py-1 py-lg-3">
-            <Link to="/home">Home</Link>
-            <span className="separator mx-2">&gt;</span>
-            <Link >Transaction
-            </Link>
-            <span className="separator mx-2">&gt;</span>
-            <span>New Bus Bill</span>
-          </nav>
-        </div>
+      <div className="mb-2">
+        <nav className="custom-breadcrumb py-1">
+          <Link to="/home">Home</Link>
+          <span className="separator mx-2">&gt;</span>
+          <Link>Transaction</Link>
+          <span className="separator mx-2">&gt;</span>
+          <span>New Bus Bill</span>
+        </nav>
+      </div>
       <div className="bus-van-bill-container">
         {/* Header */}
         <div className="header custom-btn-clr">
-          <Container fluid>
+          <Container fluid className="py-2">
             <Row className="align-items-center">
-              <div className="col-12 col-lg-4 d-flex align-items-center justify-content-between d-md-flex">
-                <img src={BusLogo || "/placeholder.svg"} alt="School Bus" className="img-fluid col-3 ms-lg-3" />
-                <h1 className="mb-0 me-lg-5 me-3 " style={{ fontSize: "24px" }}>
+              <Col xs={12} lg={6} className="d-flex align-items-center">
+                <img
+                  src={BusLogo || "/placeholder.svg"}
+                  alt="School Bus"
+                  className="img-fluid me-2"
+                  style={{ width: "40px", height: "40px" }}
+                />
+                <h1 className="mb-0" style={{ fontSize: "20px" }}>
                   Bus / Van Bill
                 </h1>
-              </div>
-              <div className="col-lg-2"></div>
-              <div className="col-12 col-lg-6 mt-3 mt-md-0">
+              </Col>
+              <Col xs={12} lg={6} className="mt-2 mt-lg-0">
                 <Row className="align-items-center">
-                  <div className="col-6 col-sm-6 d-flex align-items-center mt-2 mt-sm-0">
+                  <Col xs={6} className="d-flex align-items-center">
                     <Form.Control
                       type="date"
                       name="date"
@@ -73,9 +75,9 @@ const NewBusBill = () => {
                       onChange={handleChange}
                       className="me-2"
                     />
-                    <Calendar className="text-white" size={20} />
-                  </div>
-                  <div className="col-6 col-sm-6 d-flex align-items-center mt-2 mt-sm-0">
+                    <Calendar className="text-white" size={16} />
+                  </Col>
+                  <Col xs={6} className="d-flex align-items-center">
                     <Form.Control
                       type="time"
                       name="time"
@@ -83,48 +85,51 @@ const NewBusBill = () => {
                       onChange={handleChange}
                       className="me-2"
                     />
-                    <Clock className="text-white" size={20} />
-                  </div>
+                    <Clock className="text-white" size={16} />
+                  </Col>
                 </Row>
-              </div>
+              </Col>
             </Row>
           </Container>
         </div>
 
         {/* Main Form */}
-        <Container fluid className="py-4">
+        <Container fluid className="py-2">
           <Row>
             {/* Left Column */}
-            <Col md={7}>
+            <Col md={4}>
               <Form>
-                <Form.Group className="mb-3">
-                  <Form.Label>Bill Number</Form.Label>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Bill Number</Form.Label>
                   <Form.Control
                     type="text"
                     name="billNumber"
                     value={formData.billNumber}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Admission Number</Form.Label>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Admission Number</Form.Label>
                   <Form.Control
                     type="text"
                     name="admissionNumber"
                     value={formData.admissionNumber}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Student Name</Form.Label>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Student Name</Form.Label>
                   <Form.Select
                     name="studentName"
                     value={formData.studentName}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   >
                     <option value="">Select Student</option>
@@ -132,108 +137,122 @@ const NewBusBill = () => {
                 </Form.Group>
 
                 <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Standard</Form.Label>
+                  <Col xs={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="mb-1">Standard</Form.Label>
                       <Form.Select
                         name="standard"
                         value={formData.standard}
                         onChange={handleChange}
+                        className="form-control-sm"
                         style={{ border: "1px solid #0B3D7B" }}
                       >
-                        <option value="">Select Standard</option>
+                        <option value="">Select</option>
                       </Form.Select>
                     </Form.Group>
                   </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Section</Form.Label>
+                  <Col xs={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="mb-1">Section</Form.Label>
                       <Form.Select
                         name="section"
                         value={formData.section}
                         onChange={handleChange}
+                        className="form-control-sm"
                         style={{ border: "1px solid #0B3D7B" }}
                       >
-                        <option value="">Select Section</option>
+                        <option value="">Select</option>
                       </Form.Select>
                     </Form.Group>
                   </Col>
                 </Row>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Father's Name</Form.Label>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Father's Name</Form.Label>
                   <Form.Control
                     type="text"
                     name="fatherName"
                     value={formData.fatherName}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   />
                 </Form.Group>
+              </Form>
+            </Col>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Place Name</Form.Label>
+            {/* Middle Column */}
+            <Col md={4}>
+              <Form>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Place Name</Form.Label>
                   <Form.Control
                     type="text"
                     name="placeName"
                     value={formData.placeName}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Bus Route Number</Form.Label>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Bus Route Number</Form.Label>
                   <Form.Control
                     type="text"
                     name="busRouteNumber"
                     value={formData.busRouteNumber}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Month / Term</Form.Label>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Month / Term</Form.Label>
                   <Form.Select
                     name="monthTerm"
                     value={formData.monthTerm}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   >
-                    <option value="">Select Month/Term</option>
+                    <option value="">Select</option>
                   </Form.Select>
                 </Form.Group>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Total Balance Amount</Form.Label>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Total Balance Amount</Form.Label>
                   <Form.Control
                     type="text"
                     name="totalBalanceAmount"
                     value={formData.totalBalanceAmount}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Fee Amount</Form.Label>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Fee Amount</Form.Label>
                   <Form.Control
                     type="text"
                     name="feeAmount"
                     value={formData.feeAmount}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Balance Amount</Form.Label>
+                <Form.Group className="mb-2">
+                  <Form.Label className="mb-1">Balance Amount</Form.Label>
                   <Form.Control
                     type="text"
                     name="balanceAmount"
                     value={formData.balanceAmount}
                     onChange={handleChange}
+                    className="form-control-sm"
                     style={{ border: "1px solid #0B3D7B" }}
                   />
                 </Form.Group>
@@ -241,46 +260,49 @@ const NewBusBill = () => {
             </Col>
 
             {/* Right Column */}
-            <Col md={5}>
-              <Row className="mb-3">
+            <Col md={4}>
+              <Row className="mb-2">
                 <Col>
                   <Form.Group>
-                    <Form.Label>Enter concess %</Form.Label>
+                    <Form.Label className="mb-1">Enter concess %</Form.Label>
                     <Form.Control
                       type="text"
                       name="concessPercentage"
                       value={formData.concessPercentage}
                       onChange={handleChange}
+                      className="form-control-sm"
                       style={{ border: "1px solid #0B3D7B" }}
                     />
                   </Form.Group>
                 </Col>
               </Row>
 
-              <Row className="mb-3">
+              <Row className="mb-2">
                 <Col>
                   <Form.Group>
-                    <Form.Label>Concess Head</Form.Label>
+                    <Form.Label className="mb-1">Concess Head</Form.Label>
                     <Form.Control
                       type="text"
                       name="concessHead"
                       value={formData.concessHead}
                       onChange={handleChange}
+                      className="form-control-sm"
                       style={{ border: "1px solid #0B3D7B" }}
                     />
                   </Form.Group>
                 </Col>
               </Row>
 
-              <Row className="mb-3">
+              <Row className="mb-2">
                 <Col>
                   <Form.Group>
-                    <Form.Label>Enter Concess</Form.Label>
+                    <Form.Label className="mb-1">Enter Concess</Form.Label>
                     <Form.Control
                       type="text"
                       name="enterConcess"
                       value={formData.enterConcess}
                       onChange={handleChange}
+                      className="form-control-sm"
                       style={{ border: "1px solid #0B3D7B" }}
                     />
                   </Form.Group>
@@ -288,9 +310,9 @@ const NewBusBill = () => {
               </Row>
 
               {/* Payment Mode Section */}
-              <div className="payment-mode-section p-3 mb-3 custom-btn-clr">
-                <h5>Payment Mode</h5>
-                <div className="d-flex gap-4">
+              <div className="payment-mode-section p-2 mb-2 custom-btn-clr">
+                <h6 className="text-white mb-2">Payment Mode</h6>
+                <div className="d-flex gap-3 mb-2">
                   <Form.Check
                     type="radio"
                     label="Cheque"
@@ -320,38 +342,44 @@ const NewBusBill = () => {
                   />
                 </div>
 
-                <Form.Group className="mt-3">
-                  <Form.Label className="text-light">Cheque / D.D.Number</Form.Label>
-                  <Form.Control type="text" name="chequeNumber" value={formData.chequeNumber} onChange={handleChange} />
+                <Form.Group className="mb-2">
+                  <Form.Label className="text-light mb-1">Cheque / D.D.Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="chequeNumber"
+                    value={formData.chequeNumber}
+                    onChange={handleChange}
+                    className="form-control-sm"
+                  />
                 </Form.Group>
 
                 {/* Concession Box */}
-                <div className="concession-box mt-3 p-3 bg-white text-dark">
-                  <h6>Concession</h6>
-                  <Row>
-                    <Col>
+                <div className="concession-box p-2 bg-white text-dark">
+                  <h6 className="mb-2">Concession</h6>
+                  <Row className="mb-2">
+                    <Col xs={6}>
                       <Form.Group>
-                        <Form.Label>Enter Concess %</Form.Label>
+                        <Form.Label className="mb-1">Enter Concess %</Form.Label>
                         <Form.Control type="text" size="sm" />
                       </Form.Group>
                     </Col>
-                    <Col>
+                    <Col xs={6}>
                       <Form.Group>
-                        <Form.Label>Paid:</Form.Label>
+                        <Form.Label className="mb-1">Paid:</Form.Label>
                         <Form.Control type="text" size="sm" />
                       </Form.Group>
                     </Col>
                   </Row>
-                  <Row className="mt-2">
-                    <Col>
+                  <Row>
+                    <Col xs={6}>
                       <Form.Group>
-                        <Form.Label>Enter Concess</Form.Label>
+                        <Form.Label className="mb-1">Enter Concess</Form.Label>
                         <Form.Control type="text" size="sm" />
                       </Form.Group>
                     </Col>
-                    <Col>
+                    <Col xs={6}>
                       <Form.Group>
-                        <Form.Label>Balance:</Form.Label>
+                        <Form.Label className="mb-1">Balance:</Form.Label>
                         <Form.Control type="text" size="sm" />
                       </Form.Group>
                     </Col>
@@ -362,10 +390,10 @@ const NewBusBill = () => {
           </Row>
 
           {/* Tables Section */}
-          <Row className="mt-4">
-            <Col md={7}>
+          <Row className="mt-2">
+            <Col md={8}>
               <div className="table-responsive">
-                <Table bordered style={{ border: "1px solid #0B3D7B" }}>
+                <Table bordered size="sm" style={{ border: "1px solid #0B3D7B" }}>
                   <thead>
                     <tr style={{ backgroundColor: "#0B3D7B", color: "white" }}>
                       <th>Month / Term</th>
@@ -388,9 +416,9 @@ const NewBusBill = () => {
                 </Table>
               </div>
             </Col>
-            <Col md={5}>
+            <Col md={4}>
               <div className="table-responsive">
-                <Table bordered style={{ border: "1px solid #0B3D7B" }}>
+                <Table bordered size="sm" style={{ border: "1px solid #0B3D7B" }}>
                   <tbody>
                     <tr>
                       <td>&nbsp;</td>
@@ -411,14 +439,14 @@ const NewBusBill = () => {
           </Row>
 
           {/* Buttons */}
-          <Row className="mt-4">
-            <div className="col-12 d-flex flex-wrap justify-content-center gap-3">
-              <Button className="btn btn-primary flex-grow-1 flex-md-grow-0 custom-btn-clr">Insert</Button>
-              <Button className="btn btn-primary flex-grow-1 flex-md-grow-0 custom-btn-clr">Bill Cancel</Button>
-              <Button className="btn btn-primary flex-grow-1 flex-md-grow-0 custom-btn-clr">Save</Button>
-              <Button className="btn btn-primary flex-grow-1 flex-md-grow-0 custom-btn-clr">View</Button>
+          <Row className="mt-3">
+            <div className="col-12 d-flex flex-wrap justify-content-center gap-2">
+              <Button className="btn btn-primary btn-sm flex-grow-1 flex-md-grow-0 custom-btn-clr">Insert</Button>
+              <Button className="btn btn-primary btn-sm flex-grow-1 flex-md-grow-0 custom-btn-clr">Bill Cancel</Button>
+              <Button className="btn btn-primary btn-sm flex-grow-1 flex-md-grow-0 custom-btn-clr">Save</Button>
+              <Button className="btn btn-primary btn-sm flex-grow-1 flex-md-grow-0 custom-btn-clr">View</Button>
               <Button
-                className="btn btn-secondary flex-grow-1 flex-md-grow-0"
+                className="btn btn-secondary btn-sm flex-grow-1 flex-md-grow-0"
                 style={{ backgroundColor: "#6C757D", border: "none" }}
               >
                 Cancel
@@ -438,7 +466,7 @@ const NewBusBill = () => {
         @media (max-width: 768px) {
           .btn {
             width: 100%;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
           }
         }
       `}</style>
