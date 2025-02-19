@@ -3,13 +3,12 @@
 import { useState, useEffect } from "react"
 import { Container, Form, Button, Table } from "react-bootstrap"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { collection, getDocs, deleteDoc, doc, query, limit, addDoc } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import { FaEdit, FaTrash } from "react-icons/fa"
-import StaffForm from "./components/staff-form"
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
@@ -37,44 +36,12 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
 }
 
 const StaffMaster = () => {
-  const [formData, setFormData] = useState({
-    staffCode: "",
-    name: "",
-    familyHeadName: "",
-    numberStreetName: "",
-    placePinCode: "",
-    district: "",
-    gender: "",
-    dateOfBirth: "",
-    community: "",
-    caste: "",
-    religion: "",
-    designation: "",
-    educationQualification: "",
-    salary: "",
-    pfNumber: "",
-    category: "",
-    maritalStatus: "",
-    majorSubject: "",
-    optionalSubject: "",
-    extraTalentDlNo: "",
-    experience: "",
-    classInCharge: "",
-    dateOfJoining: "",
-    emailBankAcId: "",
-    totalLeaveDays: "",
-    mobileNumber: "",
-    status: "",
-    dateOfRelieve: "",
-  })
-
   const [staffMembers, setStaffMembers] = useState([])
-  const [editingStaffId, setEditingStaffId] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [administrationId, setAdministrationId] = useState(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [staffToDelete, setStaffToDelete] = useState(null)
-  const [showAddEditForm, setShowAddEditForm] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -127,53 +94,6 @@ const StaffMaster = () => {
     }
   }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }))
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    try {
-      const staffRef = collection(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "Administration",
-        administrationId,
-        "StaffMaster",
-      )
-      if (editingStaffId) {
-        await updateDoc(doc(staffRef, editingStaffId), formData)
-        toast.success("Staff member updated successfully!", {
-          style: { background: "#0B3D7B", color: "white" },
-        })
-      } else {
-        await addDoc(staffRef, formData)
-        toast.success("Staff member added successfully!", {
-          style: { background: "#0B3D7B", color: "white" },
-        })
-      }
-      handleReset()
-      setShowAddEditForm(false)
-      fetchStaffMembers()
-    } catch (error) {
-      console.error("Error adding/updating staff member:", error)
-      toast.error("Failed to add/update staff member. Please try again.", {
-        style: { background: "#dc3545", color: "white" },
-      })
-    }
-  }
-
-  const handleEdit = (staff) => {
-    setFormData(staff)
-    setEditingStaffId(staff.id)
-    setShowAddEditForm(true)
-  }
-
   const handleDelete = async () => {
     try {
       const staffRef = doc(
@@ -200,45 +120,6 @@ const StaffMaster = () => {
     }
   }
 
-  const handleReset = () => {
-    setFormData({
-      staffCode: "",
-      name: "",
-      familyHeadName: "",
-      numberStreetName: "",
-      placePinCode: "",
-      district: "",
-      gender: "",
-      dateOfBirth: "",
-      community: "",
-      caste: "",
-      religion: "",
-      designation: "",
-      educationQualification: "",
-      salary: "",
-      pfNumber: "",
-      category: "",
-      maritalStatus: "",
-      majorSubject: "",
-      optionalSubject: "",
-      extraTalentDlNo: "",
-      experience: "",
-      classInCharge: "",
-      dateOfJoining: "",
-      emailBankAcId: "",
-      totalLeaveDays: "",
-      mobileNumber: "",
-      status: "",
-      dateOfRelieve: "",
-    })
-    setEditingStaffId(null)
-  }
-
-  const handleBack = () => {
-    setShowAddEditForm(false)
-    handleReset()
-  }
-
   const filteredStaffMembers = staffMembers.filter(
     (staff) =>
       staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -262,79 +143,66 @@ const StaffMaster = () => {
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
         >
           <h2>Staff Master</h2>
-          <Button onClick={() => setShowAddEditForm(true)} className="btn btn-light text-dark">
+          <Button onClick={() => navigate("/admin/staff-form")} className="btn btn-light text-dark">
             + Add Staff
           </Button>
         </div>
 
-        {showAddEditForm ? (
-          <div className="bg-white p-4 rounded-bottom shadow">
-            <h3>{editingStaffId ? "Edit Staff" : "Add New Staff"}</h3>
-            <StaffForm
-              formData={formData}
-              handleInputChange={handleInputChange}
-              handleSubmit={handleSubmit}
-              handleBack={handleBack}
-              editingStaffId={editingStaffId}
-            />
-          </div>
-        ) : (
-          <div className="bg-white p-4 rounded-bottom shadow">
-            <Form className="mb-3">
-              <Form.Group>
-                <Form.Control
-                  type="text"
-                  placeholder="Search by name or staff code"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </Form.Group>
-            </Form>
+        <div className="bg-white p-4 rounded-bottom shadow">
+          <Form className="mb-3">
+            <Form.Group>
+              <Form.Control
+                type="text"
+                placeholder="Search by name or staff code"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </Form.Group>
+          </Form>
 
-            <div className="table-responsive">
-              <Table bordered hover>
-                <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                  <tr>
-                    <th>Staff Code</th>
-                    <th>Name</th>
-                    <th>Designation</th>
-                    <th>Mobile Number</th>
-                    <th>Action</th>
+          <div className="table-responsive">
+            <Table bordered hover>
+              <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                <tr>
+                  <th>Staff Code</th>
+                  <th>Name</th>
+                  <th>Designation</th>
+                  <th>Mobile Number</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStaffMembers.map((staff) => (
+                  <tr key={staff.id}>
+                    <td>{staff.staffCode}</td>
+                    <td>{staff.name}</td>
+                    <td>{staff.designation}</td>
+                    <td>{staff.mobileNumber}</td>
+                    <td>
+                      <Button
+                        variant="link"
+                        className="action-button edit-button me-2"
+                        onClick={() => navigate(`/admin/staff-form/${staff.id}`)}
+                      >
+                        <FaEdit />
+                      </Button>
+                      <Button
+                        variant="link"
+                        className="action-button delete-button"
+                        onClick={() => {
+                          setStaffToDelete(staff)
+                          setIsDeleteModalOpen(true)
+                        }}
+                      >
+                        <FaTrash />
+                      </Button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredStaffMembers.map((staff) => (
-                    <tr key={staff.id}>
-                      <td>{staff.staffCode}</td>
-                      <td>{staff.name}</td>
-                      <td>{staff.designation}</td>
-                      <td>{staff.mobileNumber}</td>
-                      <td>
-                        <Button
-                          variant="link"
-                          className="action-button edit-button me-2"
-                          onClick={() => handleEdit(staff)}
-                        >
-                          <FaEdit />
-                        </Button>
-                        <Button
-                          variant="link"
-                          className="action-button delete-button"
-                          onClick={() => {
-                            setStaffToDelete(staff)
-                            setIsDeleteModalOpen(true)
-                          }}
-                        >
-                          <FaTrash />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
+                ))}
+              </tbody>
+            </Table>
           </div>
-        )}
+        </div>
       </Container>
 
       <DeleteConfirmationModal

@@ -18,6 +18,7 @@ import CourseCertificate from '../../pages/Administration Pages/CertificatePrepa
 import ExperienceCertificate from '../../pages/Administration Pages/CertificatePreparationPages/ExperienceCertificate';
 import SubjectHead from '../../pages/Administration Pages/MainPages/SubjectHead';
 import StaffMaster from '../../pages/Administration Pages/MainPages/StaffMaster';
+import StaffForm from '../../pages/Administration Pages/MainPages/StaffForm';
 import PasswordSetup from '../../pages/Administration Pages/MainPages/PasswordSetup';
 import SupplierSetup from '../../pages/Administration Pages/MainPages/SupplierSetup';
 import StudentsCategory from '../../pages/Administration Pages/MainPages/StudentsCategory';
@@ -44,6 +45,8 @@ function AdministrationRoute() {
       <Route path="subhead-setup" element={<ReceiptSubHeadSetup />} />
       <Route path="payment-setup" element={<PaymentSetup />} />
       <Route path="staff-master" element={<StaffMaster />} />
+      <Route path="staff-form" element={<StaffForm />} />
+      <Route path="/staff-form/:id" element={<StaffForm />} />
       <Route path="paymenthead-setup" element={<PaymenHeadSetup />} />
       <Route path="paymentsubhead-setup" element={<PaymentSubHeadSetup />} />
       <Route path="certificate" element={<CertificatePreparation />} />
