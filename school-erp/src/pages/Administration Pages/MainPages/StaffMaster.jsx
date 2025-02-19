@@ -1,457 +1,482 @@
-import React, { useState } from 'react';
-import { Container, Form, Button, Row, Col } from 'react-bootstrap';
-import MainContentPage from '../../../components/MainContent/MainContentPage';
-import { Link, useLocation } from "react-router-dom";
+"use client"
 
+import { useState, useEffect } from "react"
+import { Container, Form, Button, Table } from "react-bootstrap"
+import MainContentPage from "../../../components/MainContent/MainContentPage"
+import { Link } from "react-router-dom"
+import { db, auth } from "../../../Firebase/config"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import { FaEdit, FaTrash } from "react-icons/fa"
+import StaffForm from "./components/staff-form"
+
+
+// Delete Confirmation Modal Component
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Delete Staff Member</h2>
+        <div className="modal-body text-center">
+          <p>Are you sure you want to delete this staff member?</p>
+          <p className="fw-bold">{itemName}</p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button delete" onClick={onConfirm}>
+            Delete
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const StaffMaster = () => {
   const [formData, setFormData] = useState({
-    staffCode: '',
-    name: '',
-    familyHeadName: '',
-    numberStreetName: '',
-    placePinCode: '',
-    district: '',
-    gender: '',
-    dateOfBirth: '',
-    community: '',
-    caste: '',
-    religion: '',
-    designation: '',
-    educationQualification: '',
-    salary: '',
-    pfNumber: '',
-    category: '',
-    maritalStatus: '',
-    majorSubject: '',
-    optionalSubject: '',
-    extraTalentDlNo: '',
-    experience: '',
-    classInCharge: '',
-    dateOfJoining: '',
-    emailBankAcId: '',
-    totalLeaveDays: '',
-    mobileNumber: '',
-    status: '',
-    dateOfRelieve: ''
-  });
+    staffCode: "",
+    name: "",
+    familyHeadName: "",
+    numberStreetName: "",
+    placePinCode: "",
+    district: "",
+    gender: "",
+    dateOfBirth: "",
+    community: "",
+    caste: "",
+    religion: "",
+    designation: "",
+    educationQualification: "",
+    salary: "",
+    pfNumber: "",
+    category: "",
+    maritalStatus: "",
+    majorSubject: "",
+    optionalSubject: "",
+    extraTalentDlNo: "",
+    experience: "",
+    classInCharge: "",
+    dateOfJoining: "",
+    emailBankAcId: "",
+    totalLeaveDays: "",
+    mobileNumber: "",
+    status: "",
+    dateOfRelieve: "",
+  })
+
+  const [staffMembers, setStaffMembers] = useState([])
+  const [editingStaffId, setEditingStaffId] = useState(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [administrationId, setAdministrationId] = useState(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [staffToDelete, setStaffToDelete] = useState(null)
+  const [showAddEditForm, setShowAddEditForm] = useState(false)
+
+  useEffect(() => {
+    const fetchAdministrationId = async () => {
+      try {
+        const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
+        const q = query(adminRef, limit(1))
+        const querySnapshot = await getDocs(q)
+
+        if (querySnapshot.empty) {
+          const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
+          setAdministrationId(newAdminRef.id)
+        } else {
+          setAdministrationId(querySnapshot.docs[0].id)
+        }
+      } catch (error) {
+        console.error("Error fetching/creating Administration ID:", error)
+        toast.error("Failed to initialize. Please try again.", {
+          style: { background: "#dc3545", color: "white" },
+        })
+      }
+    }
+
+    fetchAdministrationId()
+  }, [])
+
+  useEffect(() => {
+    if (administrationId) {
+      fetchStaffMembers()
+    }
+  }, [administrationId])
+
+  const fetchStaffMembers = async () => {
+    try {
+      const staffRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "StaffMaster",
+      )
+      const querySnapshot = await getDocs(staffRef)
+      const staffData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setStaffMembers(staffData)
+    } catch (error) {
+      console.error("Error fetching staff members:", error)
+      toast.error("Failed to fetch staff members. Please try again.", {
+        style: { background: "#dc3545", color: "white" },
+      })
+    }
+  }
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prevState => ({
+    const { name, value } = e.target
+    setFormData((prevState) => ({
       ...prevState,
-      [name]: value
-    }));
-  };
+      [name]: value,
+    }))
+  }
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Form Data:', formData);
-    // Add your form submission logic here
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      const staffRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "StaffMaster",
+      )
+      if (editingStaffId) {
+        await updateDoc(doc(staffRef, editingStaffId), formData)
+        toast.success("Staff member updated successfully!", {
+          style: { background: "#0B3D7B", color: "white" },
+        })
+      } else {
+        await addDoc(staffRef, formData)
+        toast.success("Staff member added successfully!", {
+          style: { background: "#0B3D7B", color: "white" },
+        })
+      }
+      handleReset()
+      setShowAddEditForm(false)
+      fetchStaffMembers()
+    } catch (error) {
+      console.error("Error adding/updating staff member:", error)
+      toast.error("Failed to add/update staff member. Please try again.", {
+        style: { background: "#dc3545", color: "white" },
+      })
+    }
+  }
+
+  const handleEdit = (staff) => {
+    setFormData(staff)
+    setEditingStaffId(staff.id)
+    setShowAddEditForm(true)
+  }
+
+  const handleDelete = async () => {
+    try {
+      const staffRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "StaffMaster",
+        staffToDelete.id,
+      )
+      await deleteDoc(staffRef)
+      toast.success("Staff member deleted successfully!", {
+        style: { background: "#dc3545", color: "white" },
+      })
+      fetchStaffMembers()
+      setIsDeleteModalOpen(false)
+      setStaffToDelete(null)
+    } catch (error) {
+      console.error("Error deleting staff member:", error)
+      toast.error("Failed to delete staff member. Please try again.", {
+        style: { background: "#dc3545", color: "white" },
+      })
+    }
+  }
 
   const handleReset = () => {
     setFormData({
-      staffCode: '',
-      name: '',
-      familyHeadName: '',
-      numberStreetName: '',
-      placePinCode: '',
-      district: '',
-      gender: '',
-      dateOfBirth: '',
-      community: '',
-      caste: '',
-      religion: '',
-      designation: '',
-      educationQualification: '',
-      salary: '',
-      pfNumber: '',
-      category: '',
-      maritalStatus: '',
-      majorSubject: '',
-      optionalSubject: '',
-      extraTalentDlNo: '',
-      experience: '',
-      classInCharge: '',
-      dateOfJoining: '',
-      emailBankAcId: '',
-      totalLeaveDays: '',
-      mobileNumber: '',
-      status: '',
-      dateOfRelieve: ''
-    });
-  };
+      staffCode: "",
+      name: "",
+      familyHeadName: "",
+      numberStreetName: "",
+      placePinCode: "",
+      district: "",
+      gender: "",
+      dateOfBirth: "",
+      community: "",
+      caste: "",
+      religion: "",
+      designation: "",
+      educationQualification: "",
+      salary: "",
+      pfNumber: "",
+      category: "",
+      maritalStatus: "",
+      majorSubject: "",
+      optionalSubject: "",
+      extraTalentDlNo: "",
+      experience: "",
+      classInCharge: "",
+      dateOfJoining: "",
+      emailBankAcId: "",
+      totalLeaveDays: "",
+      mobileNumber: "",
+      status: "",
+      dateOfRelieve: "",
+    })
+    setEditingStaffId(null)
+  }
+
+  const filteredStaffMembers = staffMembers.filter(
+    (staff) =>
+      staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staff.staffCode.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   return (
-  <MainContentPage>
-      <div>
-      <div className="mb-4">
-                <nav className="custom-breadcrumb py-1 py-lg-3">
-                  <Link to="/home">Home</Link>
-                  <span className="separator mx-2">&gt;</span>
-                  <Link>Administration</Link>
-                  <span className="separator mx-2">&gt;</span>
-                  <span>Staff Master</span>
-                </nav>
-              </div>
-      <div style={{backgroundColor:"#0B3D7B"}} className=" text-white p-3 rounded-top">
-        <h2>New Staff Adding</h2>
-      </div>
-      
-      <div className="bg-white p-4 rounded-bottom shadow">
-        <Form onSubmit={handleSubmit}>
-          <Row>
-            {/* Left Column */}
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Staff Code</Form.Label>
+    <MainContentPage>
+      <Container fluid className="px-0">
+        <div className="mb-4">
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link to="/administration">Administration</Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>Staff Master</span>
+          </nav>
+        </div>
+        <div
+          style={{ backgroundColor: "#0B3D7B" }}
+          className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
+        >
+          <h2>Staff Master</h2>
+          <Button onClick={() => setShowAddEditForm(true)} className="btn btn-light text-dark">
+            + Add Staff
+          </Button>
+        </div>
+
+        {showAddEditForm ? (
+          <div className="bg-white p-4 rounded-bottom shadow">
+            <h3>{editingStaffId ? "Edit Staff" : "Add New Staff"}</h3>
+            <StaffForm
+              formData={formData}
+              handleInputChange={handleInputChange}
+              handleSubmit={handleSubmit}
+              handleReset={handleReset}
+              editingStaffId={editingStaffId}
+            />
+          </div>
+        ) : (
+          <div className="bg-white p-4 rounded-bottom shadow">
+            <Form className="mb-3">
+              <Form.Group>
                 <Form.Control
                   type="text"
-                  name="staffCode"
-                  value={formData.staffCode}
-                  onChange={handleInputChange}
-                  placeholder="Enter staff code"
+                  placeholder="Search by name or staff code"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </Form.Group>
+            </Form>
 
-              <Form.Group className="mb-3">
-                <Form.Label>Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  placeholder="Enter name"
-                />
-              </Form.Group>
+            <div className="table-responsive">
+              <Table bordered hover>
+                <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                  <tr>
+                    <th>Staff Code</th>
+                    <th>Name</th>
+                    <th>Designation</th>
+                    <th>Mobile Number</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStaffMembers.map((staff) => (
+                    <tr key={staff.id}>
+                      <td>{staff.staffCode}</td>
+                      <td>{staff.name}</td>
+                      <td>{staff.designation}</td>
+                      <td>{staff.mobileNumber}</td>
+                      <td>
+                        <Button
+                          variant="link"
+                          className="action-button edit-button me-2"
+                          onClick={() => handleEdit(staff)}
+                        >
+                          <FaEdit />
+                        </Button>
+                        <Button
+                          variant="link"
+                          className="action-button delete-button"
+                          onClick={() => {
+                            setStaffToDelete(staff)
+                            setIsDeleteModalOpen(true)
+                          }}
+                        >
+                          <FaTrash />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </Container>
 
-              <Form.Group className="mb-3">
-                <Form.Label>Family Head Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="familyHeadName"
-                  value={formData.familyHeadName}
-                  onChange={handleInputChange}
-                  placeholder="Enter family head name"
-                />
-              </Form.Group>
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false)
+          setStaffToDelete(null)
+        }}
+        onConfirm={handleDelete}
+        itemName={staffToDelete?.name}
+      />
 
-              <Form.Group className="mb-3">
-                <Form.Label>Number & Street Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="numberStreetName"
-                  value={formData.numberStreetName}
-                  onChange={handleInputChange}
-                  placeholder="Enter street address"
-                />
-              </Form.Group>
+      <ToastContainer />
 
-              <Form.Group className="mb-3">
-                <Form.Label>Place/Pin Code</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="placePinCode"
-                  value={formData.placePinCode}
-                  onChange={handleInputChange}
-                  placeholder="Enter place and pin code"
-                />
-              </Form.Group>
+      <style>
+        {`
+          .custom-breadcrumb {
+            padding: 0.5rem 1rem;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>District</Form.Label>
-                <Form.Select
-                  name="district"
-                  value={formData.district}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select District</option>
-                  {/* Add district options */}
-                </Form.Select>
-              </Form.Group>
+          .custom-breadcrumb a {
+            color: #0B3D7B;
+            text-decoration: none;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Gender</Form.Label>
-                <Form.Select
-                  name="gender"
-                  value={formData.gender}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </Form.Select>
-              </Form.Group>
+          .custom-breadcrumb .separator {
+            margin: 0 0.5rem;
+            color: #6c757d;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Date Of Birth</Form.Label>
-                <Form.Control
-                  type="date"
-                  name="dateOfBirth"
-                  value={formData.dateOfBirth}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
+          .custom-breadcrumb .current {
+            color: #212529;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Community</Form.Label>
-                <Form.Select
-                  name="community"
-                  value={formData.community}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Community</option>
-                  {/* Add community options */}
-                </Form.Select>
-              </Form.Group>
+          .action-button {
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            padding: 0;
+            color: white;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Caste</Form.Label>
-                <Form.Select
-                  name="caste"
-                  value={formData.caste}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Caste</option>
-                  {/* Add caste options */}
-                </Form.Select>
-              </Form.Group>
+          .edit-button {
+            background-color: #0B3D7B;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Religion</Form.Label>
-                <Form.Select
-                  name="religion"
-                  value={formData.religion}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Religion</option>
-                  {/* Add religion options */}
-                </Form.Select>
-              </Form.Group>
+          .edit-button:hover {
+            background-color: #092a54;
+            color: white;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Designation</Form.Label>
-                <Form.Select
-                  name="designation"
-                  value={formData.designation}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Designation</option>
-                  {/* Add designation options */}
-                </Form.Select>
-              </Form.Group>
-            </Col>
+          .delete-button {
+            background-color: #dc3545;
+          }
 
-            {/* Middle Column */}
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Education Qualification</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="educationQualification"
-                  value={formData.educationQualification}
-                  onChange={handleInputChange}
-                  placeholder="Enter qualification"
-                />
-              </Form.Group>
+          .delete-button:hover {
+            background-color: #bb2d3b;
+            color: white;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Salary</Form.Label>
-                <Form.Control
-                  type="number"
-                  name="salary"
-                  value={formData.salary}
-                  onChange={handleInputChange}
-                  placeholder="Enter salary"
-                />
-              </Form.Group>
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1100;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>P.F.Number</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="pfNumber"
-                  value={formData.pfNumber}
-                  onChange={handleInputChange}
-                  placeholder="Enter PF number"
-                />
-              </Form.Group>
+          .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Category</Form.Label>
-                <Form.Select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Category</option>
-                  {/* Add category options */}
-                </Form.Select>
-              </Form.Group>
+          .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+            text-align: center;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Marital Status</Form.Label>
-                <Form.Select
-                  name="maritalStatus"
-                  value={formData.maritalStatus}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Marital Status</option>
-                  <option value="single">Single</option>
-                  <option value="married">Married</option>
-                  <option value="divorced">Divorced</option>
-                  <option value="widowed">Widowed</option>
-                </Form.Select>
-              </Form.Group>
+          .modal-body {
+            margin-bottom: 1.5rem;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Major Subject</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="majorSubject"
-                  value={formData.majorSubject}
-                  onChange={handleInputChange}
-                  placeholder="Enter major subject"
-                />
-              </Form.Group>
+          .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Optional Subject</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="optionalSubject"
-                  value={formData.optionalSubject}
-                  onChange={handleInputChange}
-                  placeholder="Enter optional subject"
-                />
-              </Form.Group>
+          .modal-button {
+            padding: 0.5rem 2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Extra Talent/Dl.No</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="extraTalentDlNo"
-                  value={formData.extraTalentDlNo}
-                  onChange={handleInputChange}
-                  placeholder="Enter extra talent/DL number"
-                />
-              </Form.Group>
+          .modal-button.delete {
+            background-color: #dc3545;
+            color: white;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Experience</Form.Label>
-                <Form.Select
-                  name="experience"
-                  value={formData.experience}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Experience</option>
-                  {/* Add experience options */}
-                </Form.Select>
-              </Form.Group>
+          .modal-button.cancel {
+            background-color: #6c757d;
+            color: white;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Class IN charge</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="classInCharge"
-                  value={formData.classInCharge}
-                  onChange={handleInputChange}
-                  placeholder="Enter class in charge"
-                />
-              </Form.Group>
+          /* Toastify custom styles */
+          .Toastify__toast-container {
+            z-index: 9999;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Date Of Joining</Form.Label>
-                <Form.Control
-                  type="date"
-                  name="dateOfJoining"
-                  value={formData.dateOfJoining}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-            </Col>
+          .Toastify__toast {
+            background-color: #0B3D7B;
+            color: white;
+          }
 
-            {/* Right Column */}
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Email/Bank A/C ID</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="emailBankAcId"
-                  value={formData.emailBankAcId}
-                  onChange={handleInputChange}
-                  placeholder="Enter email/bank account ID"
-                />
-              </Form.Group>
+          .Toastify__toast--success {
+            background-color: #0B3D7B;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Total Leave Days</Form.Label>
-                <Form.Control
-                  type="number"
-                  name="totalLeaveDays"
-                  value={formData.totalLeaveDays}
-                  onChange={handleInputChange}
-                  placeholder="Enter total leave days"
-                />
-              </Form.Group>
+          .Toastify__toast--error {
+            background-color: #dc3545;
+          }
 
-              <Form.Group className="mb-3">
-                <Form.Label>Mobile Number</Form.Label>
-                <Form.Control
-                  type="tel"
-                  name="mobileNumber"
-                  value={formData.mobileNumber}
-                  onChange={handleInputChange}
-                  placeholder="Enter mobile number"
-                />
-              </Form.Group>
+          .Toastify__progress-bar {
+            background-color: rgba(255, 255, 255, 0.7);
+          }
+        `}
+      </style>
+    </MainContentPage>
+  )
+}
 
-              <Form.Group className="mb-3">
-                <Form.Label>Status</Form.Label>
-                <Form.Select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </Form.Select>
-              </Form.Group>
+export default StaffMaster
 
-              <Form.Group className="mb-3">
-                <Form.Label>Date Of Relieve</Form.Label>
-                <Form.Control
-                  type="date"
-                  name="dateOfRelieve"
-                  value={formData.dateOfRelieve}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-
-          {/* Form Buttons */}
-          <Row className="mt-4">
-            <Col className="d-flex justify-content-center gap-3">
-              <Button type="submit" variant="primary">
-                Save
-              </Button>
-              <Button type="button" variant="danger" onClick={handleReset}>
-                Reset
-              </Button>
-              <Button type="button" variant="secondary">
-                Cancel
-              </Button>
-            </Col>
-          </Row>
-        </Form>
-      </div>
-    </div>
-  </MainContentPage>
-  );
-};
-
-export default StaffMaster;
