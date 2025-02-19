@@ -10,6 +10,7 @@ import PeriodBusCollection from '../../pages/Transport Pages/PeriodBusCollection
 import BusBalanceReport from '../../pages/Transport Pages/BusBalanceReport';
 import PlacewiseReport from '../../pages/Transport Pages/Placewisereport';
 import BusVanFeeHeadSetup from '../../pages/Transport Pages/BusVanFee';
+import DriverConductorRouteSetup from '../../pages/Transport Pages/DriverConductorRouteSetup';
 
 function TransportRoute() {
   return (
@@ -22,6 +23,7 @@ function TransportRoute() {
       <Route path="period-bus-collection" element={< PeriodBusCollection/>} />    
       <Route path="bus-balance-report" element={< BusBalanceReport/>} />    
       <Route path="place-wise-report" element={< PlacewiseReport/>} />    
+      <Route path="driver-conductor-setup" element={< DriverConductorRouteSetup/>} />    
     </Routes>
   );
 }
