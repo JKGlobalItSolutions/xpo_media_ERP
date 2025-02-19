@@ -53,6 +53,7 @@ const StaffForm = () => {
   const [nationalities, setNationalities] = useState([])
   const [staffDesignations, setStaffDesignations] = useState([])
   const [staffCategories, setStaffCategories] = useState([])
+  const [courses, setCourses] = useState([])
   const [administrationId, setAdministrationId] = useState(null)
 
   useEffect(() => {
@@ -87,6 +88,7 @@ const StaffForm = () => {
       fetchItems("NationalitySetup")
       fetchItems("StaffDesignation")
       fetchItems("StaffCategory")
+      fetchCourses()
 
       if (id) {
         fetchStaffMember(id)
@@ -110,7 +112,7 @@ const StaffForm = () => {
         setFormData(staffDoc.data())
       } else {
         toast.error("Staff member not found")
-        navigate("/staff-master")
+        navigate("/admin/staff-master")
       }
     } catch (error) {
       console.error("Error fetching staff member:", error)
@@ -184,6 +186,17 @@ const StaffForm = () => {
     }
   }
 
+  const fetchCourses = async () => {
+    try {
+      const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
+      const querySnapshot = await getDocs(coursesRef)
+      const coursesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setCourses(coursesData)
+    } catch (error) {
+      console.error("Error fetching courses:", error)
+    }
+  }
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData((prevState) => ({
@@ -210,7 +223,7 @@ const StaffForm = () => {
         await addDoc(staffRef, formData)
         toast.success("Staff member added successfully!")
       }
-      navigate("/staff-master")
+      navigate("/admin/staff-master")
     } catch (error) {
       console.error("Error adding/updating staff member:", error)
       toast.error("Failed to add/update staff member. Please try again.")
@@ -218,7 +231,7 @@ const StaffForm = () => {
   }
 
   const handleBack = () => {
-    navigate("/staff-master")
+    navigate("/admin/staff-master")
   }
 
   return (
@@ -230,7 +243,7 @@ const StaffForm = () => {
             <span className="separator mx-2">&gt;</span>
             <Link to="/administration">Administration</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link to="/staff-master">Staff Master</Link>
+            <Link to="/admin/staff-master">Staff Master</Link>
             <span className="separator mx-2">&gt;</span>
             <span>{id ? "Edit Staff" : "Add Staff"}</span>
           </nav>
@@ -279,6 +292,7 @@ const StaffForm = () => {
                     value={formData.familyHeadName}
                     onChange={handleInputChange}
                     placeholder="Enter family head name"
+                    required
                   />
                 </Form.Group>
 
@@ -290,6 +304,7 @@ const StaffForm = () => {
                     value={formData.numberStreetName}
                     onChange={handleInputChange}
                     placeholder="Enter street address"
+                    required
                   />
                 </Form.Group>
 
@@ -301,12 +316,13 @@ const StaffForm = () => {
                     value={formData.placePinCode}
                     onChange={handleInputChange}
                     placeholder="Enter place and pin code"
+                    required
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>State</Form.Label>
-                  <Form.Select name="state" value={formData.state} onChange={handleInputChange}>
+                  <Form.Select name="state" value={formData.state} onChange={handleInputChange} required>
                     <option value="">Select State</option>
                     {states.map((state) => (
                       <option key={state.id} value={state.state}>
@@ -318,7 +334,7 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>District</Form.Label>
-                  <Form.Select name="district" value={formData.district} onChange={handleInputChange}>
+                  <Form.Select name="district" value={formData.district} onChange={handleInputChange} required>
                     <option value="">Select District</option>
                     {districts.map((district) => (
                       <option key={district.id} value={district.district}>
@@ -330,7 +346,7 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Gender</Form.Label>
-                  <Form.Select name="gender" value={formData.gender} onChange={handleInputChange}>
+                  <Form.Select name="gender" value={formData.gender} onChange={handleInputChange} required>
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -345,6 +361,7 @@ const StaffForm = () => {
                     name="dateOfBirth"
                     value={formData.dateOfBirth}
                     onChange={handleInputChange}
+                    required
                   />
                 </Form.Group>
               </Col>
@@ -353,7 +370,7 @@ const StaffForm = () => {
               <Col md={4} className="d-flex flex-column">
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Community</Form.Label>
-                  <Form.Select name="community" value={formData.community} onChange={handleInputChange}>
+                  <Form.Select name="community" value={formData.community} onChange={handleInputChange} required>
                     <option value="">Select Community</option>
                     {communities.map((community) => (
                       <option key={community.id} value={community.community}>
@@ -365,7 +382,7 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Caste</Form.Label>
-                  <Form.Select name="caste" value={formData.caste} onChange={handleInputChange}>
+                  <Form.Select name="caste" value={formData.caste} onChange={handleInputChange} required>
                     <option value="">Select Caste</option>
                     {castes.map((caste) => (
                       <option key={caste.id} value={caste.caste}>
@@ -377,7 +394,7 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Religion</Form.Label>
-                  <Form.Select name="religion" value={formData.religion} onChange={handleInputChange}>
+                  <Form.Select name="religion" value={formData.religion} onChange={handleInputChange} required>
                     <option value="">Select Religion</option>
                     {religions.map((religion) => (
                       <option key={religion.id} value={religion.religion}>
@@ -389,7 +406,7 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Nationality</Form.Label>
-                  <Form.Select name="nationality" value={formData.nationality} onChange={handleInputChange}>
+                  <Form.Select name="nationality" value={formData.nationality} onChange={handleInputChange} required>
                     <option value="">Select Nationality</option>
                     {nationalities.map((nationality) => (
                       <option key={nationality.id} value={nationality.nationality}>
@@ -419,6 +436,7 @@ const StaffForm = () => {
                     value={formData.educationQualification}
                     onChange={handleInputChange}
                     placeholder="Enter qualification"
+                    required
                   />
                 </Form.Group>
 
@@ -430,6 +448,7 @@ const StaffForm = () => {
                     value={formData.salary}
                     onChange={handleInputChange}
                     placeholder="Enter salary"
+                    required
                   />
                 </Form.Group>
 
@@ -441,12 +460,13 @@ const StaffForm = () => {
                     value={formData.pfNumber}
                     onChange={handleInputChange}
                     placeholder="Enter PF number"
+                    required
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Category</Form.Label>
-                  <Form.Select name="category" value={formData.category} onChange={handleInputChange}>
+                  <Form.Select name="category" value={formData.category} onChange={handleInputChange} required>
                     <option value="">Select Category</option>
                     {staffCategories.map((category) => (
                       <option key={category.id} value={category.staffcategory}>
@@ -461,7 +481,12 @@ const StaffForm = () => {
               <Col md={4} className="d-flex flex-column">
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Marital Status</Form.Label>
-                  <Form.Select name="maritalStatus" value={formData.maritalStatus} onChange={handleInputChange}>
+                  <Form.Select
+                    name="maritalStatus"
+                    value={formData.maritalStatus}
+                    onChange={handleInputChange}
+                    required
+                  >
                     <option value="">Select Marital Status</option>
                     <option value="single">Single</option>
                     <option value="married">Married</option>
@@ -478,6 +503,7 @@ const StaffForm = () => {
                     value={formData.majorSubject}
                     onChange={handleInputChange}
                     placeholder="Enter major subject"
+                    required
                   />
                 </Form.Group>
 
@@ -501,6 +527,7 @@ const StaffForm = () => {
                     value={formData.extraTalentDlNo}
                     onChange={handleInputChange}
                     placeholder="Enter extra talent/DL number"
+                    required
                   />
                 </Form.Group>
 
@@ -513,18 +540,20 @@ const StaffForm = () => {
                     value={formData.experience}
                     onChange={handleInputChange}
                     placeholder="Enter experience"
+                    required
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Class IN charge</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="classInCharge"
-                    value={formData.classInCharge}
-                    onChange={handleInputChange}
-                    placeholder="Enter class in charge"
-                  />
+                  <Form.Select name="classInCharge" value={formData.classInCharge} onChange={handleInputChange}>
+                    <option value="">Select Class</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.standard}>
+                        {course.standard}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
 
                 <Form.Group className="mb-3 flex-grow-1">
@@ -534,6 +563,7 @@ const StaffForm = () => {
                     name="dateOfJoining"
                     value={formData.dateOfJoining}
                     onChange={handleInputChange}
+                    required
                   />
                 </Form.Group>
 
@@ -545,6 +575,7 @@ const StaffForm = () => {
                     value={formData.emailBankAcId}
                     onChange={handleInputChange}
                     placeholder="Enter email/bank account ID"
+                    required
                   />
                 </Form.Group>
 
@@ -556,6 +587,7 @@ const StaffForm = () => {
                     value={formData.totalLeaveDays}
                     onChange={handleInputChange}
                     placeholder="Enter total leave days"
+                    required
                   />
                 </Form.Group>
               </Col>
@@ -571,13 +603,14 @@ const StaffForm = () => {
                     value={formData.mobileNumber}
                     onChange={handleInputChange}
                     placeholder="Enter mobile number"
+                    required
                   />
                 </Form.Group>
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Status</Form.Label>
-                  <Form.Select name="status" value={formData.status} onChange={handleInputChange}>
+                  <Form.Select name="status" value={formData.status} onChange={handleInputChange} required>
                     <option value="">Select Status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
