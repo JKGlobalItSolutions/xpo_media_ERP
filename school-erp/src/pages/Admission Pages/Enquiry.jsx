@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container } from "react-bootstrap"
@@ -55,7 +55,7 @@ const Enquiry = () => {
 
   const [photoPreview, setPhotoPreview] = useState(null)
   const fileInputRef = useRef(null)
-  const [admissionMasterId, setAdmissionMasterId] = useState(null)
+  const [administrationId, setAdministrationId] = useState(null)
   const [nationalities, setNationalities] = useState([])
   const [religions, setReligions] = useState([])
   const [communities, setCommunities] = useState([])
@@ -63,34 +63,36 @@ const Enquiry = () => {
   const [districts, setDistricts] = useState([])
   const [states, setStates] = useState([])
   const [sections, setSections] = useState([])
+  const [motherTongues, setMotherTongues] = useState([])
+  const [studentCategories, setStudentCategories] = useState([])
 
   useEffect(() => {
-    const fetchAdmissionMasterId = async () => {
+    const fetchAdministrationId = async () => {
       try {
-        const admissionMasterRef = collection(db, "Schools", auth.currentUser.uid, "AdmissionMaster")
-        const q = query(admissionMasterRef, limit(1))
+        const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
+        const q = query(adminRef, limit(1))
         const querySnapshot = await getDocs(q)
 
         if (querySnapshot.empty) {
-          const newAdmissionMasterRef = await addDoc(admissionMasterRef, { createdAt: new Date() })
-          setAdmissionMasterId(newAdmissionMasterRef.id)
+          const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
+          setAdministrationId(newAdminRef.id)
         } else {
-          setAdmissionMasterId(querySnapshot.docs[0].id)
+          setAdministrationId(querySnapshot.docs[0].id)
         }
       } catch (error) {
-        console.error("Error fetching/creating AdmissionMaster ID:", error)
+        console.error("Error fetching/creating Administration ID:", error)
         toast.error("Failed to initialize. Please try again.")
       }
     }
 
-    fetchAdmissionMasterId()
+    fetchAdministrationId()
   }, [])
 
   useEffect(() => {
-    if (admissionMasterId) {
+    if (administrationId) {
       fetchSetupData()
     }
-  }, [admissionMasterId])
+  }, [administrationId])
 
   const fetchSetupData = async () => {
     try {
@@ -99,15 +101,25 @@ const Enquiry = () => {
           db,
           "Schools",
           auth.currentUser.uid,
-          "AdmissionMaster",
-          admissionMasterId,
-          collectionName
+          "Administration",
+          administrationId,
+          collectionName,
         )
         const snapshot = await getDocs(dataRef)
         return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       }
 
-      const [nationalityData, religionData, communityData, casteData, districtData, stateData, sectionData] = await Promise.all([
+      const [
+        nationalityData,
+        religionData,
+        communityData,
+        casteData,
+        districtData,
+        stateData,
+        sectionData,
+        motherTongueData,
+        studentCategoryData,
+      ] = await Promise.all([
         fetchData("NationalitySetup"),
         fetchData("ReligionSetup"),
         fetchData("CommunitySetup"),
@@ -115,6 +127,8 @@ const Enquiry = () => {
         fetchData("DistrictSetup"),
         fetchData("StateSetup"),
         fetchData("SectionSetup"),
+        fetchData("MotherTongue"),
+        fetchData("StudentCategory"),
       ])
 
       setNationalities(nationalityData)
@@ -124,6 +138,20 @@ const Enquiry = () => {
       setDistricts(districtData)
       setStates(stateData)
       setSections(sectionData)
+      setMotherTongues(motherTongueData)
+      setStudentCategories(studentCategoryData)
+
+      console.log("Fetched setup data:", {
+        nationalities: nationalityData,
+        religions: religionData,
+        communities: communityData,
+        castes: casteData,
+        districts: districtData,
+        states: stateData,
+        sections: sectionData,
+        motherTongues: motherTongueData,
+        studentCategories: studentCategoryData,
+      })
     } catch (error) {
       console.error("Error fetching setup data:", error)
       toast.error("Failed to fetch setup data. Please try again.")
@@ -165,8 +193,8 @@ const Enquiry = () => {
         "Schools",
         auth.currentUser.uid,
         "AdmissionMaster",
-        admissionMasterId,
-        "EnquirySetup"
+        administrationId,
+        "EnquirySetup",
       )
       await addDoc(enquiryRef, formData)
       toast.success("Enquiry submitted successfully!")
@@ -401,7 +429,11 @@ const Enquiry = () => {
                       <Form.Label>Student Category</Form.Label>
                       <Form.Select name="studentCategory" value={formData.studentCategory} onChange={handleInputChange}>
                         <option value="">Select Category</option>
-                        {/* Add student category options */}
+                        {studentCategories.map((category) => (
+                          <option key={category.id} value={category.StudentCategoryName}>
+                            {category.StudentCategoryName}
+                          </option>
+                        ))}
                       </Form.Select>
                     </Form.Group>
 
@@ -450,12 +482,7 @@ const Enquiry = () => {
 
                     <Form.Group className="mb-3">
                       <Form.Label>EMIS</Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="emis"
-                        value={formData.emis}
-                        onChange={handleInputChange}
-                      />
+                      <Form.Control type="text" name="emis" value={formData.emis} onChange={handleInputChange} />
                     </Form.Group>
 
                     <Form.Group className="mb-3">
@@ -494,12 +521,14 @@ const Enquiry = () => {
 
                     <Form.Group className="mb-3">
                       <Form.Label>Mother Tongue</Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="motherTongue"
-                        value={formData.motherTongue}
-                        onChange={handleInputChange}
-                      />
+                      <Form.Select name="motherTongue" value={formData.motherTongue} onChange={handleInputChange}>
+                        <option value="">Select Mother Tongue</option>
+                        {motherTongues.map((mt) => (
+                          <option key={mt.id} value={mt.MotherTongueName}>
+                            {mt.MotherTongueName}
+                          </option>
+                        ))}
+                      </Form.Select>
                     </Form.Group>
 
                     <Form.Group className="mb-3">
@@ -540,12 +569,7 @@ const Enquiry = () => {
                   <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Bus Fee</Form.Label>
-                      <Form.Control
-                        type="number"
-                        name="busFee"
-                        value={formData.busFee}
-                        onChange={handleInputChange}
-                      />
+                      <Form.Control type="number" name="busFee" value={formData.busFee} onChange={handleInputChange} />
                     </Form.Group>
                   </Col>
                 </Row>
@@ -659,3 +683,4 @@ const Enquiry = () => {
 }
 
 export default Enquiry
+
