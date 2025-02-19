@@ -11,27 +11,27 @@ import { useAuthContext } from "../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
-// Add Course Modal Component
-const AddCourseModal = ({ isOpen, onClose, onConfirm }) => {
-  const [standard, setStandard] = useState("")
+// Add Section Modal Component
+const AddSectionModal = ({ isOpen, onClose, onConfirm }) => {
+  const [sectionName, setSectionName] = useState("")
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(standard)
-    setStandard("")
+    onConfirm(sectionName)
+    setSectionName("")
   }
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2 className="modal-title">Add Course</h2>
+        <h2 className="modal-title">Add Section</h2>
         <div className="modal-body">
           <Form.Control
             type="text"
-            placeholder="Enter Standard/Course Name"
-            value={standard}
-            onChange={(e) => setStandard(e.target.value)}
+            placeholder="Enter Section Name"
+            value={sectionName}
+            onChange={(e) => setSectionName(e.target.value)}
             className="custom-input"
           />
         </div>
@@ -48,32 +48,32 @@ const AddCourseModal = ({ isOpen, onClose, onConfirm }) => {
   )
 }
 
-// Edit Course Modal Component
-const EditCourseModal = ({ isOpen, onClose, onConfirm, course }) => {
-  const [standard, setStandard] = useState(course?.standard || "")
+// Edit Section Modal Component
+const EditSectionModal = ({ isOpen, onClose, onConfirm, section }) => {
+  const [sectionName, setSectionName] = useState(section?.name || "")
 
   useEffect(() => {
-    if (course) {
-      setStandard(course.standard)
+    if (section) {
+      setSectionName(section.name)
     }
-  }, [course])
+  }, [section])
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(course.id, standard)
+    onConfirm(section.id, sectionName)
   }
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2 className="modal-title">Edit Course</h2>
+        <h2 className="modal-title">Edit Section</h2>
         <div className="modal-body">
           <Form.Control
             type="text"
-            placeholder="Enter Standard/Course Name"
-            value={standard}
-            onChange={(e) => setStandard(e.target.value)}
+            placeholder="Enter Section Name"
+            value={sectionName}
+            onChange={(e) => setSectionName(e.target.value)}
             className="custom-input"
           />
         </div>
@@ -90,20 +90,20 @@ const EditCourseModal = ({ isOpen, onClose, onConfirm, course }) => {
   )
 }
 
-// Delete Course Modal Component
-const DeleteCourseModal = ({ isOpen, onClose, onConfirm, course }) => {
+// Delete Section Modal Component
+const DeleteSectionModal = ({ isOpen, onClose, onConfirm, section }) => {
   if (!isOpen) return null
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2 className="modal-title">Delete Course</h2>
+        <h2 className="modal-title">Delete Section</h2>
         <div className="modal-body text-center">
-          <p>Are you sure you want to delete this course?</p>
-          <p className="fw-bold">{course?.standard}</p>
+          <p>Are you sure you want to delete this section?</p>
+          <p className="fw-bold">{section?.name}</p>
         </div>
         <div className="modal-buttons">
-          <Button className="modal-button delete" onClick={() => onConfirm(course.id)}>
+          <Button className="modal-button delete" onClick={() => onConfirm(section.id)}>
             Delete
           </Button>
           <Button className="modal-button cancel" onClick={onClose}>
@@ -119,9 +119,9 @@ const SectionSetup = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [selectedCourse, setSelectedCourse] = useState(null)
+  const [selectedSection, setSelectedSection] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [courses, setCourses] = useState([])
+  const [sections, setSections] = useState([])
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const [administrationId, setAdministrationId] = useState(null)
@@ -134,7 +134,7 @@ const SectionSetup = () => {
         await fetchAdministrationId()
       } else {
         console.log("User is not authenticated")
-        toast.error("Please log in to view and manage courses.", {
+        toast.error("Please log in to view and manage sections.", {
           position: "top-right",
           autoClose: 1000,
           hideProgressBar: false,
@@ -151,7 +151,7 @@ const SectionSetup = () => {
 
   useEffect(() => {
     if (administrationId) {
-      fetchCourses()
+      fetchSections()
     }
   }, [administrationId])
 
@@ -183,19 +183,26 @@ const SectionSetup = () => {
     }
   }
 
-  const fetchCourses = async () => {
+  const fetchSections = async () => {
     if (!administrationId) return
 
     setError(null)
     try {
-      const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
-      const querySnapshot = await getDocs(coursesRef)
-      const coursesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log("Fetched courses:", coursesData)
-      setCourses(coursesData)
+      const sectionsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "SectionSetup",
+      )
+      const querySnapshot = await getDocs(sectionsRef)
+      const sectionsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log("Fetched sections:", sectionsData)
+      setSections(sectionsData)
     } catch (error) {
-      console.error("Error fetching courses:", error)
-      toast.error("Failed to fetch courses. Please try again.", {
+      console.error("Error fetching sections:", error)
+      toast.error("Failed to fetch sections. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -207,7 +214,7 @@ const SectionSetup = () => {
     }
   }
 
-  const handleAddCourse = async (standard) => {
+  const handleAddSection = async (name) => {
     if (!administrationId) {
       toast.error("Administration not initialized. Please try again.", {
         position: "top-right",
@@ -222,11 +229,18 @@ const SectionSetup = () => {
     }
 
     try {
-      const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
-      const docRef = await addDoc(coursesRef, { standard: standard })
-      console.log("Course added with ID:", docRef.id)
+      const sectionsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "SectionSetup",
+      )
+      const docRef = await addDoc(sectionsRef, { name: name })
+      console.log("Section added with ID:", docRef.id)
       setIsAddModalOpen(false)
-      toast.success("Course added successfully!", {
+      toast.success("Section added successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -236,10 +250,10 @@ const SectionSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
-      await fetchCourses()
+      await fetchSections()
     } catch (error) {
-      console.error("Error adding course:", error)
-      toast.error("Failed to add course. Please try again.", {
+      console.error("Error adding section:", error)
+      toast.error("Failed to add section. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -251,7 +265,7 @@ const SectionSetup = () => {
     }
   }
 
-  const handleEditCourse = async (courseId, newStandard) => {
+  const handleEditSection = async (sectionId, newName) => {
     if (!administrationId) {
       toast.error("Administration not initialized. Please try again.", {
         position: "top-right",
@@ -266,20 +280,20 @@ const SectionSetup = () => {
     }
 
     try {
-      const courseRef = doc(
+      const sectionRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "Courses",
-        courseId,
+        "SectionSetup",
+        sectionId,
       )
-      await updateDoc(courseRef, { standard: newStandard })
-      console.log("Course updated:", courseId)
+      await updateDoc(sectionRef, { name: newName })
+      console.log("Section updated:", sectionId)
       setIsEditModalOpen(false)
-      setSelectedCourse(null)
-      toast.success("Course updated successfully!", {
+      setSelectedSection(null)
+      toast.success("Section updated successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -289,10 +303,10 @@ const SectionSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
-      await fetchCourses()
+      await fetchSections()
     } catch (error) {
-      console.error("Error updating course:", error)
-      toast.error("Failed to update course. Please try again.", {
+      console.error("Error updating section:", error)
+      toast.error("Failed to update section. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -304,7 +318,7 @@ const SectionSetup = () => {
     }
   }
 
-  const handleDeleteCourse = async (courseId) => {
+  const handleDeleteSection = async (sectionId) => {
     if (!administrationId) {
       toast.error("Administration not initialized. Please try again.", {
         position: "top-right",
@@ -319,20 +333,20 @@ const SectionSetup = () => {
     }
 
     try {
-      const courseRef = doc(
+      const sectionRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "Courses",
-        courseId,
+        "SectionSetup",
+        sectionId,
       )
-      await deleteDoc(courseRef)
-      console.log("Course deleted:", courseId)
+      await deleteDoc(sectionRef)
+      console.log("Section deleted:", sectionId)
       setIsDeleteModalOpen(false)
-      setSelectedCourse(null)
-      toast.success("Course deleted successfully!", {
+      setSelectedSection(null)
+      toast.success("Section deleted successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -341,10 +355,10 @@ const SectionSetup = () => {
         draggable: true,
         progress: undefined,
       })
-      await fetchCourses()
+      await fetchSections()
     } catch (error) {
-      console.error("Error deleting course:", error)
-      toast.error("Failed to delete course. Please try again.", {
+      console.error("Error deleting section:", error)
+      toast.error("Failed to delete section. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -356,17 +370,17 @@ const SectionSetup = () => {
     }
   }
 
-  const openEditModal = (course) => {
-    setSelectedCourse(course)
+  const openEditModal = (section) => {
+    setSelectedSection(section)
     setIsEditModalOpen(true)
   }
 
-  const openDeleteModal = (course) => {
-    setSelectedCourse(course)
+  const openDeleteModal = (section) => {
+    setSelectedSection(section)
     setIsDeleteModalOpen(true)
   }
 
-  const filteredCourses = courses.filter((course) => course.standard.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredSections = sections.filter((section) => section.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
   return (
     <MainContentPage>
@@ -377,18 +391,18 @@ const SectionSetup = () => {
           <span className="separator">&gt;</span>
           <span>Administration</span>
           <span className="separator">&gt;</span>
-          <span className="current col-12">Standard/Course Setup</span>
+          <span className="current col-12">Section Setup</span>
         </nav>
         <Row>
           <Col xs={12}>
-            <div className="course-setup-container">
+            <div className="section-setup-container">
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Create Standard/Course Name Setup</h2>
-                  <h6 className="m-0 d-lg-none">Create Standard/Course Name Setup</h6>
+                  <h2 className="m-0 d-none d-lg-block">Section Setup</h2>
+                  <h6 className="m-0 d-lg-none">Section Setup</h6>
                   <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
-                    + Add Course
+                    + Add Section
                   </Button>
                 </div>
 
@@ -397,37 +411,37 @@ const SectionSetup = () => {
                   {/* Search Bar */}
                   <Form.Control
                     type="text"
-                    placeholder="Search by Course Name"
+                    placeholder="Search by Section Name"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="custom-search mb-3"
                   />
 
-                  {/* Course Table */}
+                  {/* Section Table */}
                   <div className="table-responsive">
                     <Table bordered hover>
                       <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
                         <tr>
-                          <th>Course Name</th>
+                          <th>Section Name</th>
                           <th>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredCourses.map((course) => (
-                          <tr key={course.id}>
-                            <td>{course.standard}</td>
+                        {filteredSections.map((section) => (
+                          <tr key={section.id}>
+                            <td>{section.name}</td>
                             <td>
                               <Button
                                 variant="link"
                                 className="action-button edit-button me-2"
-                                onClick={() => openEditModal(course)}
+                                onClick={() => openEditModal(section)}
                               >
                                 <FaEdit />
                               </Button>
                               <Button
                                 variant="link"
                                 className="action-button delete-button"
-                                onClick={() => openDeleteModal(course)}
+                                onClick={() => openDeleteModal(section)}
                               >
                                 <FaTrash />
                               </Button>
@@ -445,24 +459,24 @@ const SectionSetup = () => {
       </Container>
 
       {/* Modals */}
-      <AddCourseModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onConfirm={handleAddCourse} />
-      <EditCourseModal
+      <AddSectionModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onConfirm={handleAddSection} />
+      <EditSectionModal
         isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false)
-          setSelectedCourse(null)
+          setSelectedSection(null)
         }}
-        onConfirm={handleEditCourse}
-        course={selectedCourse}
+        onConfirm={handleEditSection}
+        section={selectedSection}
       />
-      <DeleteCourseModal
+      <DeleteSectionModal
         isOpen={isDeleteModalOpen}
         onClose={() => {
           setIsDeleteModalOpen(false)
-          setSelectedCourse(null)
+          setSelectedSection(null)
         }}
-        onConfirm={handleDeleteCourse}
-        course={selectedCourse}
+        onConfirm={handleDeleteSection}
+        section={selectedSection}
       />
 
       {/* Toastify Container */}
@@ -470,7 +484,7 @@ const SectionSetup = () => {
 
       <style>
         {`
-          .course-setup-container {
+          .section-setup-container {
             background-color: #fff;
           }
 

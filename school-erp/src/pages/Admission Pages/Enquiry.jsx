@@ -1,7 +1,13 @@
-import { useState, useRef } from "react"
+"use client"
+
+import React, { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container } from "react-bootstrap"
+import { db, auth } from "../../Firebase/config"
+import { collection, addDoc, getDocs, query, limit } from "firebase/firestore"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 
 const Enquiry = () => {
   const [formData, setFormData] = useState({
@@ -49,6 +55,80 @@ const Enquiry = () => {
 
   const [photoPreview, setPhotoPreview] = useState(null)
   const fileInputRef = useRef(null)
+  const [admissionMasterId, setAdmissionMasterId] = useState(null)
+  const [nationalities, setNationalities] = useState([])
+  const [religions, setReligions] = useState([])
+  const [communities, setCommunities] = useState([])
+  const [castes, setCastes] = useState([])
+  const [districts, setDistricts] = useState([])
+  const [states, setStates] = useState([])
+  const [sections, setSections] = useState([])
+
+  useEffect(() => {
+    const fetchAdmissionMasterId = async () => {
+      try {
+        const admissionMasterRef = collection(db, "Schools", auth.currentUser.uid, "AdmissionMaster")
+        const q = query(admissionMasterRef, limit(1))
+        const querySnapshot = await getDocs(q)
+
+        if (querySnapshot.empty) {
+          const newAdmissionMasterRef = await addDoc(admissionMasterRef, { createdAt: new Date() })
+          setAdmissionMasterId(newAdmissionMasterRef.id)
+        } else {
+          setAdmissionMasterId(querySnapshot.docs[0].id)
+        }
+      } catch (error) {
+        console.error("Error fetching/creating AdmissionMaster ID:", error)
+        toast.error("Failed to initialize. Please try again.")
+      }
+    }
+
+    fetchAdmissionMasterId()
+  }, [])
+
+  useEffect(() => {
+    if (admissionMasterId) {
+      fetchSetupData()
+    }
+  }, [admissionMasterId])
+
+  const fetchSetupData = async () => {
+    try {
+      const fetchData = async (collectionName) => {
+        const dataRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "AdmissionMaster",
+          admissionMasterId,
+          collectionName
+        )
+        const snapshot = await getDocs(dataRef)
+        return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      }
+
+      const [nationalityData, religionData, communityData, casteData, districtData, stateData, sectionData] = await Promise.all([
+        fetchData("NationalitySetup"),
+        fetchData("ReligionSetup"),
+        fetchData("CommunitySetup"),
+        fetchData("CasteSetup"),
+        fetchData("DistrictSetup"),
+        fetchData("StateSetup"),
+        fetchData("SectionSetup"),
+      ])
+
+      setNationalities(nationalityData)
+      setReligions(religionData)
+      setCommunities(communityData)
+      setCastes(casteData)
+      setDistricts(districtData)
+      setStates(stateData)
+      setSections(sectionData)
+    } catch (error) {
+      console.error("Error fetching setup data:", error)
+      toast.error("Failed to fetch setup data. Please try again.")
+    }
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -77,10 +157,24 @@ const Enquiry = () => {
     fileInputRef.current.click()
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log("Form Data:", formData)
-    // Add your form submission logic here
+    try {
+      const enquiryRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        admissionMasterId,
+        "EnquirySetup"
+      )
+      await addDoc(enquiryRef, formData)
+      toast.success("Enquiry submitted successfully!")
+      // Reset form or redirect as needed
+    } catch (error) {
+      console.error("Error submitting enquiry:", error)
+      toast.error("Failed to submit enquiry. Please try again.")
+    }
   }
 
   return (
@@ -89,11 +183,11 @@ const Enquiry = () => {
         <div className="admission-form">
           {/* Header and Breadcrumb */}
           <div className="mb-4">
-            <h2 className="mb-2">Enquirey</h2>
+            <h2 className="mb-2">Enquiry</h2>
             <nav className="custom-breadcrumb py-1 py-lg-3">
               <Link to="/home">Home</Link>
               <span className="separator mx-2">&gt;</span>
-              <span>Administration</span>
+              <span>Admission</span>
               <span className="separator mx-2">&gt;</span>
               <Link to="/admission/enquiry">Enquiry Form</Link>
             </nav>
@@ -157,7 +251,6 @@ const Enquiry = () => {
                       />
                     </div>
 
-                    {/* Left Column Fields */}
                     <Form.Group className="mb-3">
                       <Form.Label>Student name</Form.Label>
                       <Form.Control
@@ -215,6 +308,11 @@ const Enquiry = () => {
                       <Form.Label>District</Form.Label>
                       <Form.Select name="district" value={formData.district} onChange={handleInputChange}>
                         <option value="">Select District</option>
+                        {districts.map((district) => (
+                          <option key={district.id} value={district.district}>
+                            {district.district}
+                          </option>
+                        ))}
                       </Form.Select>
                     </Form.Group>
 
@@ -227,56 +325,31 @@ const Enquiry = () => {
                         onChange={handleInputChange}
                       />
                     </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>No.Boarding Point</Form.Label>
-                      <Form.Select name="boardingPoint" value={formData.boardingPoint} onChange={handleInputChange}>
-                        <option value="">Select Boarding Point</option>
-                      </Form.Select>
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>Bus Route Number</Form.Label>
-                      <Form.Select name="busRouteNumber" value={formData.busRouteNumber} onChange={handleInputChange}>
-                        <option value="">Select Route Number</option>
-                      </Form.Select>
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>Email Id</Form.Label>
-                      <Form.Select name="emailId" value={formData.emailId} onChange={handleInputChange}>
-                        <option value="">Select Email</option>
-                      </Form.Select>
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>Communication Address</Form.Label>
-                      <Form.Control
-                        as="textarea"
-                        rows={3}
-                        name="communicationAddress"
-                        value={formData.communicationAddress}
-                        onChange={handleInputChange}
-                      />
-                    </Form.Group>
                   </Col>
 
                   {/* Middle Column */}
                   <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Nationality</Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="nationality"
-                        value={formData.nationality}
-                        onChange={handleInputChange}
-                      />
+                      <Form.Select name="nationality" value={formData.nationality} onChange={handleInputChange}>
+                        <option value="">Select Nationality</option>
+                        {nationalities.map((nat) => (
+                          <option key={nat.id} value={nat.nationality}>
+                            {nat.nationality}
+                          </option>
+                        ))}
+                      </Form.Select>
                     </Form.Group>
 
                     <Form.Group className="mb-3">
                       <Form.Label>Religion</Form.Label>
                       <Form.Select name="religion" value={formData.religion} onChange={handleInputChange}>
                         <option value="">Select Religion</option>
+                        {religions.map((rel) => (
+                          <option key={rel.id} value={rel.religion}>
+                            {rel.religion}
+                          </option>
+                        ))}
                       </Form.Select>
                     </Form.Group>
 
@@ -284,6 +357,11 @@ const Enquiry = () => {
                       <Form.Label>State</Form.Label>
                       <Form.Select name="state" value={formData.state} onChange={handleInputChange}>
                         <option value="">Select State</option>
+                        {states.map((state) => (
+                          <option key={state.id} value={state.state}>
+                            {state.state}
+                          </option>
+                        ))}
                       </Form.Select>
                     </Form.Group>
 
@@ -291,6 +369,11 @@ const Enquiry = () => {
                       <Form.Label>Community</Form.Label>
                       <Form.Select name="community" value={formData.community} onChange={handleInputChange}>
                         <option value="">Select Community</option>
+                        {communities.map((comm) => (
+                          <option key={comm.id} value={comm.community}>
+                            {comm.community}
+                          </option>
+                        ))}
                       </Form.Select>
                     </Form.Group>
 
@@ -298,6 +381,11 @@ const Enquiry = () => {
                       <Form.Label>Caste</Form.Label>
                       <Form.Select name="caste" value={formData.caste} onChange={handleInputChange}>
                         <option value="">Select Caste</option>
+                        {castes.map((caste) => (
+                          <option key={caste.id} value={caste.caste}>
+                            {caste.caste}
+                          </option>
+                        ))}
                       </Form.Select>
                     </Form.Group>
 
@@ -305,6 +393,7 @@ const Enquiry = () => {
                       <Form.Label>Student Type</Form.Label>
                       <Form.Select name="studentType" value={formData.studentType} onChange={handleInputChange}>
                         <option value="">Select Student Type</option>
+                        {/* Add student type options */}
                       </Form.Select>
                     </Form.Group>
 
@@ -312,6 +401,7 @@ const Enquiry = () => {
                       <Form.Label>Student Category</Form.Label>
                       <Form.Select name="studentCategory" value={formData.studentCategory} onChange={handleInputChange}>
                         <option value="">Select Category</option>
+                        {/* Add student category options */}
                       </Form.Select>
                     </Form.Group>
 
@@ -319,6 +409,7 @@ const Enquiry = () => {
                       <Form.Label>Standard</Form.Label>
                       <Form.Select name="standard" value={formData.standard} onChange={handleInputChange}>
                         <option value="">Select Standard</option>
+                        {/* Add standard options */}
                       </Form.Select>
                     </Form.Group>
 
@@ -326,46 +417,11 @@ const Enquiry = () => {
                       <Form.Label>Section</Form.Label>
                       <Form.Select name="section" value={formData.section} onChange={handleInputChange}>
                         <option value="">Select Section</option>
-                      </Form.Select>
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>Gender</Form.Label>
-                      <Form.Select name="gender" value={formData.gender} onChange={handleInputChange}>
-                        <option value="">Select Gender</option>
-                      </Form.Select>
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>Date Of Birth</Form.Label>
-                      <Form.Select name="dateOfBirth" value={formData.dateOfBirth} onChange={handleInputChange}>
-                        <option value="">Select Date</option>
-                      </Form.Select>
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>EMIS</Form.Label>
-                      <Form.Control type="text" name="emis" value={formData.emis} onChange={handleInputChange} />
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>Lunch / Refresh</Form.Label>
-                      <Form.Select name="lunchRefresh" value={formData.lunchRefresh} onChange={handleInputChange}>
-                        <option value="">Select Option</option>
-                      </Form.Select>
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>Blood Group</Form.Label>
-                      <Form.Select name="bloodGroup" value={formData.bloodGroup} onChange={handleInputChange}>
-                        <option value="">Select Blood Group</option>
-                      </Form.Select>
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label>Date Of Admission</Form.Label>
-                      <Form.Select name="dateOfAdmission" value={formData.dateOfAdmission} onChange={handleInputChange}>
-                        <option value="">Select Date</option>
+                        {sections.map((section) => (
+                          <option key={section.id} value={section.name}>
+                            {section.name}
+                          </option>
+                        ))}
                       </Form.Select>
                     </Form.Group>
                   </Col>
@@ -373,10 +429,77 @@ const Enquiry = () => {
                   {/* Right Column */}
                   <Col md={4}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Mother Tongue</Form.Label>
-                      <Form.Select name="motherTongue" value={formData.motherTongue} onChange={handleInputChange}>
-                        <option value="">Select Mother Tongue</option>
+                      <Form.Label>Gender</Form.Label>
+                      <Form.Select name="gender" value={formData.gender} onChange={handleInputChange}>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
                       </Form.Select>
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>Date Of Birth</Form.Label>
+                      <Form.Control
+                        type="date"
+                        name="dateOfBirth"
+                        value={formData.dateOfBirth}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>EMIS</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="emis"
+                        value={formData.emis}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>Lunch / Refresh</Form.Label>
+                      <Form.Select name="lunchRefresh" value={formData.lunchRefresh} onChange={handleInputChange}>
+                        <option value="">Select Option</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Refresh">Refresh</option>
+                      </Form.Select>
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>Blood Group</Form.Label>
+                      <Form.Select name="bloodGroup" value={formData.bloodGroup} onChange={handleInputChange}>
+                        <option value="">Select Blood Group</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                      </Form.Select>
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>Date Of Admission</Form.Label>
+                      <Form.Control
+                        type="date"
+                        name="dateOfAdmission"
+                        value={formData.dateOfAdmission}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>Mother Tongue</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="motherTongue"
+                        value={formData.motherTongue}
+                        onChange={handleInputChange}
+                      />
                     </Form.Group>
 
                     <Form.Group className="mb-3">
@@ -388,7 +511,11 @@ const Enquiry = () => {
                         onChange={handleInputChange}
                       />
                     </Form.Group>
+                  </Col>
+                </Row>
 
+                <Row>
+                  <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Mother's Occupation</Form.Label>
                       <Form.Control
@@ -398,7 +525,8 @@ const Enquiry = () => {
                         onChange={handleInputChange}
                       />
                     </Form.Group>
-
+                  </Col>
+                  <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Exam Number</Form.Label>
                       <Form.Control
@@ -408,65 +536,89 @@ const Enquiry = () => {
                         onChange={handleInputChange}
                       />
                     </Form.Group>
-
+                  </Col>
+                  <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Bus Fee</Form.Label>
-                      <Form.Control type="text" name="busFee" value={formData.busFee} onChange={handleInputChange} />
+                      <Form.Control
+                        type="number"
+                        name="busFee"
+                        value={formData.busFee}
+                        onChange={handleInputChange}
+                      />
                     </Form.Group>
+                  </Col>
+                </Row>
 
-                    <div className="mb-3">
-                      <h6 className="mb-3">Previous Studied Details</h6>
+                <Row>
+                  <Col md={12}>
+                    <h5 className="mt-4 mb-3">Previous Studied Details</h5>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Studied Year</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="studiedYear"
+                        value={formData.studiedYear}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Class Last Studied</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="classLastStudied"
+                        value={formData.classLastStudied}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Class to be Admitted</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="classToBeAdmitted"
+                        value={formData.classToBeAdmitted}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Name of the School</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="nameOfSchool"
+                        value={formData.nameOfSchool}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
 
-                      <Form.Group className="mb-3">
-                        <Form.Label>Studied Year</Form.Label>
-                        <Form.Control
-                          type="text"
-                          name="studiedYear"
-                          value={formData.studiedYear}
-                          onChange={handleInputChange}
-                        />
-                      </Form.Group>
-
-                      <Form.Group className="mb-3">
-                        <Form.Label>Class Last Studied</Form.Label>
-                        <Form.Select
-                          name="classLastStudied"
-                          value={formData.classLastStudied}
-                          onChange={handleInputChange}
-                        >
-                          <option value="">Select Class</option>
-                        </Form.Select>
-                      </Form.Group>
-
-                      <Form.Group className="mb-3">
-                        <Form.Label>Class to be Admitted</Form.Label>
-                        <Form.Select
-                          name="classToBeAdmitted"
-                          value={formData.classToBeAdmitted}
-                          onChange={handleInputChange}
-                        >
-                          <option value="">Select Class</option>
-                        </Form.Select>
-                      </Form.Group>
-
-                      <Form.Group className="mb-3">
-                        <Form.Label>Name of the school</Form.Label>
-                        <Form.Control
-                          type="text"
-                          name="nameOfSchool"
-                          value={formData.nameOfSchool}
-                          onChange={handleInputChange}
-                        />
-                      </Form.Group>
-                    </div>
-
+                <Row>
+                  <Col md={12}>
                     <Form.Group className="mb-3">
                       <Form.Label>Remarks</Form.Label>
-                      <Form.Control type="text" name="remarks" value={formData.remarks} onChange={handleInputChange} />
+                      <Form.Control
+                        as="textarea"
+                        rows={3}
+                        name="remarks"
+                        value={formData.remarks}
+                        onChange={handleInputChange}
+                      />
                     </Form.Group>
+                  </Col>
+                </Row>
 
+                <Row>
+                  <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Student Identification Marks 1</Form.Label>
+                      <Form.Label>Identification Mark 1</Form.Label>
                       <Form.Control
                         type="text"
                         name="identificationMark1"
@@ -474,9 +626,10 @@ const Enquiry = () => {
                         onChange={handleInputChange}
                       />
                     </Form.Group>
-
+                  </Col>
+                  <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Student Identification Marks 2</Form.Label>
+                      <Form.Label>Identification Mark 2</Form.Label>
                       <Form.Control
                         type="text"
                         name="identificationMark2"
@@ -487,23 +640,22 @@ const Enquiry = () => {
                   </Col>
                 </Row>
 
-                {/* Form Actions */}
-                <Row className="mt-4">
-                  <Col className="d-flex justify-content-center gap-3">
-                    <Button type="submit" className="custom-btn-clr" >
-                      Save
-                    </Button>
-                    <Button variant="secondary">Cancel</Button>
-                  </Col>
-                </Row>
+                <div className="d-flex justify-content-end mt-3">
+                  <Button variant="secondary" size="lg" className="me-2">
+                    Cancel
+                  </Button>
+                  <Button variant="primary" size="lg" type="submit">
+                    Submit Enquiry
+                  </Button>
+                </div>
               </Form>
             </div>
           </div>
         </div>
       </Container>
+      <ToastContainer />
     </MainContentPage>
   )
 }
 
 export default Enquiry
-
