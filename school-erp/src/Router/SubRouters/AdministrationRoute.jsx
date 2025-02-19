@@ -23,6 +23,7 @@ import SupplierSetup from '../../pages/Administration Pages/MainPages/SupplierSe
 import StudentsCategory from '../../pages/Administration Pages/MainPages/StudentsCategory';
 import StateAndDistrictManagement from '../../pages/Administration Pages/MainPages/StateAndDistrictManagement';
 import MotherTongueSetup from '../../pages/Administration Pages/MainPages/MotherTongueSetup';
+import SectionSetup from '../../pages/Admission Pages/SectionSetup';
 
 
 
@@ -52,6 +53,8 @@ function AdministrationRoute() {
       <Route path="supplier-Setup" element={<SupplierSetup/>} />
       <Route path="State-And-District-Management" element={<StateAndDistrictManagement/>} />
       <Route path="Mother-Tongue-Setup" element={<MotherTongueSetup/>} />
+      <Route path="section-setup" element={<SectionSetup/>} />
+
     
     </Routes>
   );

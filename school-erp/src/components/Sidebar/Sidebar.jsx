@@ -163,6 +163,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       path: "/admin",
       subItems: [
         { id: "2-1", title: "• Standard/Course Setup", path: "/admin/standard-setup" },
+        { id: "2-1", title: "• Section Setup", path: "/admin/section-setup" },
         { id: "2-2", title: "• Fee Head Setup", path: "/admin/fee-setup" },
         { id: "2-3", title: "• Students Category", path: "/admin/Students-Category" },
         { id: "2-4", title: "• Tuition Fee Setup", path: "/admin/tuition-setup" },
