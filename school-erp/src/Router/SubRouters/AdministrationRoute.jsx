@@ -5,6 +5,7 @@ import FeeHeadSetup from '../../pages/Administration Pages/MainPages/FeeHeadSetu
 import TutionFeeSetup from '../../pages/Administration Pages/MainPages/TutionFeeSetup';
 import CommunityAndCasteSetup from '../../pages/Administration Pages/MainPages/CommunityAndCasteSetup';
 import ParentOccupationSetup from '../../pages/Administration Pages/MainPages/ParentOccupationSetup';
+import StaffDesignationandCategory from '../../pages/Administration Pages/MainPages/StaffDesignationandCategory';
 import ReceiptSetup from '../../pages/Administration Pages/MainPages/ReceiptSetup';
 import ReceiptHeadSetup from '../../pages/Administration Pages/ReceiptSetupPages/ReceiptHeadSetup';
 import ReceiptSubHeadSetup from '../../pages/Administration Pages/ReceiptSetupPages/ReceiptSubHeadSetup';
@@ -35,6 +36,7 @@ function AdministrationRoute() {
       <Route path="Students-Category" element={<StudentsCategory />} />
       <Route path="Subject-Head" element={<SubjectHead />} />
       <Route path="community-setup" element={<CommunityAndCasteSetup />} />
+      <Route path="Staff-Designation-and-Category" element={<StaffDesignationandCategory />} />
       <Route path="occupation-setup" element={<ParentOccupationSetup />} />
       <Route path="receipt-setup" element={<ReceiptSetup />} />
       <Route path="head-setup" element={<ReceiptHeadSetup />} />

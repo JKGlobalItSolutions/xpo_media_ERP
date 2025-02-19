@@ -11,7 +11,6 @@ import "react-toastify/dist/ReactToastify.css"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import StaffForm from "./components/staff-form"
 
-
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
   if (!isOpen) return null
@@ -235,6 +234,11 @@ const StaffMaster = () => {
     setEditingStaffId(null)
   }
 
+  const handleBack = () => {
+    setShowAddEditForm(false)
+    handleReset()
+  }
+
   const filteredStaffMembers = staffMembers.filter(
     (staff) =>
       staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -270,7 +274,7 @@ const StaffMaster = () => {
               formData={formData}
               handleInputChange={handleInputChange}
               handleSubmit={handleSubmit}
-              handleReset={handleReset}
+              handleBack={handleBack}
               editingStaffId={editingStaffId}
             />
           </div>
