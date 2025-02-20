@@ -122,7 +122,8 @@ const Enquiry = () => {
       (enquiry.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         enquiry.fatherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         enquiry.motherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        enquiry.phoneNumber.includes(searchTerm)),
+        enquiry.phoneNumber.includes(searchTerm) ||
+        enquiry.enquiryKey.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
   return (
@@ -172,6 +173,7 @@ const Enquiry = () => {
               <Table striped bordered hover responsive>
                 <thead>
                   <tr>
+                    <th>Enquiry Key</th>
                     <th>Student Name</th>
                     <th>Father's Name</th>
                     <th>Mother's Name</th>
@@ -183,6 +185,7 @@ const Enquiry = () => {
                 <tbody>
                   {filteredEnquiries.map((enquiry) => (
                     <tr key={enquiry.id}>
+                      <td>{enquiry.enquiryKey}</td>
                       <td>{enquiry.studentName}</td>
                       <td>{enquiry.fatherName}</td>
                       <td>{enquiry.motherName}</td>

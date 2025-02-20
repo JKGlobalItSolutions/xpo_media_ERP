@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { Form, Button, Row, Col, Container } from "react-bootstrap"
 import { db, auth, storage } from "../../Firebase/config"
-import { doc, getDoc, updateDoc, addDoc, collection, getDocs, query, limit } from "firebase/firestore"
+import { doc, getDoc, updateDoc, addDoc, collection, getDocs, query, limit, where } from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
@@ -19,6 +19,7 @@ const EnquiryForm = () => {
 
   const [administrationId, setAdministrationId] = useState(null)
   const [formData, setFormData] = useState({
+    enquiryKey: "",
     admissionNumber: "",
     studentPhoto: null,
     studentName: "",
@@ -103,6 +104,8 @@ const EnquiryForm = () => {
       fetchSetupData()
       if (id) {
         fetchEnquiryData()
+      } else {
+        generateEnquiryKey()
       }
     }
   }, [administrationId, id])
@@ -185,6 +188,39 @@ const EnquiryForm = () => {
     } catch (error) {
       console.error("Error fetching enquiry data:", error)
       toast.error("Failed to fetch enquiry data. Please try again.")
+    }
+  }
+
+  const generateEnquiryKey = async () => {
+    try {
+      const enquiriesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "EnquirySetup",
+      )
+      const q = query(enquiriesRef, where("enquiryKey", "!=", ""))
+      const querySnapshot = await getDocs(q)
+      const lastEnquiryKey = querySnapshot.docs
+        .map((doc) => doc.data().enquiryKey)
+        .sort((a, b) => {
+          const aNum = Number.parseInt(a.split("-")[1])
+          const bNum = Number.parseInt(b.split("-")[1])
+          return bNum - aNum
+        })[0]
+
+      let newEnquiryNumber = 1
+      if (lastEnquiryKey) {
+        newEnquiryNumber = Number.parseInt(lastEnquiryKey.split("-")[1]) + 1
+      }
+
+      const newEnquiryKey = `Enq-${newEnquiryNumber}`
+      setFormData((prevData) => ({ ...prevData, enquiryKey: newEnquiryKey }))
+    } catch (error) {
+      console.error("Error generating enquiry key:", error)
+      toast.error("Failed to generate enquiry key. Please try again.")
     }
   }
 
@@ -342,6 +378,11 @@ const EnquiryForm = () => {
             <Form onSubmit={handleSubmit}>
               <Row>
                 <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Enquiry Key</Form.Label>
+                    <Form.Control type="text" name="enquiryKey" value={formData.enquiryKey} readOnly disabled />
+                  </Form.Group>
+
                   <div className="text-center mb-4">
                     <h6>Student Photo</h6>
                     <div
