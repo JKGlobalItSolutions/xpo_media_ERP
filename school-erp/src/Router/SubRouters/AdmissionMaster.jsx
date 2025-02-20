@@ -11,6 +11,7 @@ import SectionReplace from '../../pages/Admission Pages/SectionReplace';
 import ArrearFeeUpdating from '../../pages/Admission Pages/ArrearFeeUpdating';
 import BillCancel from '../../pages/Admission Pages/BillCancel';
 import BarcodeDesign from '../../pages/Admission Pages/BarcodeDesign';
+import EnquiryForm from '../../pages/Admission Pages/EnquiryForm';
 
 
 function AdmissionMaster() {
@@ -27,6 +28,8 @@ function AdmissionMaster() {
       <Route path="Section-Replace" element={< SectionReplace/>} />
       <Route path="Arrear-FeeUpdating" element={< ArrearFeeUpdating/>} />
       <Route path="Bill-Cancel" element={< BillCancel/>} />
+      <Route path="/enquiry-form/:id" element={<EnquiryForm />} />
+      <Route path="/enquiry-form/" element={<EnquiryForm />} />
     </Routes>
   );
 }
