@@ -253,6 +253,9 @@ const StaffForm = () => {
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
         >
           <h2>{id ? "Edit Staff" : "Add Staff"}</h2>
+          <Button variant="light" size="sm" onClick={handleBack} className="me-2">
+            Back StaffMaster
+          </Button>
         </div>
 
         <div className="bg-white p-4 rounded-bottom shadow">
@@ -630,12 +633,9 @@ const StaffForm = () => {
               </Col>
             </Row>
 
-            <div className="d-flex justify-content-end mt-3">
-              <Button variant="secondary" size="lg" onClick={handleBack} className="me-2">
-                Back to StaffMaster
-              </Button>
-              <Button variant="primary" size="lg" type="submit">
-                {id ? "Update" : "Save"}
+            <div className="text-center mt-3">
+              <Button  size="lg" type="submit" className="custom-btn ">
+                {id ? "Update" : "Submit"}
               </Button>
             </div>
           </Form>
@@ -662,6 +662,11 @@ const StaffForm = () => {
 
           .custom-breadcrumb .current {
             color: #212529;
+          }
+
+          .custom-btn {
+            background: #0B3D7B;
+            color:rgb(255, 255, 255);
           }
 
           /* Toastify custom styles */
