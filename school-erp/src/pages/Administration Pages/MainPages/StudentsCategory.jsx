@@ -115,15 +115,46 @@ const DeleteStudentCategoryModal = ({ isOpen, onClose, onConfirm, category }) =>
   )
 }
 
+// Confirm Edit Modal Component
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Edit</h2>
+        <div className="modal-body">
+          <p>Are you sure you want to edit this student category? This may affect the structure of student data.</p>
+          <p>
+            <strong>Current Name:</strong> {currentName}
+          </p>
+          <p>
+            <strong>New Name:</strong> {newName}
+          </p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={onConfirm}>
+            Confirm Edit
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const StudentsCategory = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const [newCategoryName, setNewCategoryName] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [categories, setCategories] = useState([])
   const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
   const [administrationId, setAdministrationId] = useState(null)
   const { user } = useAuthContext()
 
@@ -228,6 +259,23 @@ const StudentsCategory = () => {
       return
     }
 
+    // Check for duplicate category name
+    const isDuplicate = categories.some(
+      (category) => category.StudentCategoryName.toLowerCase() === categoryName.toLowerCase(),
+    )
+    if (isDuplicate) {
+      toast.error("A category with this name already exists. Please choose a different name.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     try {
       const categoriesRef = collection(
         db,
@@ -279,6 +327,29 @@ const StudentsCategory = () => {
       return
     }
 
+    // Check for duplicate category name
+    const isDuplicate = categories.some(
+      (category) => category.id !== categoryId && category.StudentCategoryName.toLowerCase() === newName.toLowerCase(),
+    )
+    if (isDuplicate) {
+      toast.error("A category with this name already exists. Please choose a different name.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsEditModalOpen(false)
+    setIsConfirmEditModalOpen(true)
+    setNewCategoryName(newName)
+  }
+
+  const confirmEditCategory = async () => {
     try {
       const categoryRef = doc(
         db,
@@ -287,12 +358,13 @@ const StudentsCategory = () => {
         "Administration",
         administrationId,
         "StudentCategory",
-        categoryId,
+        selectedCategory.id,
       )
-      await updateDoc(categoryRef, { StudentCategoryName: newName })
-      console.log("Category updated:", categoryId)
-      setIsEditModalOpen(false)
+      await updateDoc(categoryRef, { StudentCategoryName: newCategoryName })
+      console.log("Category updated:", selectedCategory.id)
+      setIsConfirmEditModalOpen(false)
       setSelectedCategory(null)
+      setNewCategoryName("")
       toast.success("Category updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -483,6 +555,17 @@ const StudentsCategory = () => {
         }}
         onConfirm={handleDeleteCategory}
         category={selectedCategory}
+      />
+      <ConfirmEditModal
+        isOpen={isConfirmEditModalOpen}
+        onClose={() => {
+          setIsConfirmEditModalOpen(false)
+          setSelectedCategory(null)
+          setNewCategoryName("")
+        }}
+        onConfirm={confirmEditCategory}
+        currentName={selectedCategory?.StudentCategoryName}
+        newName={newCategoryName}
       />
 
       {/* Toastify Container */}

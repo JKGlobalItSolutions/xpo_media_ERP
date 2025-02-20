@@ -143,11 +143,49 @@ const DeleteFeeHeadModal = ({ isOpen, onClose, onConfirm, feeHeadData }) => {
   )
 }
 
+// Confirm Edit Modal Component
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentFeeHead, newFeeHead }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Edit</h2>
+        <div className="modal-body">
+          <p>Are you sure you want to edit this fee head? This may affect the structure of student fee data.</p>
+          <p>
+            <strong>Current Fee Head:</strong> {currentFeeHead.feeHead}
+          </p>
+          <p>
+            <strong>New Fee Head:</strong> {newFeeHead.feeHead}
+          </p>
+          <p>
+            <strong>Current Account Head:</strong> {currentFeeHead.accountHead}
+          </p>
+          <p>
+            <strong>New Account Head:</strong> {newFeeHead.accountHead}
+          </p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={onConfirm}>
+            Confirm Edit
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const FeeHeadSetup = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
   const [selectedFeeHead, setSelectedFeeHead] = useState(null)
+  const [newFeeHeadData, setNewFeeHeadData] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [feeHeads, setFeeHeads] = useState([])
   const [error, setError] = useState(null)
@@ -255,6 +293,25 @@ const FeeHeadSetup = () => {
       return
     }
 
+    // Check for duplicate fee head
+    const isDuplicate = feeHeads.some(
+      (feeHead) =>
+        feeHead.feeHead.toLowerCase() === newFeeHead.feeHead.toLowerCase() ||
+        feeHead.accountHead.toLowerCase() === newFeeHead.accountHead.toLowerCase(),
+    )
+    if (isDuplicate) {
+      toast.error("A fee head or account head with this name already exists. Please choose different names.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     try {
       const feeHeadsRef = collection(
         db,
@@ -306,6 +363,32 @@ const FeeHeadSetup = () => {
       return
     }
 
+    // Check for duplicate fee head
+    const isDuplicate = feeHeads.some(
+      (feeHead) =>
+        feeHead.id !== id &&
+        (feeHead.feeHead.toLowerCase() === updatedFeeHead.feeHead.toLowerCase() ||
+          feeHead.accountHead.toLowerCase() === updatedFeeHead.accountHead.toLowerCase()),
+    )
+    if (isDuplicate) {
+      toast.error("A fee head or account head with this name already exists. Please choose different names.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsEditModalOpen(false)
+    setIsConfirmEditModalOpen(true)
+    setNewFeeHeadData(updatedFeeHead)
+  }
+
+  const confirmEditFeeHead = async () => {
     try {
       const feeHeadRef = doc(
         db,
@@ -314,12 +397,13 @@ const FeeHeadSetup = () => {
         "Administration",
         administrationId,
         "FeeHeadSetup",
-        id,
+        selectedFeeHead.id,
       )
-      await updateDoc(feeHeadRef, updatedFeeHead)
-      console.log("Fee head updated:", id)
-      setIsEditModalOpen(false)
+      await updateDoc(feeHeadRef, newFeeHeadData)
+      console.log("Fee head updated:", selectedFeeHead.id)
+      setIsConfirmEditModalOpen(false)
       setSelectedFeeHead(null)
+      setNewFeeHeadData(null)
       toast.success("Fee head updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -510,6 +594,17 @@ const FeeHeadSetup = () => {
         }}
         onConfirm={handleDeleteFeeHead}
         feeHeadData={selectedFeeHead}
+      />
+      <ConfirmEditModal
+        isOpen={isConfirmEditModalOpen}
+        onClose={() => {
+          setIsConfirmEditModalOpen(false)
+          setSelectedFeeHead(null)
+          setNewFeeHeadData(null)
+        }}
+        onConfirm={confirmEditFeeHead}
+        currentFeeHead={selectedFeeHead}
+        newFeeHead={newFeeHeadData}
       />
 
       {/* Toastify Container */}

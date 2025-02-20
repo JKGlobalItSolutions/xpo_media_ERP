@@ -115,11 +115,43 @@ const DeleteMotherTongueModal = ({ isOpen, onClose, onConfirm, motherTongue }) =
   )
 }
 
+// Confirm Edit Modal Component
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Edit</h2>
+        <div className="modal-body">
+          <p>Are you sure you want to edit this mother tongue? This may affect the structure of student data.</p>
+          <p>
+            <strong>Current Name:</strong> {currentName}
+          </p>
+          <p>
+            <strong>New Name:</strong> {newName}
+          </p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={onConfirm}>
+            Confirm Edit
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const MotherTongueSetup = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
   const [selectedMotherTongue, setSelectedMotherTongue] = useState(null)
+  const [newMotherTongueName, setNewMotherTongueName] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [motherTongues, setMotherTongues] = useState([])
   const [error, setError] = useState(null)
@@ -228,6 +260,23 @@ const MotherTongueSetup = () => {
       return
     }
 
+    // Check for duplicate mother tongue name
+    const isDuplicate = motherTongues.some(
+      (motherTongue) => motherTongue.MotherTongueName.toLowerCase() === motherTongueName.toLowerCase(),
+    )
+    if (isDuplicate) {
+      toast.error("A mother tongue with this name already exists. Please choose a different name.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     try {
       const motherTonguesRef = collection(
         db,
@@ -279,6 +328,30 @@ const MotherTongueSetup = () => {
       return
     }
 
+    // Check for duplicate mother tongue name
+    const isDuplicate = motherTongues.some(
+      (motherTongue) =>
+        motherTongue.id !== motherTongueId && motherTongue.MotherTongueName.toLowerCase() === newName.toLowerCase(),
+    )
+    if (isDuplicate) {
+      toast.error("A mother tongue with this name already exists. Please choose a different name.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsEditModalOpen(false)
+    setIsConfirmEditModalOpen(true)
+    setNewMotherTongueName(newName)
+  }
+
+  const confirmEditMotherTongue = async () => {
     try {
       const motherTongueRef = doc(
         db,
@@ -287,12 +360,13 @@ const MotherTongueSetup = () => {
         "Administration",
         administrationId,
         "MotherTongue",
-        motherTongueId,
+        selectedMotherTongue.id,
       )
-      await updateDoc(motherTongueRef, { MotherTongueName: newName })
-      console.log("Mother tongue updated:", motherTongueId)
-      setIsEditModalOpen(false)
+      await updateDoc(motherTongueRef, { MotherTongueName: newMotherTongueName })
+      console.log("Mother tongue updated:", selectedMotherTongue.id)
+      setIsConfirmEditModalOpen(false)
       setSelectedMotherTongue(null)
+      setNewMotherTongueName("")
       toast.success("Mother tongue updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -483,6 +557,17 @@ const MotherTongueSetup = () => {
         }}
         onConfirm={handleDeleteMotherTongue}
         motherTongue={selectedMotherTongue}
+      />
+      <ConfirmEditModal
+        isOpen={isConfirmEditModalOpen}
+        onClose={() => {
+          setIsConfirmEditModalOpen(false)
+          setSelectedMotherTongue(null)
+          setNewMotherTongueName("")
+        }}
+        onConfirm={confirmEditMotherTongue}
+        currentName={selectedMotherTongue?.MotherTongueName}
+        newName={newMotherTongueName}
       />
 
       {/* Toastify Container */}

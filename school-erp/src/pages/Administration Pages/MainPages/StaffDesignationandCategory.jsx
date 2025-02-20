@@ -78,6 +78,36 @@ const DeleteModal = ({ isOpen, onClose, onConfirm, title, itemName }) => {
   )
 }
 
+// Confirm Edit Modal Component
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, category, currentName, newName }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Edit</h2>
+        <div className="modal-body">
+          <p>Are you sure you want to edit this {category.toLowerCase()} entry? This may affect related data.</p>
+          <p>
+            <strong>Current Name:</strong> {currentName}
+          </p>
+          <p>
+            <strong>New Name:</strong> {newName}
+          </p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={onConfirm}>
+            Confirm Edit
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const StaffDesignationandCategory = () => {
   const [administrationId, setAdministrationId] = useState(null)
   const { user } = useAuthContext()
@@ -92,6 +122,15 @@ const StaffDesignationandCategory = () => {
     type: "",
     action: "",
     data: null,
+  })
+
+  // Confirm Edit Modal state
+  const [confirmEditModalState, setConfirmEditModalState] = useState({
+    isOpen: false,
+    category: "",
+    currentName: "",
+    newName: "",
+    id: "",
   })
 
   useEffect(() => {
@@ -194,6 +233,21 @@ const StaffDesignationandCategory = () => {
       return
     }
 
+    // Check for duplicate entry
+    const isDuplicate = checkDuplicate(category, newItem[category.toLowerCase()])
+    if (isDuplicate) {
+      toast.error(`A ${category.toLowerCase()} with this name already exists. Please choose a different name.`, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     try {
       const itemsRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, category)
       const docRef = await addDoc(itemsRef, newItem)
@@ -238,11 +292,38 @@ const StaffDesignationandCategory = () => {
       return
     }
 
+    // Check for duplicate entry
+    const isDuplicate = checkDuplicate(category, updatedItem[category.toLowerCase()], id)
+    if (isDuplicate) {
+      toast.error(`A ${category.toLowerCase()} with this name already exists. Please choose a different name.`, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setModalState({ isOpen: false, type: "", action: "", data: null })
+    setConfirmEditModalState({
+      isOpen: true,
+      category,
+      currentName: modalState.data[category.toLowerCase()],
+      newName: updatedItem[category.toLowerCase()],
+      id,
+    })
+  }
+
+  const confirmEdit = async () => {
+    const { category, id, newName } = confirmEditModalState
     try {
       const itemRef = doc(db, "Schools", auth.currentUser.uid, "Administration", administrationId, category, id)
-      await updateDoc(itemRef, updatedItem)
+      await updateDoc(itemRef, { [category.toLowerCase()]: newName })
       console.log(`${category} updated:`, id)
-      setModalState({ isOpen: false, type: "", action: "", data: null })
+      setConfirmEditModalState({ isOpen: false, category: "", currentName: "", newName: "", id: "" })
       toast.success(`${category} entry updated successfully!`, {
         position: "top-right",
         autoClose: 1000,
@@ -331,6 +412,22 @@ const StaffDesignationandCategory = () => {
   const handleConfirmDelete = () => {
     const { type, data } = modalState
     handleDelete(type, data.id)
+  }
+
+  const checkDuplicate = (category, name, id = null) => {
+    let items
+    switch (category) {
+      case "StaffDesignation":
+        items = staffDesignation.items
+        break
+      case "StaffCategory":
+        items = staffCategory.items
+        break
+      default:
+        return false
+    }
+
+    return items.some((item) => item.id !== id && item[category.toLowerCase()].toLowerCase() === name.toLowerCase())
   }
 
   const renderCard = (category, items, searchTerm) => {
@@ -440,6 +537,14 @@ const StaffDesignationandCategory = () => {
           itemName={modalState.data[modalState.type.toLowerCase()] || modalState.data.name || "N/A"}
         />
       )}
+      <ConfirmEditModal
+        isOpen={confirmEditModalState.isOpen}
+        onClose={() => setConfirmEditModalState({ isOpen: false, category: "", currentName: "", newName: "", id: "" })}
+        onConfirm={confirmEdit}
+        category={confirmEditModalState.category}
+        currentName={confirmEditModalState.currentName}
+        newName={confirmEditModalState.newName}
+      />
 
       {/* Toastify Container */}
       <ToastContainer />
@@ -567,3 +672,4 @@ const StaffDesignationandCategory = () => {
 
 export default StaffDesignationandCategory
 
+  

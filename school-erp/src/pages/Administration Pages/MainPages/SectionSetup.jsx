@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import MainContentPage from "../../components/MainContent/MainContentPage"
+import MainContentPage from "../../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
-import { db, auth } from "../../Firebase/config"
+import { db, auth } from "../../../Firebase/config"
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
-import { useAuthContext } from "../../context/AuthContext"
+import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
@@ -115,11 +115,43 @@ const DeleteSectionModal = ({ isOpen, onClose, onConfirm, section }) => {
   )
 }
 
+// Confirm Edit Modal Component
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Edit</h2>
+        <div className="modal-body">
+          <p>Are you sure you want to edit this section? This may affect the structure of student data.</p>
+          <p>
+            <strong>Current Name:</strong> {currentName}
+          </p>
+          <p>
+            <strong>New Name:</strong> {newName}
+          </p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={onConfirm}>
+            Confirm Edit
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const SectionSetup = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
   const [selectedSection, setSelectedSection] = useState(null)
+  const [newSectionName, setNewSectionName] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [sections, setSections] = useState([])
   const [error, setError] = useState(null)
@@ -228,6 +260,21 @@ const SectionSetup = () => {
       return
     }
 
+    // Check for duplicate section name
+    const isDuplicate = sections.some((section) => section.name.toLowerCase() === name.toLowerCase())
+    if (isDuplicate) {
+      toast.error("A section with this name already exists. Please choose a different name.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     try {
       const sectionsRef = collection(
         db,
@@ -279,6 +326,29 @@ const SectionSetup = () => {
       return
     }
 
+    // Check for duplicate section name
+    const isDuplicate = sections.some(
+      (section) => section.id !== sectionId && section.name.toLowerCase() === newName.toLowerCase(),
+    )
+    if (isDuplicate) {
+      toast.error("A section with this name already exists. Please choose a different name.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsEditModalOpen(false)
+    setIsConfirmEditModalOpen(true)
+    setNewSectionName(newName)
+  }
+
+  const confirmEditSection = async () => {
     try {
       const sectionRef = doc(
         db,
@@ -287,12 +357,13 @@ const SectionSetup = () => {
         "Administration",
         administrationId,
         "SectionSetup",
-        sectionId,
+        selectedSection.id,
       )
-      await updateDoc(sectionRef, { name: newName })
-      console.log("Section updated:", sectionId)
-      setIsEditModalOpen(false)
+      await updateDoc(sectionRef, { name: newSectionName })
+      console.log("Section updated:", selectedSection.id)
+      setIsConfirmEditModalOpen(false)
       setSelectedSection(null)
+      setNewSectionName("")
       toast.success("Section updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -477,6 +548,17 @@ const SectionSetup = () => {
         }}
         onConfirm={handleDeleteSection}
         section={selectedSection}
+      />
+      <ConfirmEditModal
+        isOpen={isConfirmEditModalOpen}
+        onClose={() => {
+          setIsConfirmEditModalOpen(false)
+          setSelectedSection(null)
+          setNewSectionName("")
+        }}
+        onConfirm={confirmEditSection}
+        currentName={selectedSection?.name}
+        newName={newSectionName}
       />
 
       {/* Toastify Container */}

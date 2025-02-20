@@ -24,7 +24,7 @@ import SupplierSetup from '../../pages/Administration Pages/MainPages/SupplierSe
 import StudentsCategory from '../../pages/Administration Pages/MainPages/StudentsCategory';
 import StateAndDistrictManagement from '../../pages/Administration Pages/MainPages/StateAndDistrictManagement';
 import MotherTongueSetup from '../../pages/Administration Pages/MainPages/MotherTongueSetup';
-import SectionSetup from '../../pages/Admission Pages/SectionSetup';
+import SectionSetup from '../../pages/Administration Pages/MainPages/SectionSetup';
 
 
 
