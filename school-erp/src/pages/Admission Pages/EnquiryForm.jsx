@@ -1,13 +1,13 @@
-// EnquiryForm.js
+"use client"
 
-import React, { useState, useEffect, useRef } from "react";
-import { Form, Button, Row, Col } from "react-bootstrap";
-import { db, auth, storage } from "../../Firebase/config";
-import { collection, doc, getDoc, addDoc, updateDoc, getDocs } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { toast } from "react-toastify";
+import { useState, useEffect, useRef } from "react"
+import { Form, Button, Row, Col } from "react-bootstrap"
+import { db, auth, storage } from "../../Firebase/config"
+import { collection, addDoc, getDocs } from "firebase/firestore"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { toast } from "react-toastify"
 
-const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnquiries }) => {
+const EnquiryForm = ({ administrationId }) => {
   const [formData, setFormData] = useState({
     admissionNumber: "",
     studentPhoto: null,
@@ -49,11 +49,11 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
     remarks: "",
     identificationMark1: "",
     identificationMark2: "",
-  });
+  })
 
-  const [errors, setErrors] = useState({});
-  const [photoPreview, setPhotoPreview] = useState(null);
-  const fileInputRef = useRef(null);
+  const [errors, setErrors] = useState({})
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const fileInputRef = useRef(null)
   const [setupData, setSetupData] = useState({
     nationalities: [],
     religions: [],
@@ -65,14 +65,11 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
     motherTongues: [],
     studentCategories: [],
     courses: [],
-  });
+  })
 
   useEffect(() => {
-    fetchSetupData();
-    if (editingEnquiryId) {
-      fetchEnquiryData();
-    }
-  }, [editingEnquiryId]);
+    fetchSetupData()
+  }, [])
 
   const fetchSetupData = async () => {
     try {
@@ -83,11 +80,11 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
           auth.currentUser.uid,
           "Administration",
           administrationId,
-          collectionName
-        );
-        const snapshot = await getDocs(dataRef);
-        return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      };
+          collectionName,
+        )
+        const snapshot = await getDocs(dataRef)
+        return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      }
 
       const [
         nationalityData,
@@ -111,7 +108,7 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
         fetchData("MotherTongue"),
         fetchData("StudentCategory"),
         fetchData("Courses"),
-      ]);
+      ])
 
       setSetupData({
         nationalities: nationalityData,
@@ -124,67 +121,45 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
         motherTongues: motherTongueData,
         studentCategories: studentCategoryData,
         courses: courseData,
-      });
+      })
 
-      console.log("Fetched setup data successfully");
+      console.log("Fetched setup data successfully")
     } catch (error) {
-      console.error("Error fetching setup data:", error);
-      toast.error("Failed to fetch setup data. Please try again.");
+      console.error("Error fetching setup data:", error)
+      toast.error("Failed to fetch setup data. Please try again.")
     }
-  };
-
-  const fetchEnquiryData = async () => {
-    try {
-      const enquiryRef = doc(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "AdmissionMaster",
-        administrationId,
-        "EnquirySetup",
-        editingEnquiryId
-      );
-      const enquirySnap = await getDoc(enquiryRef);
-      if (enquirySnap.exists()) {
-        setFormData(enquirySnap.data());
-        setPhotoPreview(enquirySnap.data().studentPhoto);
-      }
-    } catch (error) {
-      console.error("Error fetching enquiry data:", error);
-      toast.error("Failed to fetch enquiry data. Please try again.");
-    }
-  };
+  }
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
-  };
+    }))
+    setErrors((prev) => ({ ...prev, [name]: "" }))
+  }
 
   const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files[0]
     if (file) {
       setFormData((prev) => ({
         ...prev,
         studentPhoto: file,
-      }));
-      const reader = new FileReader();
+      }))
+      const reader = new FileReader()
       reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+        setPhotoPreview(reader.result)
+      }
+      reader.readAsDataURL(file)
     }
-  };
+  }
 
   const handlePhotoClick = () => {
-    fileInputRef.current.click();
-  };
+    fileInputRef.current.click()
+  }
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors = {}
     const requiredFields = [
       "studentName",
       "fatherName",
@@ -219,39 +194,45 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
       "nameOfSchool",
       "identificationMark1",
       "identificationMark2",
-    ];
+    ]
 
     requiredFields.forEach((field) => {
       if (!formData[field]) {
-        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, " $1").trim()} is required`;
+        newErrors[field] = `${
+          field.charAt(0).toUpperCase() +
+          field
+            .slice(1)
+            .replace(/([A-Z])/g, " $1")
+            .trim()
+        } is required`
       }
-    });
+    })
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("Form submission started");
+    e.preventDefault()
+    console.log("Form submission started")
     if (validateForm()) {
       try {
-        console.log("Form is valid, attempting to submit");
+        console.log("Form is valid, attempting to submit")
 
-        let photoUrl = formData.studentPhoto;
-        if (formData.studentPhoto instanceof File) {
+        let photoUrl = null
+        if (formData.studentPhoto) {
           const storageRef = ref(
             storage,
-            `studentPhotos/${auth.currentUser.uid}/${Date.now()}_${formData.studentPhoto.name}`
-          );
-          await uploadBytes(storageRef, formData.studentPhoto);
-          photoUrl = await getDownloadURL(storageRef);
+            `studentPhotos/${auth.currentUser.uid}/${Date.now()}_${formData.studentPhoto.name}`,
+          )
+          await uploadBytes(storageRef, formData.studentPhoto)
+          photoUrl = await getDownloadURL(storageRef)
         }
 
         const enquiryData = {
           ...formData,
           studentPhoto: photoUrl,
-        };
+        }
 
         const enquiryRef = collection(
           db,
@@ -259,77 +240,22 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
           auth.currentUser.uid,
           "AdmissionMaster",
           administrationId,
-          "EnquirySetup"
-        );
-
-        if (editingEnquiryId) {
-          await updateDoc(doc(enquiryRef, editingEnquiryId), enquiryData);
-          toast.success("Enquiry updated successfully!");
-        } else {
-          await addDoc(enquiryRef, enquiryData);
-          toast.success("Enquiry submitted successfully!");
-        }
-
-        setShowForm(false);
-        fetchEnquiries();
-        resetForm();
+          "EnquirySetup",
+        )
+        const docRef = await addDoc(enquiryRef, enquiryData)
+        console.log("Document written with ID: ", docRef.id)
+        toast.success("Enquiry submitted successfully!")
+        // Reset form or redirect as needed
       } catch (error) {
-        console.error("Error submitting enquiry:", error);
-        toast.error(`Failed to submit enquiry: ${error.message}`);
+        console.error("Error submitting enquiry:", error)
+        toast.error(`Failed to submit enquiry: ${error.message}`)
       }
     } else {
-      console.log("Form validation failed");
-      const missingFields = Object.keys(errors).join(", ");
-      toast.error(`Please fill in all required fields. Missing: ${missingFields}`);
+      console.log("Form validation failed")
+      const missingFields = Object.keys(errors).join(", ")
+      toast.error(`Please fill in all required fields. Missing: ${missingFields}`)
     }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      admissionNumber: "",
-      studentPhoto: null,
-      studentName: "",
-      fatherName: "",
-      motherName: "",
-      streetVillage: "",
-      placePincode: "",
-      district: "",
-      phoneNumber: "",
-      boardingPoint: "",
-      busRouteNumber: "",
-      emailId: "",
-      communicationAddress: "",
-      nationality: "",
-      religion: "",
-      state: "",
-      community: "",
-      caste: "",
-      studentType: "",
-      studentCategory: "",
-      standard: "",
-      section: "",
-      gender: "",
-      dateOfBirth: "",
-      emis: "",
-      lunchRefresh: "",
-      bloodGroup: "",
-      dateOfAdmission: "",
-      motherTongue: "",
-      fatherOccupation: "",
-      motherOccupation: "",
-      examNumber: "",
-      busFee: "",
-      studiedYear: "",
-      classLastStudied: "",
-      classToBeAdmitted: "",
-      nameOfSchool: "",
-      remarks: "",
-      identificationMark1: "",
-      identificationMark2: "",
-    });
-    setPhotoPreview(null);
-    setErrors({});
-  };
+  }
 
   return (
     <div className="form-card mt-3">
@@ -337,7 +263,7 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
         <div className="d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center gap-2">
             <span>
-              <b>{editingEnquiryId ? "Edit Enquiry" : "Add New Enquiry"}</b>
+              <b>Enquiry Form</b>
             </span>
           </div>
         </div>
@@ -432,7 +358,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="streetVillage"
                   value={formData.streetVillage}
                   onChange={handleInputChange}
-                  placeholder="Enter street/village"
                   isInvalid={!!errors.streetVillage}
                 />
                 <Form.Control.Feedback type="invalid">{errors.streetVillage}</Form.Control.Feedback>
@@ -445,14 +370,11 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="placePincode"
                   value={formData.placePincode}
                   onChange={handleInputChange}
-                  placeholder="Enter place/pincode"
                   isInvalid={!!errors.placePincode}
                 />
                 <Form.Control.Feedback type="invalid">{errors.placePincode}</Form.Control.Feedback>
               </Form.Group>
-            </Col>
 
-            <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>District</Form.Label>
                 <Form.Select
@@ -478,55 +400,9 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
-                  placeholder="Enter phone number"
                   isInvalid={!!errors.phoneNumber}
                 />
                 <Form.Control.Feedback type="invalid">{errors.phoneNumber}</Form.Control.Feedback>
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Boarding Point</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="boardingPoint"
-                  value={formData.boardingPoint}
-                  onChange={handleInputChange}
-                  placeholder="Enter boarding point"
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Bus Route Number</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="busRouteNumber"
-                  value={formData.busRouteNumber}
-                  onChange={handleInputChange}
-                  placeholder="Enter bus route number"
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Email ID</Form.Label>
-                <Form.Control
-                  type="email"
-                  name="emailId"
-                  value={formData.emailId}
-                  onChange={handleInputChange}
-                  placeholder="Enter email ID"
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Communication Address</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={3}
-                  name="communicationAddress"
-                  value={formData.communicationAddress}
-                  onChange={handleInputChange}
-                  placeholder="Enter communication address"
-                />
               </Form.Group>
             </Col>
 
@@ -540,9 +416,9 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   isInvalid={!!errors.nationality}
                 >
                   <option value="">Select Nationality</option>
-                  {setupData.nationalities.map((nationality) => (
-                    <option key={nationality.id} value={nationality.nationality}>
-                      {nationality.nationality}
+                  {setupData.nationalities.map((nat) => (
+                    <option key={nat.id} value={nat.nationality}>
+                      {nat.nationality}
                     </option>
                   ))}
                 </Form.Select>
@@ -558,9 +434,9 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   isInvalid={!!errors.religion}
                 >
                   <option value="">Select Religion</option>
-                  {setupData.religions.map((religion) => (
-                    <option key={religion.id} value={religion.religion}>
-                      {religion.religion}
+                  {setupData.religions.map((rel) => (
+                    <option key={rel.id} value={rel.religion}>
+                      {rel.religion}
                     </option>
                   ))}
                 </Form.Select>
@@ -594,9 +470,9 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   isInvalid={!!errors.community}
                 >
                   <option value="">Select Community</option>
-                  {setupData.communities.map((community) => (
-                    <option key={community.id} value={community.community}>
-                      {community.community}
+                  {setupData.communities.map((comm) => (
+                    <option key={comm.id} value={comm.community}>
+                      {comm.community}
                     </option>
                   ))}
                 </Form.Select>
@@ -620,11 +496,7 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                 </Form.Select>
                 <Form.Control.Feedback type="invalid">{errors.caste}</Form.Control.Feedback>
               </Form.Group>
-            </Col>
-          </Row>
 
-          <Row>
-            <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>Student Type</Form.Label>
                 <Form.Select
@@ -648,7 +520,7 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   onChange={handleInputChange}
                   isInvalid={!!errors.studentCategory}
                 >
-                  <option value="">Select Student Category</option>
+                  <option value="">Select Category</option>
                   {setupData.studentCategories.map((category) => (
                     <option key={category.id} value={category.StudentCategoryName}>
                       {category.StudentCategoryName}
@@ -713,7 +585,7 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Date of Birth</Form.Label>
+                <Form.Label>Date Of Birth</Form.Label>
                 <Form.Control
                   type="date"
                   name="dateOfBirth"
@@ -731,14 +603,13 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="emis"
                   value={formData.emis}
                   onChange={handleInputChange}
-                  placeholder="Enter EMIS number"
                   isInvalid={!!errors.emis}
                 />
                 <Form.Control.Feedback type="invalid">{errors.emis}</Form.Control.Feedback>
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Lunch/Refresh</Form.Label>
+                <Form.Label>Lunch / Refresh</Form.Label>
                 <Form.Select
                   name="lunchRefresh"
                   value={formData.lunchRefresh}
@@ -751,9 +622,7 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                 </Form.Select>
                 <Form.Control.Feedback type="invalid">{errors.lunchRefresh}</Form.Control.Feedback>
               </Form.Group>
-            </Col>
 
-            <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>Blood Group</Form.Label>
                 <Form.Select
@@ -776,7 +645,7 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Date of Admission</Form.Label>
+                <Form.Label>Date Of Admission</Form.Label>
                 <Form.Control
                   type="date"
                   name="dateOfAdmission"
@@ -812,7 +681,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="fatherOccupation"
                   value={formData.fatherOccupation}
                   onChange={handleInputChange}
-                  placeholder="Enter father's occupation"
                   isInvalid={!!errors.fatherOccupation}
                 />
                 <Form.Control.Feedback type="invalid">{errors.fatherOccupation}</Form.Control.Feedback>
@@ -829,7 +697,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="motherOccupation"
                   value={formData.motherOccupation}
                   onChange={handleInputChange}
-                  placeholder="Enter mother's occupation"
                   isInvalid={!!errors.motherOccupation}
                 />
                 <Form.Control.Feedback type="invalid">{errors.motherOccupation}</Form.Control.Feedback>
@@ -843,7 +710,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="examNumber"
                   value={formData.examNumber}
                   onChange={handleInputChange}
-                  placeholder="Enter exam number"
                   isInvalid={!!errors.examNumber}
                 />
                 <Form.Control.Feedback type="invalid">{errors.examNumber}</Form.Control.Feedback>
@@ -857,7 +723,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="busFee"
                   value={formData.busFee}
                   onChange={handleInputChange}
-                  placeholder="Enter bus fee"
                   isInvalid={!!errors.busFee}
                 />
                 <Form.Control.Feedback type="invalid">{errors.busFee}</Form.Control.Feedback>
@@ -877,7 +742,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="studiedYear"
                   value={formData.studiedYear}
                   onChange={handleInputChange}
-                  placeholder="Enter studied year"
                   isInvalid={!!errors.studiedYear}
                 />
                 <Form.Control.Feedback type="invalid">{errors.studiedYear}</Form.Control.Feedback>
@@ -891,7 +755,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="classLastStudied"
                   value={formData.classLastStudied}
                   onChange={handleInputChange}
-                  placeholder="Enter class last studied"
                   isInvalid={!!errors.classLastStudied}
                 />
                 <Form.Control.Feedback type="invalid">{errors.classLastStudied}</Form.Control.Feedback>
@@ -905,7 +768,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="classToBeAdmitted"
                   value={formData.classToBeAdmitted}
                   onChange={handleInputChange}
-                  placeholder="Enter class to be admitted"
                   isInvalid={!!errors.classToBeAdmitted}
                 />
                 <Form.Control.Feedback type="invalid">{errors.classToBeAdmitted}</Form.Control.Feedback>
@@ -919,7 +781,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="nameOfSchool"
                   value={formData.nameOfSchool}
                   onChange={handleInputChange}
-                  placeholder="Enter name of the school"
                   isInvalid={!!errors.nameOfSchool}
                 />
                 <Form.Control.Feedback type="invalid">{errors.nameOfSchool}</Form.Control.Feedback>
@@ -937,7 +798,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="remarks"
                   value={formData.remarks}
                   onChange={handleInputChange}
-                  placeholder="Enter remarks"
                 />
               </Form.Group>
             </Col>
@@ -952,7 +812,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="identificationMark1"
                   value={formData.identificationMark1}
                   onChange={handleInputChange}
-                  placeholder="Enter identification mark 1"
                   isInvalid={!!errors.identificationMark1}
                 />
                 <Form.Control.Feedback type="invalid">{errors.identificationMark1}</Form.Control.Feedback>
@@ -966,7 +825,6 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
                   name="identificationMark2"
                   value={formData.identificationMark2}
                   onChange={handleInputChange}
-                  placeholder="Enter identification mark 2"
                   isInvalid={!!errors.identificationMark2}
                 />
                 <Form.Control.Feedback type="invalid">{errors.identificationMark2}</Form.Control.Feedback>
@@ -975,17 +833,18 @@ const EnquiryForm = ({ administrationId, editingEnquiryId, setShowForm, fetchEnq
           </Row>
 
           <div className="d-flex justify-content-end mt-3">
-            <Button variant="secondary" size="md" className="me-2" onClick={() => setShowForm(false)}>
+            <Button variant="secondary" size="md" className="me-2">
               Cancel
             </Button>
             <Button className="custom-btn-clr" size="sm" type="submit">
-              {editingEnquiryId ? "Update Enquiry" : "Submit Enquiry"}
+              Submit Enquiry
             </Button>
           </div>
         </Form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default EnquiryForm;
+export default EnquiryForm
+
