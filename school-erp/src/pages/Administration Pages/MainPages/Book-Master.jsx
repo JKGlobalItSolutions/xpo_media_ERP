@@ -3,20 +3,121 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Container, Table, Modal } from "react-bootstrap"
+import { Form, Button, Container, Table } from "react-bootstrap"
 import { db, auth } from "../../../Firebase/config"
 import { collection, addDoc, getDocs, deleteDoc, doc, query, limit, updateDoc } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import { FaEdit, FaTrash } from "react-icons/fa"
 
+// Add Book Modal Component
+const AddBookModal = ({ isOpen, onClose, onConfirm, book }) => {
+  const [bookName, setBookName] = useState("")
+
+  useEffect(() => {
+    if (book) {
+      setBookName(book.bookname)
+    } else {
+      setBookName("")
+    }
+  }, [book])
+
+  if (!isOpen) return null
+
+  const handleSubmit = () => {
+    onConfirm(bookName)
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">{book ? "Edit Book" : "Add Book"}</h2>
+        <div className="modal-body">
+          <Form.Control
+            type="text"
+            placeholder="Enter Book Name"
+            value={bookName}
+            onChange={(e) => setBookName(e.target.value)}
+            className="custom-input"
+          />
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={handleSubmit}>
+            {book ? "Update" : "Add"}
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Delete Book Modal Component
+const DeleteBookModal = ({ isOpen, onClose, onConfirm, book }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Delete Book</h2>
+        <div className="modal-body text-center">
+          <p>Are you sure you want to delete this book?</p>
+          <p className="fw-bold">{book?.bookname}</p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button delete" onClick={() => onConfirm(book.id)}>
+            Delete
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Confirm Edit Modal Component
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Edit</h2>
+        <div className="modal-body">
+          <p>Are you sure you want to edit this book? This may affect related data.</p>
+          <p>
+            <strong>Current Name:</strong> {currentName}
+          </p>
+          <p>
+            <strong>New Name:</strong> {newName}
+          </p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={onConfirm}>
+            Confirm Edit
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const BookMaster = () => {
   const [books, setBooks] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [storeId, setStoreId] = useState(null)
-  const [showModal, setShowModal] = useState(false)
-  const [editingBook, setEditingBook] = useState(null)
-  const [bookName, setBookName] = useState("")
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
+  const [selectedBook, setSelectedBook] = useState(null)
+  const [newBookName, setNewBookName] = useState("")
 
   useEffect(() => {
     const fetchStoreId = async () => {
@@ -34,7 +135,13 @@ const BookMaster = () => {
       } catch (error) {
         console.error("Error fetching/creating Store ID:", error)
         toast.error("Failed to initialize. Please try again.", {
-          style: { background: "#dc3545", color: "white" },
+          position: "top-right",
+          autoClose: 1000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
         })
       }
     }
@@ -57,52 +164,194 @@ const BookMaster = () => {
     } catch (error) {
       console.error("Error fetching books:", error)
       toast.error("Failed to fetch books. Please try again.", {
-        style: { background: "#dc3545", color: "white" },
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
       })
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleAddBook = async (bookName) => {
+    if (!storeId) {
+      toast.error("Store not initialized. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    // Check for duplicate book name
+    const isDuplicate = books.some((book) => book.bookname.toLowerCase() === bookName.toLowerCase())
+    if (isDuplicate) {
+      toast.error("A book with this name already exists. Please choose a different name.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     try {
       const booksRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "BookSetup")
-      if (editingBook) {
-        await updateDoc(doc(booksRef, editingBook.id), { bookname: bookName })
-        toast.success("Book updated successfully!")
-      } else {
-        await addDoc(booksRef, { bookname: bookName })
-        toast.success("Book added successfully!")
-      }
-      setShowModal(false)
-      setEditingBook(null)
-      setBookName("")
-      fetchBooks()
+      await addDoc(booksRef, { bookname: bookName })
+      setIsAddModalOpen(false)
+      toast.success("Book added successfully!", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        style: { background: "#0B3D7B", color: "white" },
+      })
+      await fetchBooks()
     } catch (error) {
-      console.error("Error adding/updating book:", error)
-      toast.error("Failed to add/update book. Please try again.")
+      console.error("Error adding book:", error)
+      toast.error("Failed to add book. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
     }
   }
 
-  const handleEdit = (book) => {
-    setEditingBook(book)
-    setBookName(book.bookname)
-    setShowModal(true)
+  const handleEditBook = async (newName) => {
+    if (!storeId || !selectedBook) {
+      toast.error("Store not initialized or no book selected. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    // Check for duplicate book name
+    const isDuplicate = books.some(
+      (book) => book.id !== selectedBook.id && book.bookname.toLowerCase() === newName.toLowerCase(),
+    )
+    if (isDuplicate) {
+      toast.error("A book with this name already exists. Please choose a different name.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsAddModalOpen(false)
+    setIsConfirmEditModalOpen(true)
+    setNewBookName(newName)
   }
 
-  const handleDelete = async (id) => {
+  const confirmEditBook = async () => {
     try {
-      const bookRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "BookSetup", id)
-      await deleteDoc(bookRef)
-      toast.success("Book deleted successfully!", {
-        style: { background: "#dc3545", color: "white" },
+      const bookRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "BookSetup", selectedBook.id)
+      await updateDoc(bookRef, { bookname: newBookName })
+      setIsConfirmEditModalOpen(false)
+      setSelectedBook(null)
+      setNewBookName("")
+      toast.success("Book updated successfully!", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        style: { background: "#0B3D7B", color: "white" },
       })
-      fetchBooks()
+      await fetchBooks()
+    } catch (error) {
+      console.error("Error updating book:", error)
+      toast.error("Failed to update book. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const handleDeleteBook = async (bookId) => {
+    if (!storeId) {
+      toast.error("Store not initialized. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    try {
+      const bookRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "BookSetup", bookId)
+      await deleteDoc(bookRef)
+      setIsDeleteModalOpen(false)
+      setSelectedBook(null)
+      toast.success("Book deleted successfully!", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      await fetchBooks()
     } catch (error) {
       console.error("Error deleting book:", error)
       toast.error("Failed to delete book. Please try again.", {
-        style: { background: "#dc3545", color: "white" },
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
       })
     }
+  }
+
+  const openEditModal = (book) => {
+    setSelectedBook(book)
+    setIsAddModalOpen(true)
+  }
+
+  const openDeleteModal = (book) => {
+    setSelectedBook(book)
+    setIsDeleteModalOpen(true)
   }
 
   const filteredBooks = books.filter((book) => book.bookname.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -124,7 +373,13 @@ const BookMaster = () => {
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
         >
           <h2>Book Master</h2>
-          <Button onClick={() => setShowModal(true)} className="btn btn-light text-dark">
+          <Button
+            onClick={() => {
+              setSelectedBook(null)
+              setIsAddModalOpen(true)
+            }}
+            className="btn btn-light text-dark"
+          >
             + Add Book
           </Button>
         </div>
@@ -157,14 +412,14 @@ const BookMaster = () => {
                       <Button
                         variant="link"
                         className="action-button edit-button me-2"
-                        onClick={() => handleEdit(book)}
+                        onClick={() => openEditModal(book)}
                       >
                         <FaEdit />
                       </Button>
                       <Button
                         variant="link"
                         className="action-button delete-button"
-                        onClick={() => handleDelete(book.id)}
+                        onClick={() => openDeleteModal(book)}
                       >
                         <FaTrash />
                       </Button>
@@ -177,35 +432,37 @@ const BookMaster = () => {
         </div>
       </Container>
 
-      <Modal
-        show={showModal}
-        onHide={() => {
-          setShowModal(false)
-          setEditingBook(null)
-          setBookName("")
+      <AddBookModal
+        isOpen={isAddModalOpen}
+        onClose={() => {
+          setIsAddModalOpen(false)
+          setSelectedBook(null)
         }}
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>{editingBook ? "Edit Book" : "Add Book"}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Book Name</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter book name"
-                value={bookName}
-                onChange={(e) => setBookName(e.target.value)}
-                required
-              />
-            </Form.Group>
-            <Button variant="primary" type="submit">
-              {editingBook ? "Update" : "Add"}
-            </Button>
-          </Form>
-        </Modal.Body>
-      </Modal>
+        onConfirm={(bookName) => (selectedBook ? handleEditBook(bookName) : handleAddBook(bookName))}
+        book={selectedBook}
+      />
+
+      <DeleteBookModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false)
+          setSelectedBook(null)
+        }}
+        onConfirm={handleDeleteBook}
+        book={selectedBook}
+      />
+
+      <ConfirmEditModal
+        isOpen={isConfirmEditModalOpen}
+        onClose={() => {
+          setIsConfirmEditModalOpen(false)
+          setSelectedBook(null)
+          setNewBookName("")
+        }}
+        onConfirm={confirmEditBook}
+        currentName={selectedBook?.bookname}
+        newName={newBookName}
+      />
 
       <ToastContainer />
 
@@ -256,6 +513,76 @@ const BookMaster = () => {
           .delete-button:hover {
             background-color: #bb2d3b;
             color: white;
+          }
+
+          /* Modal Styles */
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1100;
+          }
+
+          .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+          }
+
+          .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+            text-align: center;
+          }
+
+          .modal-body {
+            margin-bottom: 1.5rem;
+          }
+
+          .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+          }
+
+          .modal-button {
+            padding: 0.5rem 2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+          }
+
+          .modal-button.confirm {
+            background-color: #0B3D7B;
+            color: white;
+          }
+
+          .modal-button.delete {
+            background-color: #dc3545;
+            color: white;
+          }
+
+          .modal-button.cancel {
+            background-color: #6c757d;
+            color: white;
+          }
+
+          .custom-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
           }
 
           /* Toastify custom styles */
