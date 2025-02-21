@@ -3,39 +3,51 @@
 import { useState, useEffect } from "react"
 import { Container, Form, Button, Row, Col } from "react-bootstrap"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Link, useParams, useNavigate } from "react-router-dom"
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, limit } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, limit, orderBy } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import { FaArrowLeft } from "react-icons/fa"
 
 const StaffForm = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const isViewMode = new URLSearchParams(location.search).get("mode") === "view"
   const [formData, setFormData] = useState({
     staffCode: "",
     name: "",
     familyHeadName: "",
     numberStreetName: "",
     placePinCode: "",
+    stateId: "",
     state: "",
+    districtId: "",
     district: "",
     gender: "",
     dateOfBirth: "",
+    communityId: "",
     community: "",
+    casteId: "",
     caste: "",
+    religionId: "",
     religion: "",
+    nationalityId: "",
     nationality: "",
+    designationId: "",
     designation: "",
     educationQualification: "",
     salary: "",
     pfNumber: "",
+    categoryId: "",
     category: "",
     maritalStatus: "",
     majorSubject: "",
     optionalSubject: "",
     extraTalentDlNo: "",
     experience: "",
+    classInChargeId: "",
     classInCharge: "",
     dateOfJoining: "",
     emailBankAcId: "",
@@ -92,6 +104,8 @@ const StaffForm = () => {
 
       if (id) {
         fetchStaffMember(id)
+      } else {
+        generateStaffCode()
       }
     }
   }, [administrationId, id])
@@ -117,6 +131,36 @@ const StaffForm = () => {
     } catch (error) {
       console.error("Error fetching staff member:", error)
       toast.error("Failed to fetch staff member. Please try again.")
+    }
+  }
+
+  const generateStaffCode = async () => {
+    try {
+      const staffRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "StaffMaster",
+      )
+      const q = query(staffRef, orderBy("staffCode", "desc"), limit(1))
+      const querySnapshot = await getDocs(q)
+
+      let newStaffCode = "STAFF1"
+      if (!querySnapshot.empty) {
+        const lastStaffCode = querySnapshot.docs[0].data().staffCode
+        const lastNumber = Number.parseInt(lastStaffCode.replace("STAFF", ""))
+        newStaffCode = `STAFF${lastNumber + 1}`
+      }
+
+      setFormData((prevState) => ({
+        ...prevState,
+        staffCode: newStaffCode,
+      }))
+    } catch (error) {
+      console.error("Error generating staff code:", error)
+      toast.error("Failed to generate staff code. Please try again.")
     }
   }
 
@@ -205,6 +249,16 @@ const StaffForm = () => {
     }))
   }
 
+  const handleSelectChange = (e) => {
+    const { name, value } = e.target
+    const [id, displayValue] = value.split("|")
+    setFormData((prevState) => ({
+      ...prevState,
+      [`${name}Id`]: id,
+      [name]: displayValue,
+    }))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
@@ -216,6 +270,7 @@ const StaffForm = () => {
         administrationId,
         "StaffMaster",
       )
+
       if (id) {
         await updateDoc(doc(staffRef, id), formData)
         toast.success("Staff member updated successfully!")
@@ -245,17 +300,20 @@ const StaffForm = () => {
             <span className="separator mx-2">&gt;</span>
             <Link to="/admin/staff-master">Staff Master</Link>
             <span className="separator mx-2">&gt;</span>
-            <span>{id ? "Edit Staff" : "Add Staff"}</span>
+            <span>{isViewMode ? "View Staff" : id ? "Edit Staff" : "Add Staff"}</span>
           </nav>
         </div>
         <div
           style={{ backgroundColor: "#0B3D7B" }}
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
         >
-          <h2>{id ? "Edit Staff" : "Add Staff"}</h2>
-          <Button variant="light" size="sm" onClick={handleBack} className="me-2">
-            Back StaffMaster
-          </Button>
+          <div className="d-flex align-items-center">
+            <Button variant="link" className="text-white p-0 back-button me-3" onClick={handleBack}>
+              <FaArrowLeft size={20} />
+            </Button>
+            <h2 className="mb-0">{isViewMode ? "View Staff" : id ? "Edit Staff" : "Add Staff"}</h2>
+          </div>
+          <div style={{ width: "20px" }}></div>
         </div>
 
         <div className="bg-white p-4 rounded-bottom shadow">
@@ -265,14 +323,7 @@ const StaffForm = () => {
               <Col md={4} className="d-flex flex-column">
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Staff Code</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="staffCode"
-                    value={formData.staffCode}
-                    onChange={handleInputChange}
-                    placeholder="Enter staff code"
-                    required
-                  />
+                  <Form.Control type="text" name="staffCode" value={formData.staffCode} readOnly disabled />
                 </Form.Group>
 
                 <Form.Group className="mb-3 flex-grow-1">
@@ -284,6 +335,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter name"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -296,6 +348,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter family head name"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -308,6 +361,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter street address"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -320,15 +374,22 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter place and pin code"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>State</Form.Label>
-                  <Form.Select name="state" value={formData.state} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="state"
+                    value={`${formData.stateId}|${formData.state}`}
+                    onChange={handleSelectChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select State</option>
                     {states.map((state) => (
-                      <option key={state.id} value={state.state}>
+                      <option key={state.id} value={`${state.id}|${state.state}`}>
                         {state.state}
                       </option>
                     ))}
@@ -337,10 +398,16 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>District</Form.Label>
-                  <Form.Select name="district" value={formData.district} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="district"
+                    value={`${formData.districtId}|${formData.district}`}
+                    onChange={handleSelectChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select District</option>
                     {districts.map((district) => (
-                      <option key={district.id} value={district.district}>
+                      <option key={district.id} value={`${district.id}|${district.district}`}>
                         {district.district}
                       </option>
                     ))}
@@ -349,7 +416,13 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Gender</Form.Label>
-                  <Form.Select name="gender" value={formData.gender} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -365,6 +438,7 @@ const StaffForm = () => {
                     value={formData.dateOfBirth}
                     onChange={handleInputChange}
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
               </Col>
@@ -373,10 +447,16 @@ const StaffForm = () => {
               <Col md={4} className="d-flex flex-column">
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Community</Form.Label>
-                  <Form.Select name="community" value={formData.community} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="community"
+                    value={`${formData.communityId}|${formData.community}`}
+                    onChange={handleSelectChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select Community</option>
                     {communities.map((community) => (
-                      <option key={community.id} value={community.community}>
+                      <option key={community.id} value={`${community.id}|${community.community}`}>
                         {community.community}
                       </option>
                     ))}
@@ -385,10 +465,16 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Caste</Form.Label>
-                  <Form.Select name="caste" value={formData.caste} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="caste"
+                    value={`${formData.casteId}|${formData.caste}`}
+                    onChange={handleSelectChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select Caste</option>
                     {castes.map((caste) => (
-                      <option key={caste.id} value={caste.caste}>
+                      <option key={caste.id} value={`${caste.id}|${caste.caste}`}>
                         {caste.caste}
                       </option>
                     ))}
@@ -397,10 +483,16 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Religion</Form.Label>
-                  <Form.Select name="religion" value={formData.religion} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="religion"
+                    value={`${formData.religionId}|${formData.religion}`}
+                    onChange={handleSelectChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select Religion</option>
                     {religions.map((religion) => (
-                      <option key={religion.id} value={religion.religion}>
+                      <option key={religion.id} value={`${religion.id}|${religion.religion}`}>
                         {religion.religion}
                       </option>
                     ))}
@@ -409,10 +501,16 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Nationality</Form.Label>
-                  <Form.Select name="nationality" value={formData.nationality} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="nationality"
+                    value={`${formData.nationalityId}|${formData.nationality}`}
+                    onChange={handleSelectChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select Nationality</option>
                     {nationalities.map((nationality) => (
-                      <option key={nationality.id} value={nationality.nationality}>
+                      <option key={nationality.id} value={`${nationality.id}|${nationality.nationality}`}>
                         {nationality.nationality}
                       </option>
                     ))}
@@ -421,10 +519,16 @@ const StaffForm = () => {
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Designation</Form.Label>
-                  <Form.Select name="designation" value={formData.designation} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="designation"
+                    value={`${formData.designationId}|${formData.designation}`}
+                    onChange={handleSelectChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select Designation</option>
                     {staffDesignations.map((designation) => (
-                      <option key={designation.id} value={designation.staffdesignation}>
+                      <option key={designation.id} value={`${designation.id}|${designation.staffdesignation}`}>
                         {designation.staffdesignation}
                       </option>
                     ))}
@@ -440,6 +544,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter qualification"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -452,6 +557,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter salary"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -464,15 +570,22 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter PF number"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Category</Form.Label>
-                  <Form.Select name="category" value={formData.category} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="category"
+                    value={`${formData.categoryId}|${formData.category}`}
+                    onChange={handleSelectChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select Category</option>
                     {staffCategories.map((category) => (
-                      <option key={category.id} value={category.staffcategory}>
+                      <option key={category.id} value={`${category.id}|${category.staffcategory}`}>
                         {category.staffcategory}
                       </option>
                     ))}
@@ -489,6 +602,7 @@ const StaffForm = () => {
                     value={formData.maritalStatus}
                     onChange={handleInputChange}
                     required
+                    disabled={isViewMode}
                   >
                     <option value="">Select Marital Status</option>
                     <option value="single">Single</option>
@@ -507,6 +621,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter major subject"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -518,6 +633,7 @@ const StaffForm = () => {
                     value={formData.optionalSubject}
                     onChange={handleInputChange}
                     placeholder="Enter optional subject"
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -531,6 +647,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter extra talent/DL number"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -544,15 +661,21 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter experience"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Class IN charge</Form.Label>
-                  <Form.Select name="classInCharge" value={formData.classInCharge} onChange={handleInputChange}>
+                  <Form.Select
+                    name="classInCharge"
+                    value={`${formData.classInChargeId}|${formData.classInCharge}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                  >
                     <option value="">Select Class</option>
                     {courses.map((course) => (
-                      <option key={course.id} value={course.standard}>
+                      <option key={course.id} value={`${course.id}|${course.standard}`}>
                         {course.standard}
                       </option>
                     ))}
@@ -567,6 +690,7 @@ const StaffForm = () => {
                     value={formData.dateOfJoining}
                     onChange={handleInputChange}
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -579,6 +703,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter email/bank account ID"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
 
@@ -591,6 +716,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter total leave days"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
               </Col>
@@ -607,13 +733,20 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter mobile number"
                     required
+                    disabled={isViewMode}
                   />
                 </Form.Group>
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Status</Form.Label>
-                  <Form.Select name="status" value={formData.status} onChange={handleInputChange} required>
+                  <Form.Select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    required
+                    disabled={isViewMode}
+                  >
                     <option value="">Select Status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -628,16 +761,19 @@ const StaffForm = () => {
                     name="dateOfRelieve"
                     value={formData.dateOfRelieve}
                     onChange={handleInputChange}
+                    disabled={isViewMode}
                   />
                 </Form.Group>
               </Col>
             </Row>
 
-            <div className="text-center mt-3">
-              <Button  size="lg" type="submit" className="custom-btn ">
-                {id ? "Update" : "Submit"}
-              </Button>
-            </div>
+            {!isViewMode && (
+              <div className="text-center mt-3">
+                <Button size="lg" type="submit" className="custom-btn">
+                  {id ? "Update" : "Submit"}
+                </Button>
+              </div>
+            )}
           </Form>
         </div>
       </Container>
@@ -667,6 +803,19 @@ const StaffForm = () => {
           .custom-btn {
             background: #0B3D7B;
             color:rgb(255, 255, 255);
+          }
+
+          .back-button {
+            transition: opacity 0.2s;
+          }
+
+          .back-button:hover {
+            opacity: 0.8;
+          }
+
+          h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0;
           }
 
           /* Toastify custom styles */

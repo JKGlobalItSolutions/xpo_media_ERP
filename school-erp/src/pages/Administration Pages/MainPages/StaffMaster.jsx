@@ -8,7 +8,7 @@ import { db, auth } from "../../../Firebase/config"
 import { collection, getDocs, deleteDoc, doc, query, limit, addDoc } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import { FaEdit, FaTrash } from "react-icons/fa"
+import { FaEdit, FaTrash, FaEye } from "react-icons/fa"
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
@@ -180,6 +180,13 @@ const StaffMaster = () => {
                     <td>{staff.mobileNumber}</td>
                     <td>
                       <Button
+                        variant="secondary"
+                        className="action-button view-button me-2"
+                        onClick={() => navigate(`/admin/staff-form/${staff.id}?mode=view`)}
+                      >
+                        <FaEye />
+                      </Button>
+                      <Button
                         variant="link"
                         className="action-button edit-button me-2"
                         onClick={() => navigate(`/admin/staff-form/${staff.id}`)}
@@ -245,6 +252,15 @@ const StaffMaster = () => {
             justify-content: center;
             border-radius: 4px;
             padding: 0;
+            color: white;
+          }
+
+          .view-button {
+            background-color: #6c757d;
+          }
+
+          .view-button:hover {
+            background-color: #5a6268;
             color: white;
           }
 

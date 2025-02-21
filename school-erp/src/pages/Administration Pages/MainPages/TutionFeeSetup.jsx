@@ -13,18 +13,26 @@ import "react-toastify/dist/ReactToastify.css"
 
 // Add Tuition Fee Modal Component
 const AddTuitionFeeModal = ({ isOpen, onClose, onConfirm, courses, studentCategories, feeHeadings }) => {
-  const [standard, setStandard] = useState("")
-  const [studentCategory, setStudentCategory] = useState("")
-  const [feeHeading, setFeeHeading] = useState("")
+  const [standard, setStandard] = useState({ id: "", name: "" })
+  const [studentCategory, setStudentCategory] = useState({ id: "", name: "" })
+  const [feeHeading, setFeeHeading] = useState({ id: "", name: "" })
   const [feeAmount, setFeeAmount] = useState("")
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm({ standard, studentCategory, feeHeading, feeAmount })
-    setStandard("")
-    setStudentCategory("")
-    setFeeHeading("")
+    onConfirm({
+      standardId: standard.id,
+      standard: standard.name,
+      studentCategoryId: studentCategory.id,
+      studentCategory: studentCategory.name,
+      feeHeadingId: feeHeading.id,
+      feeHeading: feeHeading.name,
+      feeAmount,
+    })
+    setStandard({ id: "", name: "" })
+    setStudentCategory({ id: "", name: "" })
+    setFeeHeading({ id: "", name: "" })
     setFeeAmount("")
   }
 
@@ -34,51 +42,72 @@ const AddTuitionFeeModal = ({ isOpen, onClose, onConfirm, courses, studentCatego
         <h2 className="modal-title">Add Tuition Fee</h2>
         <div className="modal-body">
           <Form.Group className="mb-3">
-            <Form.Label className="text-start w-100">Select Standard</Form.Label>
-            <Form.Select value={standard} onChange={(e) => setStandard(e.target.value)}>
+            <Form.Label className="w-100 text-start">Select Standard</Form.Label>
+            <Form.Select
+              value={standard.id}
+              onChange={(e) => {
+                const selectedCourse = courses.find((course) => course.id === e.target.value)
+                setStandard({ id: selectedCourse.id, name: selectedCourse.standard })
+              }}
+              className="custom-input"
+            >
               <option value="">Select Standard</option>
               {courses.map((course) => (
-                <option key={course.id} value={course.standard}>
+                <option key={course.id} value={course.id}>
                   {course.standard}
                 </option>
               ))}
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="text-start w-100">Students Category</Form.Label>
-            <Form.Select value={studentCategory} onChange={(e) => setStudentCategory(e.target.value)}>
-              <option value="">Select Students Category</option>
+            <Form.Label className="w-100 text-start">Select Student Category</Form.Label>
+            <Form.Select
+              value={studentCategory.id}
+              onChange={(e) => {
+                const selectedCategory = studentCategories.find((category) => category.id === e.target.value)
+                setStudentCategory({ id: selectedCategory.id, name: selectedCategory.StudentCategoryName })
+              }}
+              className="custom-input"
+            >
+              <option value="">Select Student Category</option>
               {studentCategories.map((category) => (
-                <option key={category.id} value={category.StudentCategoryName}>
+                <option key={category.id} value={category.id}>
                   {category.StudentCategoryName}
                 </option>
               ))}
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="text-start w-100">Select Fee Heading</Form.Label>
-            <Form.Select value={feeHeading} onChange={(e) => setFeeHeading(e.target.value)}>
+            <Form.Label className="w-100 text-start">Select Fee Heading</Form.Label>
+            <Form.Select
+              value={feeHeading.id}
+              onChange={(e) => {
+                const selectedHeading = feeHeadings.find((heading) => heading.id === e.target.value)
+                setFeeHeading({ id: selectedHeading.id, name: selectedHeading.feeHead })
+              }}
+              className="custom-input"
+            >
               <option value="">Select Fee Heading</option>
               {feeHeadings.map((heading) => (
-                <option key={heading.id} value={heading.feeHead}>
+                <option key={heading.id} value={heading.id}>
                   {heading.feeHead}
                 </option>
               ))}
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="text-start w-100">Fee Amount</Form.Label>
+            <Form.Label className="w-100 text-start">Fee Amount</Form.Label>
             <Form.Control
               type="number"
               value={feeAmount}
               onChange={(e) => setFeeAmount(e.target.value)}
-              placeholder="Enter fee amount"
+              className="custom-input"
             />
           </Form.Group>
         </div>
         <div className="modal-buttons">
           <Button className="modal-button confirm" onClick={handleSubmit}>
-            Add
+            Add Fee
           </Button>
           <Button className="modal-button cancel" onClick={onClose}>
             Cancel
@@ -91,16 +120,19 @@ const AddTuitionFeeModal = ({ isOpen, onClose, onConfirm, courses, studentCatego
 
 // Edit Tuition Fee Modal Component
 const EditTuitionFeeModal = ({ isOpen, onClose, onConfirm, fee, courses, studentCategories, feeHeadings }) => {
-  const [standard, setStandard] = useState(fee?.standard || "")
-  const [studentCategory, setStudentCategory] = useState(fee?.studentCategory || "")
-  const [feeHeading, setFeeHeading] = useState(fee?.feeHeading || "")
+  const [standard, setStandard] = useState({ id: fee?.standardId || "", name: fee?.standard || "" })
+  const [studentCategory, setStudentCategory] = useState({
+    id: fee?.studentCategoryId || "",
+    name: fee?.studentCategory || "",
+  })
+  const [feeHeading, setFeeHeading] = useState({ id: fee?.feeHeadingId || "", name: fee?.feeHeading || "" })
   const [feeAmount, setFeeAmount] = useState(fee?.feeAmount || "")
 
   useEffect(() => {
     if (fee) {
-      setStandard(fee.standard)
-      setStudentCategory(fee.studentCategory)
-      setFeeHeading(fee.feeHeading)
+      setStandard({ id: fee.standardId, name: fee.standard })
+      setStudentCategory({ id: fee.studentCategoryId, name: fee.studentCategory })
+      setFeeHeading({ id: fee.feeHeadingId, name: fee.feeHeading })
       setFeeAmount(fee.feeAmount)
     }
   }, [fee])
@@ -108,7 +140,15 @@ const EditTuitionFeeModal = ({ isOpen, onClose, onConfirm, fee, courses, student
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm({ id: fee.id, standard, studentCategory, feeHeading, feeAmount })
+    onConfirm(fee.id, {
+      standardId: standard.id,
+      standard: standard.name,
+      studentCategoryId: studentCategory.id,
+      studentCategory: studentCategory.name,
+      feeHeadingId: feeHeading.id,
+      feeHeading: feeHeading.name,
+      feeAmount,
+    })
   }
 
   return (
@@ -117,51 +157,72 @@ const EditTuitionFeeModal = ({ isOpen, onClose, onConfirm, fee, courses, student
         <h2 className="modal-title">Edit Tuition Fee</h2>
         <div className="modal-body">
           <Form.Group className="mb-3">
-            <Form.Label className="text-start w-100">Select Standard</Form.Label>
-            <Form.Select value={standard} onChange={(e) => setStandard(e.target.value)}>
+            <Form.Label className="w-100 text-start">Select Standard</Form.Label>
+            <Form.Select
+              value={standard.id}
+              onChange={(e) => {
+                const selectedCourse = courses.find((course) => course.id === e.target.value)
+                setStandard({ id: selectedCourse.id, name: selectedCourse.standard })
+              }}
+              className="custom-input"
+            >
               <option value="">Select Standard</option>
               {courses.map((course) => (
-                <option key={course.id} value={course.standard}>
+                <option key={course.id} value={course.id}>
                   {course.standard}
                 </option>
               ))}
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="text-start w-100">Students Category</Form.Label>
-            <Form.Select value={studentCategory} onChange={(e) => setStudentCategory(e.target.value)}>
-              <option value="">Select Students Category</option>
+            <Form.Label className="w-100 text-start">Select Student Category</Form.Label>
+            <Form.Select
+              value={studentCategory.id}
+              onChange={(e) => {
+                const selectedCategory = studentCategories.find((category) => category.id === e.target.value)
+                setStudentCategory({ id: selectedCategory.id, name: selectedCategory.StudentCategoryName })
+              }}
+              className="custom-input"
+            >
+              <option value="">Select Student Category</option>
               {studentCategories.map((category) => (
-                <option key={category.id} value={category.StudentCategoryName}>
+                <option key={category.id} value={category.id}>
                   {category.StudentCategoryName}
                 </option>
               ))}
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="text-start w-100">Select Fee Heading</Form.Label>
-            <Form.Select value={feeHeading} onChange={(e) => setFeeHeading(e.target.value)}>
+            <Form.Label className="w-100 text-start">Select Fee Heading</Form.Label>
+            <Form.Select
+              value={feeHeading.id}
+              onChange={(e) => {
+                const selectedHeading = feeHeadings.find((heading) => heading.id === e.target.value)
+                setFeeHeading({ id: selectedHeading.id, name: selectedHeading.feeHead })
+              }}
+              className="custom-input"
+            >
               <option value="">Select Fee Heading</option>
               {feeHeadings.map((heading) => (
-                <option key={heading.id} value={heading.feeHead}>
+                <option key={heading.id} value={heading.id}>
                   {heading.feeHead}
                 </option>
               ))}
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="text-start w-100">Fee Amount</Form.Label>
+            <Form.Label className="w-100 text-start">Fee Amount</Form.Label>
             <Form.Control
               type="number"
               value={feeAmount}
               onChange={(e) => setFeeAmount(e.target.value)}
-              placeholder="Enter fee amount"
+              className="custom-input"
             />
           </Form.Group>
         </div>
         <div className="modal-buttons">
           <Button className="modal-button confirm" onClick={handleSubmit}>
-            Update
+            Update Fee
           </Button>
           <Button className="modal-button cancel" onClick={onClose}>
             Cancel
@@ -181,9 +242,9 @@ const DeleteTuitionFeeModal = ({ isOpen, onClose, onConfirm, fee }) => {
       <div className="modal-content">
         <h2 className="modal-title">Delete Tuition Fee</h2>
         <div className="modal-body text-center">
-          <p>Are you sure you want to delete this tuition fee?</p>
+          <p>Are you sure you want to delete this tuition fee entry?</p>
           <p className="fw-bold">
-            {fee?.feeHeading} - {fee?.feeAmount}
+            {fee?.standard} - {fee?.studentCategory} - {fee?.feeHeading}
           </p>
         </div>
         <div className="modal-buttons">
@@ -199,11 +260,51 @@ const DeleteTuitionFeeModal = ({ isOpen, onClose, onConfirm, fee }) => {
   )
 }
 
+// Confirm Edit Modal Component
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentFee, updatedFee }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Edit</h2>
+        <div className="modal-body">
+          <p>Are you sure you want to edit this tuition fee? This may affect related data.</p>
+          <div className="mb-3">
+            <h6>Current Fee Details:</h6>
+            <p>Standard: {currentFee.standard}</p>
+            <p>Student Category: {currentFee.studentCategory}</p>
+            <p>Fee Heading: {currentFee.feeHeading}</p>
+            <p>Fee Amount: {currentFee.feeAmount}</p>
+          </div>
+          <div>
+            <h6>Updated Fee Details:</h6>
+            <p>Standard: {updatedFee.standard}</p>
+            <p>Student Category: {updatedFee.studentCategory}</p>
+            <p>Fee Heading: {updatedFee.feeHeading}</p>
+            <p>Fee Amount: {updatedFee.feeAmount}</p>
+          </div>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={onConfirm}>
+            Confirm Edit
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const TutionFeeSetup = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
   const [selectedFee, setSelectedFee] = useState(null)
+  const [updatedFee, setUpdatedFee] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [feeHeadings, setFeeHeadings] = useState([])
   const [courses, setCourses] = useState([])
@@ -244,12 +345,6 @@ const TutionFeeSetup = () => {
       fetchTuitionFees()
     }
   }, [administrationId])
-
-  useEffect(() => {
-    if (courses.length > 0 && selectedCourse === "") {
-      setSelectedCourse(courses[0].standard)
-    }
-  }, [courses])
 
   const fetchAdministrationId = async () => {
     try {
@@ -341,6 +436,19 @@ const TutionFeeSetup = () => {
 
   const handleAddFee = async (newFee) => {
     try {
+      // Check for duplicate fee
+      const isDuplicate = tuitionFees.some(
+        (fee) =>
+          fee.standardId === newFee.standardId &&
+          fee.studentCategoryId === newFee.studentCategoryId &&
+          fee.feeHeadingId === newFee.feeHeadingId,
+      )
+
+      if (isDuplicate) {
+        toast.error("A fee with the same standard, student category, and fee heading already exists.")
+        return
+      }
+
       const feesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "FeeSetup")
       await addDoc(feesRef, newFee)
       setIsAddModalOpen(false)
@@ -354,14 +462,28 @@ const TutionFeeSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
-      fetchTuitionFees()
+      await fetchTuitionFees()
     } catch (error) {
       console.error("Error adding tuition fee:", error)
-      toast.error("Failed to add tuition fee. Please try again.")
+      toast.error("Failed to add tuition fee. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
     }
   }
 
-  const handleEditFee = async (updatedFee) => {
+  const handleEditFee = async (id, updatedFee) => {
+    setIsEditModalOpen(false)
+    setIsConfirmEditModalOpen(true)
+    setUpdatedFee(updatedFee)
+  }
+
+  const confirmEditFee = async () => {
     try {
       const feeRef = doc(
         db,
@@ -370,11 +492,12 @@ const TutionFeeSetup = () => {
         "Administration",
         administrationId,
         "FeeSetup",
-        updatedFee.id,
+        selectedFee.id,
       )
       await updateDoc(feeRef, updatedFee)
-      setIsEditModalOpen(false)
+      setIsConfirmEditModalOpen(false)
       setSelectedFee(null)
+      setUpdatedFee(null)
       toast.success("Tuition fee updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -385,16 +508,24 @@ const TutionFeeSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
-      fetchTuitionFees()
+      await fetchTuitionFees()
     } catch (error) {
       console.error("Error updating tuition fee:", error)
-      toast.error("Failed to update tuition fee. Please try again.")
+      toast.error("Failed to update tuition fee. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
     }
   }
 
-  const handleDeleteFee = async (feeId) => {
+  const handleDeleteFee = async (id) => {
     try {
-      const feeRef = doc(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "FeeSetup", feeId)
+      const feeRef = doc(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "FeeSetup", id)
       await deleteDoc(feeRef)
       setIsDeleteModalOpen(false)
       setSelectedFee(null)
@@ -407,10 +538,18 @@ const TutionFeeSetup = () => {
         draggable: true,
         progress: undefined,
       })
-      fetchTuitionFees()
+      await fetchTuitionFees()
     } catch (error) {
       console.error("Error deleting tuition fee:", error)
-      toast.error("Failed to delete tuition fee. Please try again.")
+      toast.error("Failed to delete tuition fee. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
     }
   }
 
@@ -426,21 +565,23 @@ const TutionFeeSetup = () => {
 
   const filteredFees = tuitionFees.filter(
     (fee) =>
-      (selectedCourse === "" || fee.standard === selectedCourse) &&
-      (selectedStudentCategory === "" || fee.studentCategory === selectedStudentCategory) &&
+      (selectedCourse === "" || fee.standardId === selectedCourse) &&
+      (selectedStudentCategory === "" || fee.studentCategoryId === selectedStudentCategory) &&
       (fee.feeHeading.toLowerCase().includes(searchTerm.toLowerCase()) ||
         fee.standard.toLowerCase().includes(searchTerm.toLowerCase()) ||
         fee.studentCategory.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
-  const totalFee = filteredFees.reduce((sum, fee) => sum + Number(fee.feeAmount), 0)
+  const calculateTotalFee = () => {
+    return filteredFees.reduce((total, fee) => total + Number(fee.feeAmount || 0), 0).toFixed(2)
+  }
 
   return (
     <MainContentPage>
       <Container fluid className="px-0">
         <Row>
           <Col xs={12}>
-            <div className="course-setup-container">
+            <div className="tuition-fee-setup-container">
               <nav className="custom-breadcrumb py-1 py-lg-3">
                 <Link to="/home">Home</Link>
                 <span className="separator">&gt;</span>
@@ -451,8 +592,8 @@ const TutionFeeSetup = () => {
 
               <div className="form-card mt-3">
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block ">Tuition Fee Setup</h2>
-                  <h6 className="m-0 d-lg-none ">Tuition Fee Setup</h6>
+                  <h2 className="m-0 d-none d-lg-block">Tuition Fee Setup</h2>
+                  <h6 className="m-0 d-lg-none">Tuition Fee Setup</h6>
                   <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
                     + Add Tuition Fee
                   </Button>
@@ -466,7 +607,7 @@ const TutionFeeSetup = () => {
                         <Form.Select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
                           <option value="">All Courses</option>
                           {courses.map((course) => (
-                            <option key={course.id} value={course.standard}>
+                            <option key={course.id} value={course.id}>
                               {course.standard}
                             </option>
                           ))}
@@ -482,7 +623,7 @@ const TutionFeeSetup = () => {
                         >
                           <option value="">All Categories</option>
                           {studentCategories.map((category) => (
-                            <option key={category.id} value={category.StudentCategoryName}>
+                            <option key={category.id} value={category.id}>
                               {category.StudentCategoryName}
                             </option>
                           ))}
@@ -509,7 +650,7 @@ const TutionFeeSetup = () => {
                           <th>Standard</th>
                           <th>Student Category</th>
                           <th>Fee Heading</th>
-                          <th>Amount</th>
+                          <th>Fee Amount</th>
                           <th>Action</th>
                         </tr>
                       </thead>
@@ -539,17 +680,18 @@ const TutionFeeSetup = () => {
                           </tr>
                         ))}
                       </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan="3" className="text-end fw-bold">
+                            Total Fee:
+                          </td>
+                          <td colSpan="2" className="fw-bold">
+                            {calculateTotalFee()}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </Table>
                   </div>
-
-                  <Row className="mt-3">
-                    <Col xs={12} className="d-flex justify-content-end">
-                      <div className="total-fee-card">
-                        <h5>Total Fee</h5>
-                        <p className="total-fee-amount">₹{totalFee.toFixed(2)}</p>
-                      </div>
-                    </Col>
-                  </Row>
                 </div>
               </div>
             </div>
@@ -587,12 +729,27 @@ const TutionFeeSetup = () => {
         onConfirm={handleDeleteFee}
         fee={selectedFee}
       />
+      <ConfirmEditModal
+        isOpen={isConfirmEditModalOpen}
+        onClose={() => {
+          setIsConfirmEditModalOpen(false)
+          setSelectedFee(null)
+          setUpdatedFee(null)
+        }}
+        onConfirm={confirmEditFee}
+        currentFee={selectedFee}
+        updatedFee={updatedFee}
+      />
 
       {/* Toastify Container */}
       <ToastContainer />
 
       <style>
         {`
+          .tuition-fee-setup-container {
+            background-color: #fff;
+          }
+
           .custom-breadcrumb {
             padding: 0.5rem 1rem;
           }
@@ -620,6 +777,7 @@ const TutionFeeSetup = () => {
           .header {
             border-bottom: 1px solid #dee2e6;
             background-color: #0B3D7B;
+            color: white;
           }
 
           .table-responsive {
@@ -748,24 +906,11 @@ const TutionFeeSetup = () => {
             background-color: rgba(255, 255, 255, 0.7);
           }
 
-          .total-fee-card {
-            background-color: #0B3D7B;
-            color: white;
-            padding: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 200px;
-            text-align: center;
-          }
-
-          .total-fee-card h5 {
-            margin-bottom: 0.5rem;
-          }
-
-          .total-fee-amount {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 0;
+          /* Form Label Styles */
+          .form-label {
+            text-align: left !important;
+            display: block;
+            width: 100%;
           }
         `}
       </style>
