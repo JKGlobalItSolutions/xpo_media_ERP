@@ -75,6 +75,7 @@ const AdmissionForm = () => {
     motherTongues: [],
     studentCategories: [],
     courses: [],
+    boardingPoints: [],
   })
   const [enquiryNumbers, setEnquiryNumbers] = useState([])
   const [filteredEnquiryNumbers, setFilteredEnquiryNumbers] = useState([])
@@ -151,6 +152,17 @@ const AdmissionForm = () => {
         fetchData("Courses"),
       ])
 
+      // Fetch boarding points from PlaceSetup
+      const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
+      const transportSnapshot = await getDocs(transportRef)
+      let boardingPointData = []
+      if (!transportSnapshot.empty) {
+        const transportId = transportSnapshot.docs[0].id
+        const placeSetupRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "PlaceSetup")
+        const placeSetupSnapshot = await getDocs(placeSetupRef)
+        boardingPointData = placeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      }
+
       setSetupData({
         nationalities: nationalityData,
         religions: religionData,
@@ -162,6 +174,7 @@ const AdmissionForm = () => {
         motherTongues: motherTongueData,
         studentCategories: studentCategoryData,
         courses: courseData,
+        boardingPoints: boardingPointData,
       })
 
       console.log("Fetched setup data successfully")
@@ -399,7 +412,7 @@ const AdmissionForm = () => {
             <div className="d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center gap-2">
                 <Button variant="link" className="text-white p-0 me-2" onClick={() => navigate("/admission")}>
-                  <FaArrowLeft />
+               
                 </Button>
                 <span>
                   <b>{id ? (isViewMode ? "View Admission" : "Edit Admission") : "Add New Admission"}</b>
@@ -605,14 +618,21 @@ const AdmissionForm = () => {
 
                   <Form.Group className="mb-3">
                     <Form.Label>Boarding Point</Form.Label>
-                    <Form.Control
-                      type="text"
+                    <Form.Select
                       name="boardingPoint"
                       value={formData.boardingPoint}
                       onChange={handleInputChange}
-                      placeholder="Enter boarding point"
+                      isInvalid={!!errors.boardingPoint}
                       disabled={isViewMode}
-                    />
+                    >
+                      <option value="">Select Boarding Point</option>
+                      {setupData.boardingPoints.map((point) => (
+                        <option key={point.id} value={point.placeName}>
+                          {point.placeName}
+                        </option>
+                      ))}
+                    </Form.Select>
+                    <Form.Control.Feedback type="invalid">{errors.boardingPoint}</Form.Control.Feedback>
                   </Form.Group>
 
                   <Form.Group className="mb-3">
