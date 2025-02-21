@@ -467,55 +467,95 @@ const AdmissionForm = () => {
   return (
     <MainContentPage>
       <Container fluid className="px-0">
-        <div className="form-card mt-3">
-          <div className="header p-3 custom-btn-clr">
-            <div className="d-flex justify-content-between align-items-center">
-              <div className="d-flex align-items-center gap-2">
-                <Button variant="link" className="text-white p-0 me-2" onClick={() => navigate("/admission")}>
-               
-                </Button>
-                <span>
-                  <b>{id ? (isViewMode ? "View Admission" : "Edit Admission") : "Add New Admission"}</b>
-                </span>
-              </div>
-            </div>
+        <div className="mb-4">
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link to="/admission">Admission</Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>{isViewMode ? "View Admission" : id ? "Edit Admission" : "Add Admission"}</span>
+          </nav>
+        </div>
+        <div
+          style={{ backgroundColor: "#0B3D7B" }}
+          className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
+        >
+          <div className="d-flex align-items-center">
+            <h2 className="mb-0">{isViewMode ? "View Admission" : id ? "Edit Admission" : "Add Admission"}</h2>
           </div>
+          <div style={{ width: "20px" }}></div>
+        </div>
 
-          <div className="content-wrapper p-4">
-            <Form onSubmit={handleSubmit}>
-              <Row>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Enquiry Key</Form.Label>
-                    <div className="position-relative">
-                      <Form.Control
-                        type="text"
-                        name="enquiryKey"
-                        value={formData.enquiryKey}
-                        onChange={handleInputChange}
-                        onFocus={() => setShowDropdown(true)}
-                        placeholder="Enter or search enquiry key"
-                        disabled={isViewMode || id}
-                        autoComplete="off"
-                      />
-                      {showDropdown && filteredEnquiryNumbers.length > 0 && (
-                        <div
-                          className="position-absolute w-100 bg-white border rounded mt-1"
-                          style={{ zIndex: 1000, maxHeight: "200px", overflowY: "auto" }}
-                        >
-                          {filteredEnquiryNumbers.map((key) => (
-                            <div
-                              key={key}
-                              className="p-2 hover-bg-light cursor-pointer"
-                              onClick={() => handleEnquirySelect(key)}
-                            >
-                              {key}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </Form.Group>
+        <div className="bg-white p-4 rounded-bottom shadow">
+          <Form onSubmit={handleSubmit}>
+            <Row>
+              {/* Left Column */}
+              <Col md={4} className="d-flex flex-column">
+                <div className="text-center mb-3">
+                  <h6>Student Photo</h6>
+                  <div
+                    className="photo-upload-circle mx-auto"
+                    onClick={handlePhotoClick}
+                    style={{
+                      width: "150px",
+                      height: "150px",
+                      border: "2px dashed #ccc",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      backgroundColor: "#f8f9fa",
+                    }}
+                  >
+                    <img
+                      src={photoPreview || defaultStudentPhoto}
+                      alt="Student"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    style={{ display: "none" }}
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <Form.Group className="flex-grow-1">
+                  <Form.Label>Enquiry Key</Form.Label>
+                  <div className="position-relative">
+                    <Form.Control
+                      type="text"
+                      name="enquiryKey"
+                      value={formData.enquiryKey}
+                      onChange={handleInputChange}
+                      onFocus={() => setShowDropdown(true)}
+                      placeholder="Enter or search enquiry key"
+                      disabled={isViewMode || id}
+                      autoComplete="off"
+                    />
+                    {showDropdown && filteredEnquiryNumbers.length > 0 && (
+                      <div
+                        className="position-absolute w-100 bg-white border rounded mt-1"
+                        style={{ zIndex: 1000, maxHeight: "200px", overflowY: "auto" }}
+                      >
+                        {filteredEnquiryNumbers.map((key) => (
+                          <div
+                            key={key}
+                            className="p-2 hover-bg-light cursor-pointer"
+                            onClick={() => handleEnquirySelect(key)}
+                          >
+                            {key}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Form.Group>
 
                 <Form.Group className="flex-grow-1">
                   <Form.Label>Admission Number</Form.Label>
