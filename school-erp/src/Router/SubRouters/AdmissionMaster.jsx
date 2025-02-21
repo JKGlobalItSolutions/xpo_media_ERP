@@ -17,17 +17,18 @@ import EnquiryForm from '../../pages/Admission Pages/EnquiryForm';
 function AdmissionMaster() {
   return (
     <Routes>
-      <Route path="enquiry" element={< Enquiry/>} />
-      <Route path="AdmissionForm" element={< AdmissionForm/>} />
-      <Route path="Bar-code-Design" element={< BarcodeDesign/>} />
-      <Route path="StudentDetails" element={< StudentDetails/>} />
-      <Route path="EditStudentDetails" element={< EditStudentDetails/>} />
-      <Route path="Student-Details-Report" element={< StudentDetailsReport/>} />
-      <Route path="Transfer-Certificate" element={< TransferCertificate/>} />
-      <Route path="Demand-Report" element={< DemandReport/>} />
-      <Route path="Section-Replace" element={< SectionReplace/>} />
-      <Route path="Arrear-FeeUpdating" element={< ArrearFeeUpdating/>} />
-      <Route path="Bill-Cancel" element={< BillCancel/>} />
+      <Route path="enquiry" element={<Enquiry />} />
+      <Route path="AdmissionForm" element={<AdmissionForm />} />
+      <Route path="AdmissionForm/:id" element={<AdmissionForm />} />
+      <Route path="Bar-code-Design" element={<BarcodeDesign />} />
+      <Route path="StudentDetails" element={<StudentDetails />} />
+      <Route path="EditStudentDetails" element={<EditStudentDetails />} />
+      <Route path="Student-Details-Report" element={<StudentDetailsReport />} />
+      <Route path="Transfer-Certificate" element={<TransferCertificate />} />
+      <Route path="Demand-Report" element={<DemandReport />} />
+      <Route path="Section-Replace" element={<SectionReplace />} />
+      <Route path="Arrear-FeeUpdating" element={<ArrearFeeUpdating />} />
+      <Route path="Bill-Cancel" element={<BillCancel />} />
       <Route path="/enquiry-form/:id" element={<EnquiryForm />} />
       <Route path="/enquiry-form/" element={<EnquiryForm />} />
     </Routes>

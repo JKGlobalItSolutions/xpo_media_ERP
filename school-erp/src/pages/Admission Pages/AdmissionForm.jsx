@@ -286,6 +286,7 @@ const AdmissionForm = () => {
         setFormData((prevData) => ({
           ...prevData,
           ...enquiryData,
+          admissionNumber: prevData.admissionNumber, // Preserve the existing admission number
         }))
         setPhotoPreview(enquiryData.studentPhoto || defaultStudentPhoto)
         toast.success("Enquiry data fetched successfully!")
@@ -448,7 +449,8 @@ const AdmissionForm = () => {
           toast.success("Admission submitted successfully!")
         }
 
-        navigate("/admission")
+        // Redirect to the StudentDetails page
+        navigate("/admission/StudentDetails")
       } catch (error) {
         console.error("Error submitting admission:", error)
         toast.error(`Failed to submit admission: ${error.message}`)

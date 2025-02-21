@@ -6,7 +6,7 @@ import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Button, Container, Table, Form, OverlayTrigger, Tooltip, Row, Col, Card } from "react-bootstrap"
 import { FaEdit, FaTrash, FaEye, FaCopy, FaTable, FaTh } from "react-icons/fa"
 import { db, auth } from "../../Firebase/config"
-import { collection, getDocs, query, limit, addDoc } from "firebase/firestore"
+import { collection, getDocs, query, limit, addDoc, deleteDoc, doc } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
@@ -73,49 +73,20 @@ const StudentDetails = () => {
 
   const fetchStudents = async () => {
     try {
-      // For this example, we'll use dummy data instead of fetching from Firestore
-      const dummyStudents = [
-        {
-          id: "1",
-          admissionNumber: "ADM001",
-          name: "John Doe",
-          class: "10th",
-          section: "A",
-          dateOfBirth: "2005-05-15",
-          gender: "Male",
-          parentName: "Jane Doe",
-          contact: "1234567890",
-          fees: "Paid",
-          enrollmentDate: "2020-06-01",
-        },
-        {
-          id: "2",
-          admissionNumber: "ADM002",
-          name: "Alice Smith",
-          class: "9th",
-          section: "B",
-          dateOfBirth: "2006-08-22",
-          gender: "Female",
-          parentName: "Bob Smith",
-          contact: "9876543210",
-          fees: "Due",
-          enrollmentDate: "2021-06-01",
-        },
-        {
-          id: "3",
-          admissionNumber: "ADM003",
-          name: "Charlie Brown",
-          class: "11th",
-          section: "C",
-          dateOfBirth: "2004-12-10",
-          gender: "Male",
-          parentName: "Lucy Brown",
-          contact: "5555555555",
-          fees: "Paid",
-          enrollmentDate: "2019-06-01",
-        },
-      ]
-      setStudents(dummyStudents)
+      const studentsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "AdmissionSetup",
+      )
+      const querySnapshot = await getDocs(studentsRef)
+      const fetchedStudents = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      setStudents(fetchedStudents)
     } catch (error) {
       console.error("Error fetching students:", error)
       toast.error("Failed to fetch students. Please try again.")
@@ -123,7 +94,7 @@ const StudentDetails = () => {
   }
 
   const handleEdit = (studentId) => {
-    navigate(`/admission/student-form/${studentId}`)
+    navigate(`/admission/AdmissionForm/${studentId}`)
   }
 
   const handleDeleteClick = (student) => {
@@ -134,8 +105,16 @@ const StudentDetails = () => {
   const handleDeleteConfirm = async () => {
     if (studentToDelete) {
       try {
-        // In a real application, you would delete the student from Firestore here
-        // For this example, we'll just remove the student from the local state
+        const studentRef = doc(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "AdmissionMaster",
+          administrationId,
+          "AdmissionSetup",
+          studentToDelete.id,
+        )
+        await deleteDoc(studentRef)
         setStudents(students.filter((student) => student.id !== studentToDelete.id))
         toast.success("Student deleted successfully!")
       } catch (error) {
@@ -148,7 +127,7 @@ const StudentDetails = () => {
   }
 
   const handleView = (studentId) => {
-    navigate(`/admission/student-form/${studentId}?view=true`)
+    navigate(`/admission/AdmissionForm/${studentId}?view=true`)
   }
 
   const handleCopyAdmissionNumber = (admissionNumber) => {
@@ -160,10 +139,10 @@ const StudentDetails = () => {
 
   const filteredStudents = students.filter(
     (student) =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.section.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.admissionNumber.toLowerCase().includes(searchTerm.toLowerCase()),
+      student.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.standard?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.section?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -183,7 +162,7 @@ const StudentDetails = () => {
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
         >
           <h2 className="mb-0">Student Details</h2>
-          <Button onClick={() => navigate("/admission/student-form")} className="btn btn-light text-dark">
+          <Button onClick={() => navigate("/admission/AdmissionForm")} className="btn btn-light text-dark">
             + Add Student
           </Button>
         </div>
@@ -252,12 +231,12 @@ const StudentDetails = () => {
                       </div>
                       <div className="mb-3">
                         <div className="text-muted small">Name</div>
-                        <div>{student.name}</div>
+                        <div>{student.studentName}</div>
                       </div>
                       <div className="d-flex justify-content-around">
                         <div>
                           <div className="text-muted small">Class</div>
-                          <div>{student.class}</div>
+                          <div>{student.standard}</div>
                         </div>
                         <div>
                           <div className="text-muted small">Section</div>
@@ -265,6 +244,14 @@ const StudentDetails = () => {
                         </div>
                       </div>
                     </Card.Body>
+                    <Card.Footer className="d-flex justify-content-around">
+                      <Button variant="outline-primary" size="sm" onClick={() => handleView(student.id)}>
+                        <FaEye /> View
+                      </Button>
+                      <Button variant="outline-secondary" size="sm" onClick={() => handleEdit(student.id)}>
+                        <FaEdit /> Edit
+                      </Button>
+                    </Card.Footer>
                   </Card>
                 </Col>
               ))}
@@ -306,13 +293,13 @@ const StudentDetails = () => {
                           </OverlayTrigger>
                         </div>
                       </td>
-                      <td>{student.name}</td>
-                      <td>{student.class}</td>
+                      <td>{student.studentName}</td>
+                      <td>{student.standard}</td>
                       <td>{student.section}</td>
                       <td>{student.dateOfBirth}</td>
                       <td>{student.gender}</td>
-                      <td>{student.parentName}</td>
-                      <td>{student.contact}</td>
+                      <td>{student.fatherName}</td>
+                      <td>{student.phoneNumber}</td>
                       <td>
                         <Button
                           variant="secondary"
@@ -352,7 +339,7 @@ const StudentDetails = () => {
           setStudentToDelete(null)
         }}
         onConfirm={handleDeleteConfirm}
-        itemName={studentToDelete?.name}
+        itemName={studentToDelete?.studentName}
       />
 
       <ToastContainer />
