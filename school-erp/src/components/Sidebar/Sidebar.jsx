@@ -178,7 +178,6 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "2-13", title: "• Staff Master", path: "/admin/staff-master" },
         // { id: "2-14", title: "• Flash Screen", path: "/admin/Flash-Screen" },
         { id: "2-15", title: "• Certificate Preparation", path: "/admin/certificate" },
-        { id: "2-16", title: "• Supplier Setup", path: "/admin/supplier-Setup" },
         { id: "2-17", title: "• Password Setup", path: "/admin/password-setup" },
         
       ],
@@ -210,8 +209,9 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "4-1", title: "• Item/Book Master", path: "/book/item-book-master" },
         { id: "4-2", title: "• Category Head", path: "/book/category-head" },
         { id: "4-3", title: "• Customer / Staff Master", path: "/book/customer-staff-master" },
-        { id: "4-4", title: "• Book Master", path: "/book/Book-Master" },
-        { id: "4-5", title: "• Book Setup Class Wise", path: "/book/Book-setup-class-wise" },
+        { id: "4-4", title: "• Supplier Setup", path: "/book/supplier-Setup" },
+        { id: "4-5", title: "• Book Master", path: "/book/Book-Master" },
+        { id: "4-6", title: "• Book Setup Class Wise", path: "/book/Book-setup-class-wise" },
       ],
     },
     {
