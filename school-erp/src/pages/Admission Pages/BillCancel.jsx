@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
-import { Form, Button, Card, Container } from "react-bootstrap"
+import { Form, Button, Card, Container, Row, Col } from "react-bootstrap"
 
 const BillCancel = () => {
   const [formData, setFormData] = useState({
@@ -13,7 +13,7 @@ const BillCancel = () => {
     section: "",
     date: "",
     description: "",
-    otp: ""
+    otp: "",
   })
 
   const [timer, setTimer] = useState(0)
@@ -21,9 +21,9 @@ const BillCancel = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }))
   }
 
@@ -36,7 +36,7 @@ const BillCancel = () => {
     let interval
     if (timer > 0) {
       interval = setInterval(() => {
-        setTimer(prev => prev - 1)
+        setTimer((prev) => prev - 1)
       }, 1000)
     }
     return () => clearInterval(interval)
@@ -45,12 +45,13 @@ const BillCancel = () => {
   const handleSubmit = (e) => {
     e.preventDefault()
     console.log("Form Data:", formData)
+    // Add your form submission logic here
   }
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
   return (
@@ -62,114 +63,111 @@ const BillCancel = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <div to="/admission">Admission Master</div>
+            <Link to="/admission">Admission Master</Link>
             <span className="separator mx-2">&gt;</span>
             <span>Bill Cancel</span>
           </nav>
         </div>
 
         {/* Bill Cancel Form Card */}
-        <Card className="mb-4">
+        <Card className="mb-4 shadow-sm">
           <Card.Header className="p-3 custom-btn-clr">
-            <h5 className="m-0">Bill Cancel</h5>
+            <h5 className="m-0 text-white">Bill Cancel</h5>
           </Card.Header>
           <Card.Body className="p-4">
             <Form onSubmit={handleSubmit}>
-              <div className="row mb-3">
-                <div className="col-md-3">
+              <Row className="mb-3">
+                <Col md={3}>
                   <Form.Label>Bill Number</Form.Label>
-                </div>
-                <div className="col-md-9">
+                </Col>
+                <Col md={9}>
                   <Form.Control
                     type="text"
                     name="billNumber"
                     value={formData.billNumber}
                     onChange={handleChange}
+                    placeholder="Enter Bill Number"
                   />
-                </div>
-              </div>
+                </Col>
+              </Row>
 
-              <div className="row mb-3">
-                <div className="col-md-3">
+              <Row className="mb-3">
+                <Col md={3}>
                   <Form.Label>Name</Form.Label>
-                </div>
-                <div className="col-md-9">
+                </Col>
+                <Col md={9}>
                   <Form.Control
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
+                    placeholder="Enter Name"
                   />
-                </div>
-              </div>
+                </Col>
+              </Row>
 
-              <div className="row mb-3">
-                <div className="col-md-3">
+              <Row className="mb-3">
+                <Col md={3}>
                   <Form.Label>Standard</Form.Label>
-                </div>
-                <div className="col-md-9">
+                </Col>
+                <Col md={9}>
                   <Form.Control
                     type="text"
                     name="standard"
                     value={formData.standard}
                     onChange={handleChange}
+                    placeholder="Enter Standard"
                   />
-                </div>
-              </div>
+                </Col>
+              </Row>
 
-              <div className="row mb-3">
-                <div className="col-md-3">
+              <Row className="mb-3">
+                <Col md={3}>
                   <Form.Label>Section</Form.Label>
-                </div>
-                <div className="col-md-9">
+                </Col>
+                <Col md={9}>
                   <Form.Control
                     type="text"
                     name="section"
                     value={formData.section}
                     onChange={handleChange}
+                    placeholder="Enter Section"
                   />
-                </div>
-              </div>
+                </Col>
+              </Row>
 
-              <div className="row mb-3">
-                <div className="col-md-3">
+              <Row className="mb-3">
+                <Col md={3}>
                   <Form.Label>Date</Form.Label>
-                </div>
-                <div className="col-md-9">
-                  <Form.Control
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
+                </Col>
+                <Col md={9}>
+                  <Form.Control type="date" name="date" value={formData.date} onChange={handleChange} />
+                </Col>
+              </Row>
 
-              <div className="row mb-3">
-                <div className="col-md-3">
+              <Row className="mb-3">
+                <Col md={3}>
                   <Form.Label>Description</Form.Label>
-                </div>
-                <div className="col-md-9">
+                </Col>
+                <Col md={9}>
                   <Form.Control
                     as="textarea"
                     rows={3}
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
+                    placeholder="Enter Description"
                   />
-                </div>
-              </div>
+                </Col>
+              </Row>
 
-              <div className="row mb-3">
-                <div className="col-md-3">
-                  <Button
-                    onClick={handleGenerateOTP}
-                    className="custom-btn-clr"
-                  >
+              <Row className="mb-3 align-items-center">
+                <Col md={3}>
+                  <Button onClick={handleGenerateOTP} className="custom-btn-clr" disabled={isOtpSent && timer > 0}>
                     Generate OTP
                   </Button>
-                </div>
-                <div className="col-md-6">
+                </Col>
+                <Col md={6}>
                   <Form.Control
                     type="text"
                     placeholder="Enter OTP"
@@ -178,36 +176,25 @@ const BillCancel = () => {
                     onChange={handleChange}
                     disabled={!isOtpSent}
                   />
-                </div>
-                <div className="col-md-3">
-                  {timer > 0 && (
-                    <span className="align-middle">{formatTime(timer)}</span>
-                  )}
-                </div>
-              </div>
+                </Col>
+                <Col md={3}>{timer > 0 && <span className="align-middle">{formatTime(timer)}</span>}</Col>
+              </Row>
 
               <div className="d-flex justify-content-center gap-2 mt-4">
-                <Button 
-                  type="submit" 
-                  className="custom-btn-clr"
-                >
+                <Button type="submit" className="custom-btn-clr">
                   Save
                 </Button>
-                <Button 
-                  variant="secondary"
-                  onClick={() => window.history.back()}
-                >
+                <Button variant="secondary" onClick={() => window.history.back()}>
                   Cancel
                 </Button>
               </div>
             </Form>
           </Card.Body>
         </Card>
-
-      
       </Container>
     </MainContentPage>
   )
 }
 
 export default BillCancel
+
