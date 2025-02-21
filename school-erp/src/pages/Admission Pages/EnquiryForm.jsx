@@ -1,15 +1,16 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useParams, useNavigate, useLocation } from "react-router-dom"
-import { Form, Button, Row, Col, Container } from "react-bootstrap"
-import { db, auth, storage } from "../../Firebase/config"
-import { doc, getDoc, updateDoc, addDoc, collection, getDocs, query, limit, where } from "firebase/firestore"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
+import { Container, Form, Button, Row, Col } from "react-bootstrap"
 import MainContentPage from "../../components/MainContent/MainContentPage"
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom"
+import { db, auth, storage } from "../../Firebase/config"
+import { collection, getDocs, getDoc, updateDoc, addDoc, doc, query, limit, where } from "firebase/firestore"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 import { FaArrowLeft } from "react-icons/fa"
+import defaultStudentPhoto from "../../images/StudentProfileIcon/studentProfile.jpeg"
 
 const EnquiryForm = () => {
   const { id } = useParams()
@@ -27,20 +28,31 @@ const EnquiryForm = () => {
     motherName: "",
     streetVillage: "",
     placePincode: "",
+    districtId: "",
     district: "",
     phoneNumber: "",
+    boardingPointId: "",
     boardingPoint: "",
+    busRouteNumberId: "",
     busRouteNumber: "",
     emailId: "",
     communicationAddress: "",
+    nationalityId: "",
     nationality: "",
+    religionId: "",
     religion: "",
+    stateId: "",
     state: "",
+    communityId: "",
     community: "",
+    casteId: "",
     caste: "",
     studentType: "",
+    studentCategoryId: "",
     studentCategory: "",
+    standardId: "",
     standard: "",
+    sectionId: "",
     section: "",
     gender: "",
     dateOfBirth: "",
@@ -48,8 +60,11 @@ const EnquiryForm = () => {
     lunchRefresh: "",
     bloodGroup: "",
     dateOfAdmission: "",
+    motherTongueId: "",
     motherTongue: "",
+    fatherOccupationId: "",
     fatherOccupation: "",
+    motherOccupationId: "",
     motherOccupation: "",
     examNumber: "",
     busFee: "",
@@ -62,8 +77,10 @@ const EnquiryForm = () => {
     identificationMark2: "",
   })
   const [errors, setErrors] = useState({})
-  const [photoPreview, setPhotoPreview] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(defaultStudentPhoto)
   const fileInputRef = useRef(null)
+  const dateOfBirthRef = useRef(null)
+  const dateOfAdmissionRef = useRef(null)
   const [setupData, setSetupData] = useState({
     nationalities: [],
     religions: [],
@@ -77,6 +94,8 @@ const EnquiryForm = () => {
     courses: [],
     boardingPoints: [],
     busRoutes: [],
+    parentOccupations: [],
+    transportId: null,
   })
 
   useEffect(() => {
@@ -102,10 +121,28 @@ const EnquiryForm = () => {
   }, [])
 
   useEffect(() => {
+    const fetchTransportId = async () => {
+      try {
+        const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
+        const transportSnapshot = await getDocs(transportRef)
+        if (!transportSnapshot.empty) {
+          const transportId = transportSnapshot.docs[0].id
+          setSetupData((prevData) => ({ ...prevData, transportId }))
+        }
+      } catch (error) {
+        console.error("Error fetching Transport ID:", error)
+        toast.error("Failed to fetch transport data. Please try again.")
+      }
+    }
+
+    fetchTransportId()
+  }, [])
+
+  useEffect(() => {
     if (administrationId) {
       fetchSetupData()
       if (id) {
-        fetchEnquiryData()
+        fetchEnquiryData(id)
       } else {
         generateEnquiryKey()
       }
@@ -138,7 +175,7 @@ const EnquiryForm = () => {
         motherTongueData,
         studentCategoryData,
         courseData,
-        busRouteData,
+        parentOccupationData,
       ] = await Promise.all([
         fetchData("NationalitySetup"),
         fetchData("ReligionSetup"),
@@ -150,7 +187,7 @@ const EnquiryForm = () => {
         fetchData("MotherTongue"),
         fetchData("StudentCategory"),
         fetchData("Courses"),
-        fetchData("RouteSetup"),
+        fetchData("ParentOccupation"),
       ])
 
       // Fetch boarding points from PlaceSetup
@@ -164,29 +201,43 @@ const EnquiryForm = () => {
         boardingPointData = placeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       }
 
-      setSetupData({
-        nationalities: nationalityData,
-        religions: religionData,
-        communities: communityData,
-        castes: casteData,
-        districts: districtData,
-        states: stateData,
-        sections: sectionData,
-        motherTongues: motherTongueData,
-        studentCategories: studentCategoryData,
-        courses: courseData,
-        boardingPoints: boardingPointData,
-        busRoutes: busRouteData,
-      })
+      if (setupData.transportId) {
+        // Fetch bus routes
+        const routeRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Transport",
+          setupData.transportId,
+          "RouteSetup",
+        )
+        const routeSnapshot = await getDocs(routeRef)
+        const routeData = routeSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
 
-      console.log("Fetched setup data successfully")
+        setSetupData((prevData) => ({
+          ...prevData,
+          nationalities: nationalityData,
+          religions: religionData,
+          communities: communityData,
+          castes: casteData,
+          districts: districtData,
+          states: stateData,
+          sections: sectionData,
+          motherTongues: motherTongueData,
+          studentCategories: studentCategoryData,
+          courses: courseData,
+          boardingPoints: boardingPointData,
+          parentOccupations: parentOccupationData,
+          busRoutes: routeData,
+        }))
+      }
     } catch (error) {
       console.error("Error fetching setup data:", error)
       toast.error("Failed to fetch setup data. Please try again.")
     }
   }
 
-  const fetchEnquiryData = async () => {
+  const fetchEnquiryData = async (enquiryId) => {
     try {
       const enquiryRef = doc(
         db,
@@ -195,12 +246,16 @@ const EnquiryForm = () => {
         "AdmissionMaster",
         administrationId,
         "EnquirySetup",
-        id,
+        enquiryId,
       )
       const enquirySnap = await getDoc(enquiryRef)
       if (enquirySnap.exists()) {
-        setFormData(enquirySnap.data())
-        setPhotoPreview(enquirySnap.data().studentPhoto)
+        const enquiryData = enquirySnap.data()
+        setFormData(enquiryData)
+        setPhotoPreview(enquiryData.studentPhoto || defaultStudentPhoto)
+      } else {
+        toast.error("Enquiry not found")
+        navigate("/admission/enquiry")
       }
     } catch (error) {
       console.error("Error fetching enquiry data:", error)
@@ -250,6 +305,17 @@ const EnquiryForm = () => {
     setErrors((prev) => ({ ...prev, [name]: "" }))
   }
 
+  const handleSelectChange = (e) => {
+    const { name, value } = e.target
+    const [id, displayValue] = value.split("|")
+    setFormData((prevState) => ({
+      ...prevState,
+      [`${name}Id`]: id,
+      [name]: displayValue,
+    }))
+    setErrors((prev) => ({ ...prev, [name]: "" }))
+  }
+
   const handlePhotoChange = (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -267,6 +333,10 @@ const EnquiryForm = () => {
 
   const handlePhotoClick = () => {
     fileInputRef.current.click()
+  }
+
+  const handleDateInputClick = (ref) => {
+    ref.current.showPicker()
   }
 
   const validateForm = () => {
@@ -326,11 +396,8 @@ const EnquiryForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log("Form submission started")
     if (validateForm()) {
       try {
-        console.log("Form is valid, attempting to submit")
-
         let photoUrl = formData.studentPhoto
         if (formData.studentPhoto instanceof File) {
           const storageRef = ref(
@@ -369,10 +436,12 @@ const EnquiryForm = () => {
         toast.error(`Failed to submit enquiry: ${error.message}`)
       }
     } else {
-      console.log("Form validation failed")
-      const missingFields = Object.keys(errors).join(", ")
-      toast.error(`Please fill in all required fields. Missing: ${missingFields}`)
+      toast.error("Please fill in all required fields.")
     }
+  }
+
+  const handleBack = () => {
+    navigate("/admission/enquiry")
   }
 
   return (
@@ -380,11 +449,11 @@ const EnquiryForm = () => {
       <Container fluid className="px-0">
         <div className="mb-4">
           <nav className="custom-breadcrumb py-1 py-lg-3">
-            <a href="/home">Home</a>
+            <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <a href="/admission">Admission</a>
+            <span>Admission</span>
             <span className="separator mx-2">&gt;</span>
-            <a href="/admission/enquiry">Enquiry</a>
+            <Link to="/admission/enquiry">Enquiry</Link>
             <span className="separator mx-2">&gt;</span>
             <span>{isViewMode ? "View Enquiry" : id ? "Edit Enquiry" : "Add Enquiry"}</span>
           </nav>
@@ -394,11 +463,7 @@ const EnquiryForm = () => {
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
         >
           <div className="d-flex align-items-center">
-            <Button
-              variant="link"
-              className="text-white p-0 back-button me-3"
-              onClick={() => navigate("/admission/enquiry")}
-            >
+            <Button variant="link" className="text-white p-0 back-button me-3" onClick={handleBack}>
               <FaArrowLeft size={20} />
             </Button>
             <h2 className="mb-0">{isViewMode ? "View Enquiry" : id ? "Edit Enquiry" : "Add Enquiry"}</h2>
@@ -407,10 +472,11 @@ const EnquiryForm = () => {
         </div>
 
         <div className="bg-white p-4 rounded-bottom shadow">
-          <Form onSubmit={handleSubmit}>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
+          <Form onSubmit={handleSubmit} className="h-100">
+            <Row className="h-100">
+              {/* Left Column */}
+              <Col md={4} className="d-flex flex-column">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Enquiry Key</Form.Label>
                   <Form.Control type="text" name="enquiryKey" value={formData.enquiryKey} readOnly disabled />
                 </Form.Group>
@@ -433,17 +499,11 @@ const EnquiryForm = () => {
                       backgroundColor: "#f8f9fa",
                     }}
                   >
-                    {photoPreview ? (
-                      <img
-                        src={photoPreview || "/placeholder.svg"}
-                        alt="Preview"
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <div className="text-center text-muted">
-                        <div>Upload Photo Here</div>
-                      </div>
-                    )}
+                    <img
+                      src={photoPreview || "/placeholder.svg"}
+                      alt="Student"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
                   </div>
                   <input
                     ref={fileInputRef}
@@ -455,21 +515,22 @@ const EnquiryForm = () => {
                   />
                 </div>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Student Name</Form.Label>
                   <Form.Control
                     type="text"
                     name="studentName"
                     value={formData.studentName}
                     onChange={handleInputChange}
-                    placeholder="Enter student full name"
-                    isInvalid={!!errors.studentName}
+                    placeholder="Enter student name"
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.studentName}
                   />
                   <Form.Control.Feedback type="invalid">{errors.studentName}</Form.Control.Feedback>
                 </Form.Group>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Father's Name</Form.Label>
                   <Form.Control
                     type="text"
@@ -477,13 +538,14 @@ const EnquiryForm = () => {
                     value={formData.fatherName}
                     onChange={handleInputChange}
                     placeholder="Enter father's name"
-                    isInvalid={!!errors.fatherName}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.fatherName}
                   />
                   <Form.Control.Feedback type="invalid">{errors.fatherName}</Form.Control.Feedback>
                 </Form.Group>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Mother's Name</Form.Label>
                   <Form.Control
                     type="text"
@@ -491,15 +553,17 @@ const EnquiryForm = () => {
                     value={formData.motherName}
                     onChange={handleInputChange}
                     placeholder="Enter mother's name"
-                    isInvalid={!!errors.motherName}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.motherName}
                   />
                   <Form.Control.Feedback type="invalid">{errors.motherName}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
 
-              <Col md={4}>
-                <Form.Group className="mb-3">
+              {/* Middle Column */}
+              <Col md={4} className="d-flex flex-column">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Street/Village</Form.Label>
                   <Form.Control
                     type="text"
@@ -507,13 +571,14 @@ const EnquiryForm = () => {
                     value={formData.streetVillage}
                     onChange={handleInputChange}
                     placeholder="Enter street/village"
-                    isInvalid={!!errors.streetVillage}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.streetVillage}
                   />
                   <Form.Control.Feedback type="invalid">{errors.streetVillage}</Form.Control.Feedback>
                 </Form.Group>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Place/Pincode</Form.Label>
                   <Form.Control
                     type="text"
@@ -521,24 +586,26 @@ const EnquiryForm = () => {
                     value={formData.placePincode}
                     onChange={handleInputChange}
                     placeholder="Enter place/pincode"
-                    isInvalid={!!errors.placePincode}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.placePincode}
                   />
                   <Form.Control.Feedback type="invalid">{errors.placePincode}</Form.Control.Feedback>
                 </Form.Group>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>District</Form.Label>
                   <Form.Select
                     name="district"
-                    value={formData.district}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.district}
+                    value={`${formData.districtId}|${formData.district}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.district}
                   >
                     <option value="">Select District</option>
                     {setupData.districts.map((district) => (
-                      <option key={district.id} value={district.district}>
+                      <option key={district.id} value={`${district.id}|${district.district}`}>
                         {district.district}
                       </option>
                     ))}
@@ -546,7 +613,7 @@ const EnquiryForm = () => {
                   <Form.Control.Feedback type="invalid">{errors.district}</Form.Control.Feedback>
                 </Form.Group>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Phone Number</Form.Label>
                   <Form.Control
                     type="tel"
@@ -554,65 +621,69 @@ const EnquiryForm = () => {
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
                     placeholder="Enter phone number"
-                    isInvalid={!!errors.phoneNumber}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.phoneNumber}
                   />
                   <Form.Control.Feedback type="invalid">{errors.phoneNumber}</Form.Control.Feedback>
                 </Form.Group>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Boarding Point</Form.Label>
                   <Form.Select
                     name="boardingPoint"
-                    value={formData.boardingPoint}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.boardingPoint}
+                    value={`${formData.boardingPointId}|${formData.boardingPoint}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.boardingPoint}
                   >
                     <option value="">Select Boarding Point</option>
                     {setupData.boardingPoints.map((point) => (
-                      <option key={point.id} value={point.placeName}>
+                      <option key={point.id} value={`${point.id}|${point.placeName}`}>
                         {point.placeName}
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.boardingPoint}</Form.Control.Feedback>
                 </Form.Group>
-              </Col>
 
-              <Col md={4}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Bus Route Number</Form.Label>
                   <Form.Select
                     name="busRouteNumber"
-                    value={formData.busRouteNumber}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.busRouteNumber}
+                    value={`${formData.busRouteNumberId}|${formData.busRouteNumber}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.busRouteNumber}
                   >
                     <option value="">Select Bus Route Number</option>
                     {setupData.busRoutes.map((route) => (
-                      <option key={route.id} value={route.route}>
+                      <option key={route.id} value={`${route.id}|${route.route}`}>
                         {route.route}
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.busRouteNumber}</Form.Control.Feedback>
                 </Form.Group>
+              </Col>
 
-                <Form.Group className="mb-3">
+              {/* Right Column */}
+              <Col md={4} className="d-flex flex-column">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Email ID</Form.Label>
                   <Form.Control
                     type="email"
                     name="emailId"
                     value={formData.emailId}
                     onChange={handleInputChange}
-                    placeholder="Enter email address"
+                    placeholder="Enter email ID"
                     disabled={isViewMode}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Communication Address</Form.Label>
                   <Form.Control
                     as="textarea"
@@ -625,98 +696,104 @@ const EnquiryForm = () => {
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Nationality</Form.Label>
                   <Form.Select
                     name="nationality"
-                    value={formData.nationality}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.nationality}
+                    value={`${formData.nationalityId}|${formData.nationality}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.nationality}
                   >
                     <option value="">Select Nationality</option>
-                    {setupData.nationalities.map((nat) => (
-                      <option key={nat.id} value={nat.nationality}>
-                        {nat.nationality}
+                    {setupData.nationalities.map((nationality) => (
+                      <option key={nationality.id} value={`${nationality.id}|${nationality.nationality}`}>
+                        {nationality.nationality}
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.nationality}</Form.Control.Feedback>
                 </Form.Group>
 
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Religion</Form.Label>
                   <Form.Select
                     name="religion"
-                    value={formData.religion}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.religion}
+                    value={`${formData.religionId}|${formData.religion}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.religion}
                   >
                     <option value="">Select Religion</option>
-                    {setupData.religions.map((rel) => (
-                      <option key={rel.id} value={rel.religion}>
-                        {rel.religion}
+                    {setupData.religions.map((religion) => (
+                      <option key={religion.id} value={`${religion.id}|${religion.religion}`}>
+                        {religion.religion}
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.religion}</Form.Control.Feedback>
                 </Form.Group>
-              </Col>
-            </Row>
 
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>State</Form.Label>
                   <Form.Select
                     name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.state}
+                    value={`${formData.stateId}|${formData.state}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.state}
                   >
                     <option value="">Select State</option>
                     {setupData.states.map((state) => (
-                      <option key={state.id} value={state.state}>
+                      <option key={state.id} value={`${state.id}|${state.state}`}>
                         {state.state}
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.state}</Form.Control.Feedback>
                 </Form.Group>
+              </Col>
+            </Row>
 
-                <Form.Group className="mb-3">
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Community</Form.Label>
                   <Form.Select
                     name="community"
-                    value={formData.community}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.community}
+                    value={`${formData.communityId}|${formData.community}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.community}
                   >
                     <option value="">Select Community</option>
-                    {setupData.communities.map((comm) => (
-                      <option key={comm.id} value={comm.community}>
-                        {comm.community}
+                    {setupData.communities.map((community) => (
+                      <option key={community.id} value={`${community.id}|${community.community}`}>
+                        {community.community}
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.community}</Form.Control.Feedback>
                 </Form.Group>
-
-                <Form.Group className="mb-3">
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Caste</Form.Label>
                   <Form.Select
                     name="caste"
-                    value={formData.caste}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.caste}
+                    value={`${formData.casteId}|${formData.caste}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.caste}
                   >
                     <option value="">Select Caste</option>
                     {setupData.castes.map((caste) => (
-                      <option key={caste.id} value={caste.caste}>
+                      <option key={caste.id} value={`${caste.id}|${caste.caste}`}>
                         {caste.caste}
                       </option>
                     ))}
@@ -724,16 +801,16 @@ const EnquiryForm = () => {
                   <Form.Control.Feedback type="invalid">{errors.caste}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
-
               <Col md={4}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Student Type</Form.Label>
                   <Form.Select
                     name="studentType"
                     value={formData.studentType}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.studentType}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.studentType}
                   >
                     <option value="">Select Student Type</option>
                     <option value="New">New</option>
@@ -741,38 +818,45 @@ const EnquiryForm = () => {
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.studentType}</Form.Control.Feedback>
                 </Form.Group>
+              </Col>
+            </Row>
 
-                <Form.Group className="mb-3">
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Student Category</Form.Label>
                   <Form.Select
                     name="studentCategory"
-                    value={formData.studentCategory}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.studentCategory}
+                    value={`${formData.studentCategoryId}|${formData.studentCategory}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.studentCategory}
                   >
-                    <option value="">Select Category</option>
+                    <option value="">Select Student Category</option>
                     {setupData.studentCategories.map((category) => (
-                      <option key={category.id} value={category.StudentCategoryName}>
+                      <option key={category.id} value={`${category.id}|${category.StudentCategoryName}`}>
                         {category.StudentCategoryName}
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.studentCategory}</Form.Control.Feedback>
                 </Form.Group>
-
-                <Form.Group className="mb-3">
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Standard</Form.Label>
                   <Form.Select
                     name="standard"
-                    value={formData.standard}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.standard}
+                    value={`${formData.standardId}|${formData.standard}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.standard}
                   >
                     <option value="">Select Standard</option>
                     {setupData.courses.map((course) => (
-                      <option key={course.id} value={course.standard}>
+                      <option key={course.id} value={`${course.id}|${course.standard}`}>
                         {course.standard}
                       </option>
                     ))}
@@ -780,35 +864,40 @@ const EnquiryForm = () => {
                   <Form.Control.Feedback type="invalid">{errors.standard}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
-
               <Col md={4}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Section</Form.Label>
                   <Form.Select
                     name="section"
-                    value={formData.section}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.section}
+                    value={`${formData.sectionId}|${formData.section}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.section}
                   >
                     <option value="">Select Section</option>
                     {setupData.sections.map((section) => (
-                      <option key={section.id} value={section.name}>
+                      <option key={section.id} value={`${section.id}|${section.name}`}>
                         {section.name}
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.section}</Form.Control.Feedback>
                 </Form.Group>
+              </Col>
+            </Row>
 
-                <Form.Group className="mb-3">
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Gender</Form.Label>
                   <Form.Select
                     name="gender"
                     value={formData.gender}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.gender}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.gender}
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -817,25 +906,26 @@ const EnquiryForm = () => {
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.gender}</Form.Control.Feedback>
                 </Form.Group>
-
-                <Form.Group className="mb-3">
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Date of Birth</Form.Label>
                   <Form.Control
                     type="date"
                     name="dateOfBirth"
                     value={formData.dateOfBirth}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.dateOfBirth}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.dateOfBirth}
+                    ref={dateOfBirthRef}
+                    onClick={() => handleDateInputClick(dateOfBirthRef)}
                   />
                   <Form.Control.Feedback type="invalid">{errors.dateOfBirth}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
-            </Row>
-
-            <Row>
               <Col md={4}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>EMIS</Form.Label>
                   <Form.Control
                     type="text"
@@ -843,20 +933,26 @@ const EnquiryForm = () => {
                     value={formData.emis}
                     onChange={handleInputChange}
                     placeholder="Enter EMIS number"
-                    isInvalid={!!errors.emis}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.emis}
                   />
                   <Form.Control.Feedback type="invalid">{errors.emis}</Form.Control.Feedback>
                 </Form.Group>
+              </Col>
+            </Row>
 
-                <Form.Group className="mb-3">
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Lunch / Refresh</Form.Label>
                   <Form.Select
                     name="lunchRefresh"
                     value={formData.lunchRefresh}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.lunchRefresh}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.lunchRefresh}
                   >
                     <option value="">Select Option</option>
                     <option value="Lunch">Lunch</option>
@@ -864,15 +960,17 @@ const EnquiryForm = () => {
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.lunchRefresh}</Form.Control.Feedback>
                 </Form.Group>
-
-                <Form.Group className="mb-3">
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Blood Group</Form.Label>
                   <Form.Select
                     name="bloodGroup"
                     value={formData.bloodGroup}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.bloodGroup}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.bloodGroup}
                   >
                     <option value="">Select Blood Group</option>
                     <option value="A+">A+</option>
@@ -887,71 +985,94 @@ const EnquiryForm = () => {
                   <Form.Control.Feedback type="invalid">{errors.bloodGroup}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
-
               <Col md={4}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Date of Admission</Form.Label>
                   <Form.Control
                     type="date"
                     name="dateOfAdmission"
                     value={formData.dateOfAdmission}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.dateOfAdmission}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.dateOfAdmission}
+                    ref={dateOfAdmissionRef}
+                    onClick={() => handleDateInputClick(dateOfAdmissionRef)}
                   />
                   <Form.Control.Feedback type="invalid">{errors.dateOfAdmission}</Form.Control.Feedback>
                 </Form.Group>
+              </Col>
+            </Row>
 
-                <Form.Group className="mb-3">
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Mother Tongue</Form.Label>
                   <Form.Select
                     name="motherTongue"
-                    value={formData.motherTongue}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.motherTongue}
+                    value={`${formData.motherTongueId}|${formData.motherTongue}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.motherTongue}
                   >
                     <option value="">Select Mother Tongue</option>
                     {setupData.motherTongues.map((mt) => (
-                      <option key={mt.id} value={mt.MotherTongueName}>
+                      <option key={mt.id} value={`${mt.id}|${mt.MotherTongueName}`}>
                         {mt.MotherTongueName}
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.motherTongue}</Form.Control.Feedback>
                 </Form.Group>
-
-                <Form.Group className="mb-3">
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Father's Occupation</Form.Label>
-                  <Form.Control
-                    type="text"
+                  <Form.Select
                     name="fatherOccupation"
-                    value={formData.fatherOccupation}
-                    onChange={handleInputChange}
-                    placeholder="Enter father's occupation"
-                    isInvalid={!!errors.fatherOccupation}
+                    value={`${formData.fatherOccupationId}|${formData.fatherOccupation}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
-                  />
+                    isInvalid={!!errors.fatherOccupation}
+                  >
+                    <option value="">Select Father's Occupation</option>
+                    {setupData.parentOccupations.map((occupation) => (
+                      <option key={occupation.id} value={`${occupation.id}|${occupation.name}`}>
+                        {occupation.name}
+                      </option>
+                    ))}
+                  </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.fatherOccupation}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
-
               <Col md={4}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Mother's Occupation</Form.Label>
-                  <Form.Control
-                    type="text"
+                  <Form.Select
                     name="motherOccupation"
-                    value={formData.motherOccupation}
-                    onChange={handleInputChange}
-                    placeholder="Enter mother's occupation"
-                    isInvalid={!!errors.motherOccupation}
+                    value={`${formData.motherOccupationId}|${formData.motherOccupation}`}
+                    onChange={handleSelectChange}
+                    required
                     disabled={isViewMode}
-                  />
+                    isInvalid={!!errors.motherOccupation}
+                  >
+                    <option value="">Select Mother's Occupation</option>
+                    {setupData.parentOccupations.map((occupation) => (
+                      <option key={occupation.id} value={`${occupation.id}|${occupation.name}`}>
+                        {occupation.name}
+                      </option>
+                    ))}
+                  </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.motherOccupation}</Form.Control.Feedback>
                 </Form.Group>
+              </Col>
+            </Row>
 
-                <Form.Group className="mb-3">
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Exam Number</Form.Label>
                   <Form.Control
                     type="text"
@@ -959,13 +1080,15 @@ const EnquiryForm = () => {
                     value={formData.examNumber}
                     onChange={handleInputChange}
                     placeholder="Enter exam number"
-                    isInvalid={!!errors.examNumber}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.examNumber}
                   />
                   <Form.Control.Feedback type="invalid">{errors.examNumber}</Form.Control.Feedback>
                 </Form.Group>
-
-                <Form.Group className="mb-3">
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Bus Fee</Form.Label>
                   <Form.Control
                     type="number"
@@ -973,8 +1096,9 @@ const EnquiryForm = () => {
                     value={formData.busFee}
                     onChange={handleInputChange}
                     placeholder="Enter bus fee"
-                    isInvalid={!!errors.busFee}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.busFee}
                   />
                   <Form.Control.Feedback type="invalid">{errors.busFee}</Form.Control.Feedback>
                 </Form.Group>
@@ -986,7 +1110,7 @@ const EnquiryForm = () => {
                 <h5 className="mt-4 mb-3">Previous Studied Details</h5>
               </Col>
               <Col md={3}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Studied Year</Form.Label>
                   <Form.Control
                     type="text"
@@ -994,14 +1118,15 @@ const EnquiryForm = () => {
                     value={formData.studiedYear}
                     onChange={handleInputChange}
                     placeholder="Enter studied year"
-                    isInvalid={!!errors.studiedYear}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.studiedYear}
                   />
                   <Form.Control.Feedback type="invalid">{errors.studiedYear}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
               <Col md={3}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Class Last Studied</Form.Label>
                   <Form.Control
                     type="text"
@@ -1009,14 +1134,15 @@ const EnquiryForm = () => {
                     value={formData.classLastStudied}
                     onChange={handleInputChange}
                     placeholder="Enter class last studied"
-                    isInvalid={!!errors.classLastStudied}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.classLastStudied}
                   />
                   <Form.Control.Feedback type="invalid">{errors.classLastStudied}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
               <Col md={3}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Class to be Admitted</Form.Label>
                   <Form.Control
                     type="text"
@@ -1024,14 +1150,15 @@ const EnquiryForm = () => {
                     value={formData.classToBeAdmitted}
                     onChange={handleInputChange}
                     placeholder="Enter class to be admitted"
-                    isInvalid={!!errors.classToBeAdmitted}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.classToBeAdmitted}
                   />
                   <Form.Control.Feedback type="invalid">{errors.classToBeAdmitted}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
               <Col md={3}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Name of the School</Form.Label>
                   <Form.Control
                     type="text"
@@ -1039,8 +1166,9 @@ const EnquiryForm = () => {
                     value={formData.nameOfSchool}
                     onChange={handleInputChange}
                     placeholder="Enter name of the school"
-                    isInvalid={!!errors.nameOfSchool}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.nameOfSchool}
                   />
                   <Form.Control.Feedback type="invalid">{errors.nameOfSchool}</Form.Control.Feedback>
                 </Form.Group>
@@ -1049,7 +1177,7 @@ const EnquiryForm = () => {
 
             <Row>
               <Col md={12}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Remarks</Form.Label>
                   <Form.Control
                     as="textarea"
@@ -1066,7 +1194,7 @@ const EnquiryForm = () => {
 
             <Row>
               <Col md={6}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Identification Mark 1</Form.Label>
                   <Form.Control
                     type="text"
@@ -1074,14 +1202,15 @@ const EnquiryForm = () => {
                     value={formData.identificationMark1}
                     onChange={handleInputChange}
                     placeholder="Enter identification mark 1"
-                    isInvalid={!!errors.identificationMark1}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.identificationMark1}
                   />
                   <Form.Control.Feedback type="invalid">{errors.identificationMark1}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3 flex-grow-1">
                   <Form.Label>Identification Mark 2</Form.Label>
                   <Form.Control
                     type="text"
@@ -1089,8 +1218,9 @@ const EnquiryForm = () => {
                     value={formData.identificationMark2}
                     onChange={handleInputChange}
                     placeholder="Enter identification mark 2"
-                    isInvalid={!!errors.identificationMark2}
+                    required
                     disabled={isViewMode}
+                    isInvalid={!!errors.identificationMark2}
                   />
                   <Form.Control.Feedback type="invalid">{errors.identificationMark2}</Form.Control.Feedback>
                 </Form.Group>
@@ -1111,6 +1241,68 @@ const EnquiryForm = () => {
         </div>
         <ToastContainer />
       </Container>
+
+      <style>
+        {`
+          .custom-breadcrumb {
+            padding: 0.5rem 1rem;
+          }
+
+          .custom-breadcrumb a {
+            color: #0B3D7B;
+            text-decoration: none;
+          }
+
+          .custom-breadcrumb .separator {
+            margin: 0 0.5rem;
+            color: #6c757d;
+          }
+
+          .custom-breadcrumb .current {
+            color: #212529;
+          }
+
+          .custom-btn-clr {
+            background: #0B3D7B;
+            color:rgb(255, 255, 255);
+          }
+
+          .back-button {
+            transition: opacity 0.2s;
+          }
+
+          .back-button:hover {
+            opacity: 0.8;
+          }
+
+          h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0;
+          }
+
+          /* Toastify custom styles */
+          .Toastify__toast-container {
+            z-index: 9999;
+          }
+
+          .Toastify__toast {
+            background-color: #0B3D7B;
+            color: white;
+          }
+
+          .Toastify__toast--success {
+            background-color: #0B3D7B;
+          }
+
+          .Toastify__toast--error {
+            background-color: #dc3545;
+          }
+
+          .Toastify__progress-bar {
+            background-color: rgba(255, 255, 255, 0.7);
+          }
+        `}
+      </style>
     </MainContentPage>
   )
 }

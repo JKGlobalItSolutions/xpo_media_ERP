@@ -142,7 +142,7 @@ const Enquiry = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <div to="/admission">Admission</div>
+            <span>Admission</span>
             <span className="separator mx-2">&gt;</span>
             <span>Enquiry</span>
           </nav>
