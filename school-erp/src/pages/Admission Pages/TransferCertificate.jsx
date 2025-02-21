@@ -91,7 +91,7 @@ const TransferCertificate = () => {
                   </Link>
                 </li>
                 <li className="breadcrumb-item">
-                  <Link to="/administration" className="text-decoration-none">
+                  <Link to="" className="text-decoration-none">
                     Admission
                   </Link>
                 </li>

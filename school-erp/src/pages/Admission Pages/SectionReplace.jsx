@@ -55,7 +55,7 @@ const SectionReplace = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link to="/admission">Admission Master</Link>
+            <div to="/admission">Admission Master</div>
             <span className="separator mx-2">&gt;</span>
             <span>Demand Report</span>
           </nav>

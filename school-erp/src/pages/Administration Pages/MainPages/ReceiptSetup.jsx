@@ -34,7 +34,7 @@ const ReceiptSetup = () => {
                 <nav className="custom-breadcrumb py-1 py-lg-3">
                   <Link to="/home">Home</Link>
                   <span className="separator mx-2">&gt;</span>
-                  <Link>Administration</Link>
+                  <div>Administration</div>
                   <span className="separator mx-2">&gt;</span>
                   <span>Receipt Setup</span>
                 </nav>

@@ -35,8 +35,8 @@ const MiscellaneousFeeCollection = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link >Collection Report
-            </Link>
+            <div >Collection Report
+            </div>
             <span className="separator mx-2">&gt;</span>
             <span>Miscellaneous Fee Collection
             </span>

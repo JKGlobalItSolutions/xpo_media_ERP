@@ -56,7 +56,7 @@ const RoutwiseBalanceReport = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link to="">Collection Report</Link>
+            <div to="">Collection Report</div>
             <span className="separator mx-2">&gt;</span>
             <span>Routwise Balance Report</span>
           </nav>

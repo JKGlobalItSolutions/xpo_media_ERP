@@ -78,19 +78,19 @@ const BarcodeDesign = () => {
               <span className="separator mx-2">&gt;</span>
               <span>Admission Master</span>
               <span className="separator mx-2">&gt;</span>
-              <Link to="/admission/barcode">Bar Code Design</Link>
+              <span>Bar Code Design</span>
             </nav>
           </div>
 
           {/* Form Content */}
-          <div className="">
+          <div className="bg-white rounded shadow-sm">
             <Form onSubmit={handleSubmit}>
-              <Row className="flex-column-reverse flex-md-row">
+              <Row>
                 {/* Left Column - Form Fields */}
-                <Col md={6}>
+                <Col md={8}>
                   <div className="p-4">
                     <Row className="g-3">
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Bar Code Number</Form.Label>
                           <Form.Control
@@ -102,7 +102,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Register Number</Form.Label>
                           <Form.Control
@@ -114,7 +114,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Student Name</Form.Label>
                           <Form.Control
@@ -126,7 +126,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Father's Name</Form.Label>
                           <Form.Control
@@ -142,7 +142,8 @@ const BarcodeDesign = () => {
                         <Form.Group>
                           <Form.Label>Address</Form.Label>
                           <Form.Control
-                            type="text"
+                            as="textarea"
+                            rows={3}
                             name="address"
                             value={formData.address}
                             onChange={handleInputChange}
@@ -150,7 +151,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Pincode</Form.Label>
                           <Form.Control
@@ -162,7 +163,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>District</Form.Label>
                           <Form.Control
@@ -174,7 +175,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Mobile Number</Form.Label>
                           <Form.Control
@@ -186,7 +187,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Student Type</Form.Label>
                           <Form.Control
@@ -198,7 +199,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={4}>
                         <Form.Group>
                           <Form.Label>Standard</Form.Label>
                           <Form.Control
@@ -210,7 +211,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={4}>
                         <Form.Group>
                           <Form.Label>Section</Form.Label>
                           <Form.Control
@@ -222,7 +223,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={4}>
                         <Form.Group>
                           <Form.Label>Gender</Form.Label>
                           <Form.Control
@@ -234,7 +235,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Community</Form.Label>
                           <Form.Control
@@ -246,14 +247,14 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Caste</Form.Label>
                           <Form.Control type="text" name="caste" value={formData.caste} onChange={handleInputChange} />
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Date Of Birth</Form.Label>
                           <Form.Control
@@ -265,7 +266,7 @@ const BarcodeDesign = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={12}>
+                      <Col md={6}>
                         <Form.Group>
                           <Form.Label>Date Of Admission</Form.Label>
                           <Form.Control
@@ -276,21 +277,53 @@ const BarcodeDesign = () => {
                           />
                         </Form.Group>
                       </Col>
+
+                      <Col md={4}>
+                        <Form.Group>
+                          <Form.Label>Field 1</Form.Label>
+                          <Form.Control
+                            type="text"
+                            name="field1"
+                            value={formData.field1}
+                            onChange={handleInputChange}
+                          />
+                        </Form.Group>
+                      </Col>
+
+                      <Col md={4}>
+                        <Form.Group>
+                          <Form.Label>Field 2</Form.Label>
+                          <Form.Control
+                            type="text"
+                            name="field2"
+                            value={formData.field2}
+                            onChange={handleInputChange}
+                          />
+                        </Form.Group>
+                      </Col>
+
+                      <Col md={4}>
+                        <Form.Group>
+                          <Form.Label>Field 3</Form.Label>
+                          <Form.Control
+                            type="text"
+                            name="field3"
+                            value={formData.field3}
+                            onChange={handleInputChange}
+                          />
+                        </Form.Group>
+                      </Col>
                     </Row>
                   </div>
                 </Col>
 
                 {/* Right Column - Barcode Preview */}
-                <Col md={6} className="bg-light">
-                  <div className="p-4">
-                    <div className="border rounded p-4 h-100 d-flex flex-column justify-content-center align-items-center">
-                      <h5 className="mb-4">Barcode Preview</h5>
-                      {/* Add your barcode preview component here */}
-                      <div className="text-center">
-                        {/* This is a placeholder for the barcode image */}
-                        <div className="bg-white p-4 rounded shadow-sm" style={{ minHeight: "200px" }}>
-                          <p className="text-muted">Barcode will be generated here</p>
-                        </div>
+                <Col md={4} className="bg-light">
+                  <div className="p-4 h-100 d-flex flex-column justify-content-center align-items-center">
+                    <h5 className="mb-4">Barcode Preview</h5>
+                    <div className="text-center">
+                      <div className="bg-white p-4 rounded shadow-sm" style={{ minHeight: "200px" }}>
+                        <p className="text-muted">Barcode will be generated here</p>
                       </div>
                     </div>
                   </div>
@@ -299,8 +332,10 @@ const BarcodeDesign = () => {
 
               {/* Form Actions */}
               <Row className="mt-4">
-                <Col className="d-flex justify-content-center gap-3">
-                  <Button className="custom-btn-clr">New Barcode Design</Button>
+                <Col className="d-flex justify-content-center gap-3 pb-4">
+                  <Button variant="primary" className="custom-btn-clr">
+                    New Barcode Design
+                  </Button>
                   <Button type="submit" className="custom-btn-clr">
                     Save
                   </Button>

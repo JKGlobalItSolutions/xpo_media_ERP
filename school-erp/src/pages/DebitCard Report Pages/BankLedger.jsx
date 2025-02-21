@@ -20,8 +20,8 @@ const BankLedger = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link >Debit / Credit Card Report
-            </Link>
+            <div >Debit / Credit Card Report
+            </div>
             <span className="separator mx-2">&gt;</span>
             <span>Bank Ledger</span>
           </nav>

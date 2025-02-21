@@ -38,8 +38,8 @@ const AttendanceEntry = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link >Transaction
-            </Link>
+            <div >Transaction
+            </div>
             <span className="separator mx-2">&gt;</span>
             <span>Attendance Entry Window
             </span>

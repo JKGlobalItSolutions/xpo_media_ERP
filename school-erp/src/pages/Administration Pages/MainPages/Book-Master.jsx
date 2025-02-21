@@ -363,7 +363,7 @@ const BookMaster = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link to="/store">Store</Link>
+            <div to="/store">Store</div>
             <span className="separator mx-2">&gt;</span>
             <span>Book Master</span>
           </nav>

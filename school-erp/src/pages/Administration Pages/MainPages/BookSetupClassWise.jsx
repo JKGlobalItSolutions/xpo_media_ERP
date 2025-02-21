@@ -491,7 +491,7 @@ const BookSetupClassWise = () => {
               <nav className="custom-breadcrumb py-1 py-lg-3">
                 <Link to="/home">Home</Link>
                 <span className="separator">&gt;</span>
-                <Link to="/store">Store</Link>
+                <div to="/store">Store</div>
                 <span className="separator">&gt;</span>
                 <span className="current">Book Setup Class Wise</span>
               </nav>
