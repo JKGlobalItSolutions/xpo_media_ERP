@@ -60,7 +60,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -72,7 +72,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -84,7 +84,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -96,7 +96,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -108,7 +108,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center text-center">
@@ -120,7 +120,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/head-setup"
+            to=""
           >
             <div>
               <div className="card fee-setup-card h-100">
@@ -134,7 +134,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -147,7 +147,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -159,7 +159,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -171,7 +171,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -184,7 +184,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -197,7 +197,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -209,7 +209,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -221,7 +221,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -234,7 +234,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center text-center">
@@ -247,7 +247,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -259,7 +259,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6-12 col-lg-12"
-            to="/admin/subhead-setup"
+            to=""
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">

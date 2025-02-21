@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
-import { Button, Container, Table, Form } from "react-bootstrap"
-import { FaEdit, FaTrash, FaEye } from "react-icons/fa"
+import { Button, Container, Table, Form, OverlayTrigger, Tooltip } from "react-bootstrap"
+import { FaEdit, FaTrash, FaEye, FaCopy } from "react-icons/fa"
 import { db, auth } from "../../Firebase/config"
 import { collection, getDocs, deleteDoc, doc, query, limit, addDoc } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
@@ -126,6 +126,13 @@ const Enquiry = () => {
     navigate(`/admission/enquiry-form/${enquiryId}?view=true`)
   }
 
+  const handleCopyEnquiryKey = (enquiryKey) => {
+    navigator.clipboard
+      .writeText(enquiryKey)
+      .then(() => toast.success("Enquiry Key copied to clipboard!"))
+      .catch((error) => toast.error("Failed to copy Enquiry Key"))
+  }
+
   const filteredEnquiries = enquiries.filter(
     (enquiry) =>
       enquiry.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -185,7 +192,24 @@ const Enquiry = () => {
               <tbody>
                 {filteredEnquiries.map((enquiry) => (
                   <tr key={enquiry.id}>
-                    <td>{enquiry.enquiryKey}</td>
+                    <td>
+                      <div className="d-flex align-items-center">
+                        <span className="me-2">{enquiry.enquiryKey}</span>
+                        <OverlayTrigger
+                          placement="top"
+                          overlay={<Tooltip id={`tooltip-${enquiry.id}`}>Copy Enquiry Key</Tooltip>}
+                        >
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            className="copy-button"
+                            onClick={() => handleCopyEnquiryKey(enquiry.enquiryKey)}
+                          >
+                            <FaCopy />
+                          </Button>
+                        </OverlayTrigger>
+                      </div>
+                    </td>
                     <td>{enquiry.studentName}</td>
                     <td>{enquiry.fatherName}</td>
                     <td>{enquiry.motherName}</td>
@@ -289,6 +313,20 @@ const Enquiry = () => {
 
           .delete-button:hover {
             background-color: #bb2d3b;
+            color: white;
+          }
+
+          .copy-button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            border-radius: 0.2rem;
+            transition: all 0.15s ease-in-out;
+          }
+
+          .copy-button:hover {
+            background-color: #0B3D7B;
+            border-color: #0B3D7B;
             color: white;
           }
 

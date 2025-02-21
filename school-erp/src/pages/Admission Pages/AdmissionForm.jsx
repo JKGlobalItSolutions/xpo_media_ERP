@@ -412,7 +412,7 @@ const AdmissionForm = () => {
             <div className="d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center gap-2">
                 <Button variant="link" className="text-white p-0 me-2" onClick={() => navigate("/admission")}>
-               
+                  <FaArrowLeft />
                 </Button>
                 <span>
                   <b>{id ? (isViewMode ? "View Admission" : "Edit Admission") : "Add New Admission"}</b>
@@ -446,8 +446,9 @@ const AdmissionForm = () => {
                           {filteredEnquiryNumbers.map((key) => (
                             <div
                               key={key}
-                              className="p-2 hover-bg-light cursor-pointer"
+                              className="p-2 hover-bg-light"
                               onClick={() => handleEnquirySelect(key)}
+                              style={{ cursor: "pointer" }}
                             >
                               {key}
                             </div>

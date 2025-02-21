@@ -68,6 +68,7 @@ const TransferCertificate = () => {
   const handleSubmit = (e) => {
     e.preventDefault()
     console.log("Form Data:", formData)
+    // Add your form submission logic here
   }
 
   return (
@@ -91,7 +92,7 @@ const TransferCertificate = () => {
                   </Link>
                 </li>
                 <li className="breadcrumb-item">
-                  <Link to="" className="text-decoration-none">
+                  <Link to="/admission" className="text-decoration-none">
                     Admission
                   </Link>
                 </li>
@@ -103,10 +104,10 @@ const TransferCertificate = () => {
           </div>
         </div>
 
-        <div className="transfer-form">
+        <div className="transfer-form bg-white rounded shadow-sm">
           {/* Header with Admission Number Input */}
           <div className="header p-3 d-flex justify-content-between align-items-center custom-btn-clr">
-            <h4 className="m-0">Transfer Form</h4>
+            <h4 className="m-0 text-white">Transfer Form</h4>
             <Form.Control
               type="text"
               placeholder="Enter Admission Number"
@@ -139,6 +140,7 @@ const TransferCertificate = () => {
                         justifyContent: "center",
                         cursor: "pointer",
                         overflow: "hidden",
+                        backgroundColor: "#f8f9fa",
                       }}
                     >
                       {photoPreview ? (
@@ -203,6 +205,7 @@ const TransferCertificate = () => {
                       name="permanentAddress"
                       value={formData.permanentAddress}
                       onChange={handleInputChange}
+                      placeholder="Enter permanent address"
                     />
                   </Form.Group>
 
@@ -210,6 +213,7 @@ const TransferCertificate = () => {
                     <Form.Label>Place Name</Form.Label>
                     <Form.Select name="placeName" value={formData.placeName} onChange={handleInputChange}>
                       <option value="">Select Place</option>
+                      {/* Add place options here */}
                     </Form.Select>
                   </Form.Group>
 
@@ -217,17 +221,19 @@ const TransferCertificate = () => {
                     <Form.Label>Bus Route Number</Form.Label>
                     <Form.Select name="busRouteNumber" value={formData.busRouteNumber} onChange={handleInputChange}>
                       <option value="">Select Route Number</option>
+                      {/* Add bus route options here */}
                     </Form.Select>
                   </Form.Group>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>Communication Add</Form.Label>
+                    <Form.Label>Communication Address</Form.Label>
                     <Form.Control
                       as="textarea"
                       rows={3}
                       name="communicationAdd"
                       value={formData.communicationAdd}
                       onChange={handleInputChange}
+                      placeholder="Enter communication address"
                     />
                   </Form.Group>
 
@@ -238,6 +244,7 @@ const TransferCertificate = () => {
                       name="nationality"
                       value={formData.nationality}
                       onChange={handleInputChange}
+                      placeholder="Enter nationality"
                     />
                   </Form.Group>
 
@@ -245,6 +252,7 @@ const TransferCertificate = () => {
                     <Form.Label>Religion</Form.Label>
                     <Form.Select name="religion" value={formData.religion} onChange={handleInputChange}>
                       <option value="">Select Religion</option>
+                      {/* Add religion options here */}
                     </Form.Select>
                   </Form.Group>
 
@@ -252,6 +260,7 @@ const TransferCertificate = () => {
                     <Form.Label>Community</Form.Label>
                     <Form.Select name="community" value={formData.community} onChange={handleInputChange}>
                       <option value="">Select Community</option>
+                      {/* Add community options here */}
                     </Form.Select>
                   </Form.Group>
                 </Col>
@@ -262,6 +271,7 @@ const TransferCertificate = () => {
                     <Form.Label>Caste</Form.Label>
                     <Form.Select name="caste" value={formData.caste} onChange={handleInputChange}>
                       <option value="">Select Caste</option>
+                      {/* Add caste options here */}
                     </Form.Select>
                   </Form.Group>
 
@@ -269,6 +279,7 @@ const TransferCertificate = () => {
                     <Form.Label>State</Form.Label>
                     <Form.Select name="state" value={formData.state} onChange={handleInputChange}>
                       <option value="">Select State</option>
+                      {/* Add state options here */}
                     </Form.Select>
                   </Form.Group>
 
@@ -276,6 +287,7 @@ const TransferCertificate = () => {
                     <Form.Label>Standard</Form.Label>
                     <Form.Select name="standard" value={formData.standard} onChange={handleInputChange}>
                       <option value="">Select Standard</option>
+                      {/* Add standard options here */}
                     </Form.Select>
                   </Form.Group>
 
@@ -283,6 +295,7 @@ const TransferCertificate = () => {
                     <Form.Label>Section</Form.Label>
                     <Form.Select name="section" value={formData.section} onChange={handleInputChange}>
                       <option value="">Select Section</option>
+                      {/* Add section options here */}
                     </Form.Select>
                   </Form.Group>
 
@@ -298,48 +311,63 @@ const TransferCertificate = () => {
 
                   <Form.Group className="mb-3">
                     <Form.Label>Date Of Birth</Form.Label>
-                    <Form.Select name="dateOfBirth" value={formData.dateOfBirth} onChange={handleInputChange}>
-                      <option value="">Select Date</option>
-                    </Form.Select>
+                    <Form.Control
+                      type="date"
+                      name="dateOfBirth"
+                      value={formData.dateOfBirth}
+                      onChange={handleInputChange}
+                    />
                   </Form.Group>
 
                   <Form.Group className="mb-3">
                     <Form.Label>Date Of Admission</Form.Label>
-                    <Form.Select name="dateOfAdmission" value={formData.dateOfAdmission} onChange={handleInputChange}>
-                      <option value="">Select Date</option>
-                    </Form.Select>
+                    <Form.Control
+                      type="date"
+                      name="dateOfAdmission"
+                      value={formData.dateOfAdmission}
+                      onChange={handleInputChange}
+                    />
                   </Form.Group>
 
                   <Form.Group className="mb-3">
                     <Form.Label>Studied Standard</Form.Label>
                     <Form.Select name="studiedStandard" value={formData.studiedStandard} onChange={handleInputChange}>
                       <option value="">Select Standard</option>
+                      {/* Add studied standard options here */}
                     </Form.Select>
                   </Form.Group>
 
                   <Form.Group className="mb-3">
                     <Form.Label>Studied Year</Form.Label>
-                    <Form.Select name="studiedYear" value={formData.studiedYear} onChange={handleInputChange}>
-                      <option value="">Select Year</option>
-                    </Form.Select>
+                    <Form.Control
+                      type="text"
+                      name="studiedYear"
+                      value={formData.studiedYear}
+                      onChange={handleInputChange}
+                      placeholder="Enter studied year"
+                    />
                   </Form.Group>
 
                   <Form.Group className="mb-3">
                     <Form.Label>Studied School Name</Form.Label>
-                    <Form.Select
+                    <Form.Control
+                      type="text"
                       name="studiedSchoolName"
                       value={formData.studiedSchoolName}
                       onChange={handleInputChange}
-                    >
-                      <option value="">Select School</option>
-                    </Form.Select>
+                      placeholder="Enter studied school name"
+                    />
                   </Form.Group>
 
                   <Form.Group className="mb-3">
                     <Form.Label>Parent Occupation</Form.Label>
-                    <Form.Select name="parentOccupation" value={formData.parentOccupation} onChange={handleInputChange}>
-                      <option value="">Select Occupation</option>
-                    </Form.Select>
+                    <Form.Control
+                      type="text"
+                      name="parentOccupation"
+                      value={formData.parentOccupation}
+                      onChange={handleInputChange}
+                      placeholder="Enter parent occupation"
+                    />
                   </Form.Group>
 
                   <Form.Group className="mb-3">
@@ -355,9 +383,12 @@ const TransferCertificate = () => {
 
                   <Form.Group className="mb-3">
                     <Form.Label>Date Of Relieve</Form.Label>
-                    <Form.Select name="dateOfRelieve" value={formData.dateOfRelieve} onChange={handleInputChange}>
-                      <option value="">Select Date</option>
-                    </Form.Select>
+                    <Form.Control
+                      type="date"
+                      name="dateOfRelieve"
+                      value={formData.dateOfRelieve}
+                      onChange={handleInputChange}
+                    />
                   </Form.Group>
 
                   <Form.Group className="mb-3">
