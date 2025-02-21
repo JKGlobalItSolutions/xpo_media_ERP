@@ -296,7 +296,7 @@ const StaffForm = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link to="/administration">Administration</Link>
+            <span>Administration</span>
             <span className="separator mx-2">&gt;</span>
             <Link to="/admin/staff-master">Staff Master</Link>
             <span className="separator mx-2">&gt;</span>
