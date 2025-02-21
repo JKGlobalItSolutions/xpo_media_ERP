@@ -1,15 +1,15 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useParams, useNavigate, useLocation } from "react-router-dom"
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
 import { Form, Button, Row, Col, Container } from "react-bootstrap"
 import { db, auth, storage } from "../../Firebase/config"
-import { doc, getDoc, setDoc, collection, getDocs, query, limit, where } from "firebase/firestore"
+import { doc, getDoc, setDoc, collection, getDocs, query, limit, where, orderBy } from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import MainContentPage from "../../components/MainContent/MainContentPage"
-import { FaArrowLeft } from "react-icons/fa"
+import defaultStudentPhoto from "../../images/StudentProfileIcon/studentProfile.jpeg"
 
 const AdmissionForm = () => {
   const { id } = useParams()
@@ -62,8 +62,10 @@ const AdmissionForm = () => {
     identificationMark2: "",
   })
   const [errors, setErrors] = useState({})
-  const [photoPreview, setPhotoPreview] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(defaultStudentPhoto)
   const fileInputRef = useRef(null)
+  const dateOfBirthRef = useRef(null)
+  const dateOfAdmissionRef = useRef(null)
   const [setupData, setSetupData] = useState({
     nationalities: [],
     religions: [],
@@ -76,6 +78,8 @@ const AdmissionForm = () => {
     studentCategories: [],
     courses: [],
     boardingPoints: [],
+    busRoutes: [],
+    parentOccupations: [],
   })
   const [enquiryNumbers, setEnquiryNumbers] = useState([])
   const [filteredEnquiryNumbers, setFilteredEnquiryNumbers] = useState([])
@@ -109,6 +113,8 @@ const AdmissionForm = () => {
       fetchEnquiryNumbers()
       if (id) {
         fetchAdmissionData()
+      } else {
+        generateAdmissionNumber()
       }
     }
   }, [administrationId, id])
@@ -139,6 +145,7 @@ const AdmissionForm = () => {
         motherTongueData,
         studentCategoryData,
         courseData,
+        parentOccupationData,
       ] = await Promise.all([
         fetchData("NationalitySetup"),
         fetchData("ReligionSetup"),
@@ -150,17 +157,23 @@ const AdmissionForm = () => {
         fetchData("MotherTongue"),
         fetchData("StudentCategory"),
         fetchData("Courses"),
+        fetchData("ParentOccupation"),
       ])
 
       // Fetch boarding points from PlaceSetup
       const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
       const transportSnapshot = await getDocs(transportRef)
       let boardingPointData = []
+      let busRouteData = []
       if (!transportSnapshot.empty) {
         const transportId = transportSnapshot.docs[0].id
         const placeSetupRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "PlaceSetup")
         const placeSetupSnapshot = await getDocs(placeSetupRef)
         boardingPointData = placeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+
+        const routeSetupRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "RouteSetup")
+        const routeSetupSnapshot = await getDocs(routeSetupRef)
+        busRouteData = routeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       }
 
       setSetupData({
@@ -175,6 +188,8 @@ const AdmissionForm = () => {
         studentCategories: studentCategoryData,
         courses: courseData,
         boardingPoints: boardingPointData,
+        busRoutes: busRouteData,
+        parentOccupations: parentOccupationData,
       })
 
       console.log("Fetched setup data successfully")
@@ -218,11 +233,38 @@ const AdmissionForm = () => {
       const admissionSnap = await getDoc(admissionRef)
       if (admissionSnap.exists()) {
         setFormData(admissionSnap.data())
-        setPhotoPreview(admissionSnap.data().studentPhoto)
+        setPhotoPreview(admissionSnap.data().studentPhoto || defaultStudentPhoto)
       }
     } catch (error) {
       console.error("Error fetching admission data:", error)
       toast.error("Failed to fetch admission data. Please try again.")
+    }
+  }
+
+  const generateAdmissionNumber = async () => {
+    try {
+      const admissionsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "AdmissionSetup",
+      )
+      const q = query(admissionsRef, orderBy("admissionNumber", "desc"), limit(1))
+      const querySnapshot = await getDocs(q)
+
+      let newAdmissionNumber = "ADM1"
+      if (!querySnapshot.empty) {
+        const lastAdmissionNumber = querySnapshot.docs[0].data().admissionNumber
+        const lastNumber = Number.parseInt(lastAdmissionNumber.replace("ADM", ""))
+        newAdmissionNumber = `ADM${lastNumber + 1}`
+      }
+
+      setFormData((prev) => ({ ...prev, admissionNumber: newAdmissionNumber }))
+    } catch (error) {
+      console.error("Error generating admission number:", error)
+      toast.error("Failed to generate admission number. Please try again.")
     }
   }
 
@@ -245,7 +287,7 @@ const AdmissionForm = () => {
           ...prevData,
           ...enquiryData,
         }))
-        setPhotoPreview(enquiryData.studentPhoto)
+        setPhotoPreview(enquiryData.studentPhoto || defaultStudentPhoto)
         toast.success("Enquiry data fetched successfully!")
       } else {
         toast.error("No enquiry found with the given key.")
@@ -268,6 +310,16 @@ const AdmissionForm = () => {
       const filtered = enquiryNumbers.filter((key) => key.toLowerCase().includes(value.toLowerCase()))
       setFilteredEnquiryNumbers(filtered)
       setShowDropdown(filtered.length > 0)
+    }
+
+    // Allow manual editing of admission number
+    if (name === "admissionNumber") {
+      if (!value.startsWith("ADM")) {
+        setFormData((prev) => ({
+          ...prev,
+          admissionNumber: "ADM" + value,
+        }))
+      }
     }
   }
 
@@ -297,6 +349,10 @@ const AdmissionForm = () => {
 
   const handlePhotoClick = () => {
     fileInputRef.current.click()
+  }
+
+  const handleDateInputClick = (ref) => {
+    ref.current.showPicker()
   }
 
   const validateForm = () => {
@@ -404,765 +460,869 @@ const AdmissionForm = () => {
     }
   }
 
+  const handleBack = () => {
+    navigate("/admission")
+  }
+
   return (
     <MainContentPage>
       <Container fluid className="px-0">
-        <div className="form-card mt-3">
-          <div className="header p-3 custom-btn-clr">
-            <div className="d-flex justify-content-between align-items-center">
-              <div className="d-flex align-items-center gap-2">
-                <Button variant="link" className="text-white p-0 me-2" onClick={() => navigate("/admission")}>
-               
-                </Button>
-                <span>
-                  <b>{id ? (isViewMode ? "View Admission" : "Edit Admission") : "Add New Admission"}</b>
-                </span>
-              </div>
-            </div>
+        <div className="mb-4">
+          <nav className="custom-breadcrumb py-1 py-lg-3">
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2">&gt;</span>
+            <Link to="/admission">Admission</Link>
+            <span className="separator mx-2">&gt;</span>
+            <span>{isViewMode ? "View Admission" : id ? "Edit Admission" : "Add Admission"}</span>
+          </nav>
+        </div>
+        <div
+          style={{ backgroundColor: "#0B3D7B" }}
+          className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
+        >
+          <div className="d-flex align-items-center">
+            <h2 className="mb-0">{isViewMode ? "View Admission" : id ? "Edit Admission" : "Add Admission"}</h2>
           </div>
+          <div style={{ width: "20px" }}></div>
+        </div>
 
-          <div className="content-wrapper p-4">
-            <Form onSubmit={handleSubmit}>
-              <Row>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Enquiry Key</Form.Label>
-                    <div className="position-relative">
-                      <Form.Control
-                        type="text"
-                        name="enquiryKey"
-                        value={formData.enquiryKey}
-                        onChange={handleInputChange}
-                        onFocus={() => setShowDropdown(true)}
-                        placeholder="Enter or search enquiry key"
-                        disabled={isViewMode || id}
-                        autoComplete="off"
-                      />
-                      {showDropdown && filteredEnquiryNumbers.length > 0 && (
-                        <div
-                          className="position-absolute w-100 bg-white border rounded mt-1"
-                          style={{ zIndex: 1000, maxHeight: "200px", overflowY: "auto" }}
-                        >
-                          {filteredEnquiryNumbers.map((key) => (
-                            <div
-                              key={key}
-                              className="p-2 hover-bg-light cursor-pointer"
-                              onClick={() => handleEnquirySelect(key)}
-                            >
-                              {key}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </Form.Group>
-
-                  <Form.Group className="mb-3">
-                    <Form.Label>Admission Number</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="admissionNumber"
-                      value={formData.admissionNumber}
-                      onChange={handleInputChange}
-                      placeholder="Enter admission number"
-                      isInvalid={!!errors.admissionNumber}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.admissionNumber}</Form.Control.Feedback>
-                  </Form.Group>
-
-                  <div className="text-center mb-4">
-                    <h6>Student Photo</h6>
-                    <div
-                      className="photo-upload-circle mx-auto"
-                      onClick={handlePhotoClick}
-                      style={{
-                        width: "150px",
-                        height: "150px",
-                        border: "2px dashed #ccc",
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        overflow: "hidden",
-                        backgroundColor: "#f8f9fa",
-                      }}
-                    >
-                      {photoPreview ? (
-                        <img
-                          src={photoPreview || "/placeholder.svg"}
-                          alt="Preview"
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <div className="text-center text-muted">
-                          <div>Upload Photo Here</div>
-                        </div>
-                      )}
-                    </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                      style={{ display: "none" }}
-                      disabled={isViewMode}
+        <div className="bg-white p-4 rounded-bottom shadow">
+          <Form onSubmit={handleSubmit}>
+            <Row>
+              {/* Left Column */}
+              <Col md={4} className="d-flex flex-column">
+                <div className="text-center mb-3">
+                  <h6>Student Photo</h6>
+                  <div
+                    className="photo-upload-circle mx-auto"
+                    onClick={handlePhotoClick}
+                    style={{
+                      width: "150px",
+                      height: "150px",
+                      border: "2px dashed #ccc",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      backgroundColor: "#f8f9fa",
+                    }}
+                  >
+                    <img
+                      src={photoPreview || defaultStudentPhoto}
+                      alt="Student"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    style={{ display: "none" }}
+                    disabled={isViewMode}
+                  />
+                </div>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Student name</Form.Label>
+                <Form.Group className="flex-grow-1">
+                  <Form.Label>Enquiry Key</Form.Label>
+                  <div className="position-relative">
                     <Form.Control
                       type="text"
-                      name="studentName"
-                      value={formData.studentName}
+                      name="enquiryKey"
+                      value={formData.enquiryKey}
                       onChange={handleInputChange}
-                      placeholder="Enter student full name"
-                      isInvalid={!!errors.studentName}
-                      disabled={isViewMode}
+                      onFocus={() => setShowDropdown(true)}
+                      placeholder="Enter or search enquiry key"
+                      disabled={isViewMode || id}
+                      autoComplete="off"
                     />
-                    <Form.Control.Feedback type="invalid">{errors.studentName}</Form.Control.Feedback>
-                  </Form.Group>
+                    {showDropdown && filteredEnquiryNumbers.length > 0 && (
+                      <div
+                        className="position-absolute w-100 bg-white border rounded mt-1"
+                        style={{ zIndex: 1000, maxHeight: "200px", overflowY: "auto" }}
+                      >
+                        {filteredEnquiryNumbers.map((key) => (
+                          <div
+                            key={key}
+                            className="p-2 hover-bg-light cursor-pointer"
+                            onClick={() => handleEnquirySelect(key)}
+                          >
+                            {key}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Father's name</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="fatherName"
-                      value={formData.fatherName}
-                      onChange={handleInputChange}
-                      placeholder="Enter father's name"
-                      isInvalid={!!errors.fatherName}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.fatherName}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="flex-grow-1">
+                  <Form.Label>Admission Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="admissionNumber"
+                    value={formData.admissionNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter admission number"
+                    isInvalid={!!errors.admissionNumber}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.admissionNumber}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Mother's name</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="motherName"
-                      value={formData.motherName}
-                      onChange={handleInputChange}
-                      placeholder="Enter mother's name"
-                      isInvalid={!!errors.motherName}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.motherName}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
+                <Form.Group className="flex-grow-1">
+                  <Form.Label>Student Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="studentName"
+                    value={formData.studentName}
+                    onChange={handleInputChange}
+                    placeholder="Enter student full name"
+                    isInvalid={!!errors.studentName}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.studentName}</Form.Control.Feedback>
+                </Form.Group>
 
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Street/Village</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="streetVillage"
-                      value={formData.streetVillage}
-                      onChange={handleInputChange}
-                      placeholder="Enter street/village"
-                      isInvalid={!!errors.streetVillage}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.streetVillage}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="flex-grow-1">
+                  <Form.Label>Father's Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="fatherName"
+                    value={formData.fatherName}
+                    onChange={handleInputChange}
+                    placeholder="Enter father's name"
+                    isInvalid={!!errors.fatherName}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.fatherName}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Place/Pincode</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="placePincode"
-                      value={formData.placePincode}
-                      onChange={handleInputChange}
-                      placeholder="Enter place/pincode"
-                      isInvalid={!!errors.placePincode}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.placePincode}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="flex-grow-1">
+                  <Form.Label>Mother's Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="motherName"
+                    value={formData.motherName}
+                    onChange={handleInputChange}
+                    placeholder="Enter mother's name"
+                    isInvalid={!!errors.motherName}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.motherName}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>District</Form.Label>
-                    <Form.Select
-                      name="district"
-                      value={formData.district}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.district}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select District</option>
-                      {setupData.districts.map((district) => (
-                        <option key={district.id} value={district.district}>
-                          {district.district}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.district}</Form.Control.Feedback>
-                  </Form.Group>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Street/Village</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="streetVillage"
+                    value={formData.streetVillage}
+                    onChange={handleInputChange}
+                    placeholder="Enter street/village"
+                    isInvalid={!!errors.streetVillage}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.streetVillage}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Phone Number</Form.Label>
-                    <Form.Control
-                      type="tel"
-                      name="phoneNumber"
-                      value={formData.phoneNumber}
-                      onChange={handleInputChange}
-                      placeholder="Enter phone number"
-                      isInvalid={!!errors.phoneNumber}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.phoneNumber}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Place/Pincode</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="placePincode"
+                    value={formData.placePincode}
+                    onChange={handleInputChange}
+                    placeholder="Enter place/pincode"
+                    isInvalid={!!errors.placePincode}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.placePincode}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Boarding Point</Form.Label>
-                    <Form.Select
-                      name="boardingPoint"
-                      value={formData.boardingPoint}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.boardingPoint}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Boarding Point</option>
-                      {setupData.boardingPoints.map((point) => (
-                        <option key={point.id} value={point.placeName}>
-                          {point.placeName}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.boardingPoint}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>District</Form.Label>
+                  <Form.Select
+                    name="district"
+                    value={formData.district}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.district}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select District</option>
+                    {setupData.districts.map((district) => (
+                      <option key={district.id} value={district.district}>
+                        {district.district}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.district}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Bus Route Number</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="busRouteNumber"
-                      value={formData.busRouteNumber}
-                      onChange={handleInputChange}
-                      placeholder="Enter bus route number"
-                      disabled={isViewMode}
-                    />
-                  </Form.Group>
-                </Col>
+                <Form.Group className="">
+                  <Form.Label>Phone Number</Form.Label>
+                  <Form.Control
+                    type="tel"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter phone number"
+                    isInvalid={!!errors.phoneNumber}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.phoneNumber}</Form.Control.Feedback>
+                </Form.Group>
 
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Email ID</Form.Label>
-                    <Form.Control
-                      type="email"
-                      name="emailId"
-                      value={formData.emailId}
-                      onChange={handleInputChange}
-                      placeholder="Enter email address"
-                      disabled={isViewMode}
-                    />
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Boarding Point</Form.Label>
+                  <Form.Select
+                    name="boardingPoint"
+                    value={formData.boardingPoint}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.boardingPoint}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Boarding Point</option>
+                    {setupData.boardingPoints.map((point) => (
+                      <option key={point.id} value={point.placeName}>
+                        {point.placeName}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.boardingPoint}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Communication Address</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      name="communicationAddress"
-                      value={formData.communicationAddress}
-                      onChange={handleInputChange}
-                      placeholder="Enter communication address"
-                      disabled={isViewMode}
-                    />
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Bus Route Number</Form.Label>
+                  <Form.Select
+                    name="busRouteNumber"
+                    value={formData.busRouteNumber}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.busRouteNumber}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Bus Route Number</option>
+                    {setupData.busRoutes.map((route) => (
+                      <option key={route.id} value={route.route}>
+                        {route.route}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.busRouteNumber}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Nationality</Form.Label>
-                    <Form.Select
-                      name="nationality"
-                      value={formData.nationality}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.nationality}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Nationality</option>
-                      {setupData.nationalities.map((nat) => (
-                        <option key={nat.id} value={nat.nationality}>
-                          {nat.nationality}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.nationality}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Email ID</Form.Label>
+                  <Form.Control
+                    type="email"
+                    name="emailId"
+                    value={formData.emailId}
+                    onChange={handleInputChange}
+                    placeholder="Enter email address"
+                    disabled={isViewMode}
+                  />
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Religion</Form.Label>
-                    <Form.Select
-                      name="religion"
-                      value={formData.religion}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.religion}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Religion</option>
-                      {setupData.religions.map((rel) => (
-                        <option key={rel.id} value={rel.religion}>
-                          {rel.religion}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.religion}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Communication Address</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    name="communicationAddress"
+                    value={formData.communicationAddress}
+                    onChange={handleInputChange}
+                    placeholder="Enter communication address"
+                    disabled={isViewMode}
+                  />
+                </Form.Group>
+              </Col>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>State</Form.Label>
-                    <Form.Select
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.state}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select State</option>
-                      {setupData.states.map((state) => (
-                        <option key={state.id} value={state.state}>
-                          {state.state}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.state}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-              </Row>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Nationality</Form.Label>
+                  <Form.Select
+                    name="nationality"
+                    value={formData.nationality}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.nationality}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Nationality</option>
+                    {setupData.nationalities.map((nat) => (
+                      <option key={nat.id} value={nat.nationality}>
+                        {nat.nationality}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.nationality}</Form.Control.Feedback>
+                </Form.Group>
 
-              <Row>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Community</Form.Label>
-                    <Form.Select
-                      name="community"
-                      value={formData.community}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.community}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Community</option>
-                      {setupData.communities.map((comm) => (
-                        <option key={comm.id} value={comm.community}>
-                          {comm.community}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.community}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Religion</Form.Label>
+                  <Form.Select
+                    name="religion"
+                    value={formData.religion}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.religion}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Religion</option>
+                    {setupData.religions.map((rel) => (
+                      <option key={rel.id} value={rel.religion}>
+                        {rel.religion}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.religion}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Caste</Form.Label>
-                    <Form.Select
-                      name="caste"
-                      value={formData.caste}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.caste}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Caste</option>
-                      {setupData.castes.map((caste) => (
-                        <option key={caste.id} value={caste.caste}>
-                          {caste.caste}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.caste}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>State</Form.Label>
+                  <Form.Select
+                    name="state"
+                    value={formData.state}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.state}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select State</option>
+                    {setupData.states.map((state) => (
+                      <option key={state.id} value={state.state}>
+                        {state.state}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.state}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Student Type</Form.Label>
-                    <Form.Select
-                      name="studentType"
-                      value={formData.studentType}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.studentType}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Student Type</option>
-                      <option value="New">New</option>
-                      <option value="Existing">Existing</option>
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.studentType}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
+                <Form.Group className="">
+                  <Form.Label>Community</Form.Label>
+                  <Form.Select
+                    name="community"
+                    value={formData.community}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.community}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Community</option>
+                    {setupData.communities.map((comm) => (
+                      <option key={comm.id} value={comm.community}>
+                        {comm.community}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.community}</Form.Control.Feedback>
+                </Form.Group>
 
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Student Category</Form.Label>
-                    <Form.Select
-                      name="studentCategory"
-                      value={formData.studentCategory}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.studentCategory}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Category</option>
-                      {setupData.studentCategories.map((category) => (
-                        <option key={category.id} value={category.StudentCategoryName}>
-                          {category.StudentCategoryName}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.studentCategory}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Caste</Form.Label>
+                  <Form.Select
+                    name="caste"
+                    value={formData.caste}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.caste}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Caste</option>
+                    {setupData.castes.map((caste) => (
+                      <option key={caste.id} value={caste.caste}>
+                        {caste.caste}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.caste}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Standard</Form.Label>
-                    <Form.Select
-                      name="standard"
-                      value={formData.standard}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.standard}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Standard</option>
-                      {setupData.courses.map((course) => (
-                        <option key={course.id} value={course.standard}>
-                          {course.standard}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.standard}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Student Type</Form.Label>
+                  <Form.Select
+                    name="studentType"
+                    value={formData.studentType}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.studentType}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Student Type</option>
+                    <option value="New">New</option>
+                    <option value="Existing">Existing</option>
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.studentType}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Section</Form.Label>
-                    <Form.Select
-                      name="section"
-                      value={formData.section}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.section}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Section</option>
-                      {setupData.sections.map((section) => (
-                        <option key={section.id} value={section.name}>
-                          {section.name}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.section}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
+                <Form.Group className="">
+                  <Form.Label>Student Category</Form.Label>
+                  <Form.Select
+                    name="studentCategory"
+                    value={formData.studentCategory}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.studentCategory}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Category</option>
+                    {setupData.studentCategories.map((category) => (
+                      <option key={category.id} value={category.StudentCategoryName}>
+                        {category.StudentCategoryName}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.studentCategory}</Form.Control.Feedback>
+                </Form.Group>
 
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Gender</Form.Label>
-                    <Form.Select
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.gender}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.gender}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Standard</Form.Label>
+                  <Form.Select
+                    name="standard"
+                    value={formData.standard}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.standard}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Standard</option>
+                    {setupData.courses.map((course) => (
+                      <option key={course.id} value={course.standard}>
+                        {course.standard}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.standard}</Form.Control.Feedback>
+                </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Date of Birth</Form.Label>
-                    <Form.Control
-                      type="date"
-                      name="dateOfBirth"
-                      value={formData.dateOfBirth}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.dateOfBirth}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.dateOfBirth}</Form.Control.Feedback>
-                  </Form.Group>
+                <Form.Group className="">
+                  <Form.Label>Section</Form.Label>
+                  <Form.Select
+                    name="section"
+                    value={formData.section}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.section}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Section</option>
+                    {setupData.sections.map((section) => (
+                      <option key={section.id} value={section.name}>
+                        {section.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.section}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>EMIS</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="emis"
-                      value={formData.emis}
-                      onChange={handleInputChange}
-                      placeholder="Enter EMIS number"
-                      isInvalid={!!errors.emis}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.emis}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-              </Row>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Gender</Form.Label>
+                  <Form.Select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.gender}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.gender}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Date of Birth</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.dateOfBirth}
+                    disabled={isViewMode}
+                    ref={dateOfBirthRef}
+                    onClick={() => handleDateInputClick(dateOfBirthRef)}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.dateOfBirth}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>EMIS</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="emis"
+                    value={formData.emis}
+                    onChange={handleInputChange}
+                    placeholder="Enter EMIS number"
+                    isInvalid={!!errors.emis}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.emis}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
 
-              <Row>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Lunch / Refresh</Form.Label>
-                    <Form.Select
-                      name="lunchRefresh"
-                      value={formData.lunchRefresh}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.lunchRefresh}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Option</option>
-                      <option value="Lunch">Lunch</option>
-                      <option value="Refresh">Refresh</option>
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.lunchRefresh}</Form.Control.Feedback>
-                  </Form.Group>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Lunch / Refresh</Form.Label>
+                  <Form.Select
+                    name="lunchRefresh"
+                    value={formData.lunchRefresh}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.lunchRefresh}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Option</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Refresh">Refresh</option>
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.lunchRefresh}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Blood Group</Form.Label>
+                  <Form.Select
+                    name="bloodGroup"
+                    value={formData.bloodGroup}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.bloodGroup}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Blood Group</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.bloodGroup}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Date of Admission</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="dateOfAdmission"
+                    value={formData.dateOfAdmission}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.dateOfAdmission}
+                    disabled={isViewMode}
+                    ref={dateOfAdmissionRef}
+                    onClick={() => handleDateInputClick(dateOfAdmissionRef)}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.dateOfAdmission}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Blood Group</Form.Label>
-                    <Form.Select
-                      name="bloodGroup"
-                      value={formData.bloodGroup}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.bloodGroup}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Blood Group</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.bloodGroup}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Mother Tongue</Form.Label>
+                  <Form.Select
+                    name="motherTongue"
+                    value={formData.motherTongue}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.motherTongue}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Mother Tongue</option>
+                    {setupData.motherTongues.map((mt) => (
+                      <option key={mt.id} value={mt.MotherTongueName}>
+                        {mt.MotherTongueName}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.motherTongue}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Father's Occupation</Form.Label>
+                  <Form.Select
+                    name="fatherOccupation"
+                    value={formData.fatherOccupation}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.fatherOccupation}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Father's Occupation</option>
+                    {setupData.parentOccupations.map((occupation) => (
+                      <option key={occupation.id} value={occupation.name}>
+                        {occupation.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.fatherOccupation}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Mother's Occupation</Form.Label>
+                  <Form.Select
+                    name="motherOccupation"
+                    value={formData.motherOccupation}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.motherOccupation}
+                    disabled={isViewMode}
+                  >
+                    <option value="">Select Mother's Occupation</option>
+                    {setupData.parentOccupations.map((occupation) => (
+                      <option key={occupation.id} value={occupation.name}>
+                        {occupation.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">{errors.motherOccupation}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
 
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Date of Admission</Form.Label>
-                    <Form.Control
-                      type="date"
-                      name="dateOfAdmission"
-                      value={formData.dateOfAdmission}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.dateOfAdmission}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.dateOfAdmission}</Form.Control.Feedback>
-                  </Form.Group>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Exam Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="examNumber"
+                    value={formData.examNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter exam number"
+                    isInvalid={!!errors.examNumber}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.examNumber}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Bus Fee</Form.Label>
+                  <Form.Control
+                    type="number"
+                    name="busFee"
+                    value={formData.busFee}
+                    onChange={handleInputChange}
+                    placeholder="Enter bus fee"
+                    isInvalid={!!errors.busFee}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.busFee}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Studied Year</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="studiedYear"
+                    value={formData.studiedYear}
+                    onChange={handleInputChange}
+                    placeholder="Enter studied year"
+                    isInvalid={!!errors.studiedYear}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.studiedYear}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Mother Tongue</Form.Label>
-                    <Form.Select
-                      name="motherTongue"
-                      value={formData.motherTongue}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.motherTongue}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select Mother Tongue</option>
-                      {setupData.motherTongues.map((mt) => (
-                        <option key={mt.id} value={mt.MotherTongueName}>
-                          {mt.MotherTongueName}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Control.Feedback type="invalid">{errors.motherTongue}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Class Last Studied</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="classLastStudied"
+                    value={formData.classLastStudied}
+                    onChange={handleInputChange}
+                    placeholder="Enter class last studied"
+                    isInvalid={!!errors.classLastStudied}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.classLastStudied}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Class to be Admitted</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="classToBeAdmitted"
+                    value={formData.classToBeAdmitted}
+                    onChange={handleInputChange}
+                    placeholder="Enter class to be admitted"
+                    isInvalid={!!errors.classToBeAdmitted}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.classToBeAdmitted}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="">
+                  <Form.Label>Name of the School</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="nameOfSchool"
+                    value={formData.nameOfSchool}
+                    onChange={handleInputChange}
+                    placeholder="Enter name of the school"
+                    isInvalid={!!errors.nameOfSchool}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.nameOfSchool}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
 
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Father's Occupation</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="fatherOccupation"
-                      value={formData.fatherOccupation}
-                      onChange={handleInputChange}
-                      placeholder="Enter father's occupation"
-                      isInvalid={!!errors.fatherOccupation}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.fatherOccupation}</Form.Control.Feedback>
-                  </Form.Group>
+            <Row>
+              <Col md={12}>
+                <Form.Group className="">
+                  <Form.Label>Remarks</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    name="remarks"
+                    value={formData.remarks}
+                    onChange={handleInputChange}
+                    placeholder="Enter remarks"
+                    disabled={isViewMode}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Mother's Occupation</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="motherOccupation"
-                      value={formData.motherOccupation}
-                      onChange={handleInputChange}
-                      placeholder="Enter mother's occupation"
-                      isInvalid={!!errors.motherOccupation}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.motherOccupation}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-              </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="">
+                  <Form.Label>Identification Mark 1</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="identificationMark1"
+                    value={formData.identificationMark1}
+                    onChange={handleInputChange}
+                    placeholder="Enter identification mark 1"
+                    isInvalid={!!errors.identificationMark1}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.identificationMark1}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="">
+                  <Form.Label>Identification Mark 2</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="identificationMark2"
+                    value={formData.identificationMark2}
+                    onChange={handleInputChange}
+                    placeholder="Enter identification mark 2"
+                    isInvalid={!!errors.identificationMark2}
+                    disabled={isViewMode}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors.identificationMark2}</Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
 
-              <Row>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Exam Number</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="examNumber"
-                      value={formData.examNumber}
-                      onChange={handleInputChange}
-                      placeholder="Enter exam number"
-                      isInvalid={!!errors.examNumber}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.examNumber}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Bus Fee</Form.Label>
-                    <Form.Control
-                      type="number"
-                      name="busFee"
-                      value={formData.busFee}
-                      onChange={handleInputChange}
-                      placeholder="Enter bus fee"
-                      isInvalid={!!errors.busFee}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.busFee}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Studied Year</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="studiedYear"
-                      value={formData.studiedYear}
-                      onChange={handleInputChange}
-                      placeholder="Enter studied year"
-                      isInvalid={!!errors.studiedYear}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.studiedYear}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              <Row>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Class Last Studied</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="classLastStudied"
-                      value={formData.classLastStudied}
-                      onChange={handleInputChange}
-                      placeholder="Enter class last studied"
-                      isInvalid={!!errors.classLastStudied}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.classLastStudied}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Class to be Admitted</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="classToBeAdmitted"
-                      value={formData.classToBeAdmitted}
-                      onChange={handleInputChange}
-                      placeholder="Enter class to be admitted"
-                      isInvalid={!!errors.classToBeAdmitted}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.classToBeAdmitted}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Name of the School</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="nameOfSchool"
-                      value={formData.nameOfSchool}
-                      onChange={handleInputChange}
-                      placeholder="Enter name of the school"
-                      isInvalid={!!errors.nameOfSchool}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.nameOfSchool}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              <Row>
-                <Col md={12}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Remarks</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      name="remarks"
-                      value={formData.remarks}
-                      onChange={handleInputChange}
-                      placeholder="Enter remarks"
-                      disabled={isViewMode}
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Identification Mark 1</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="identificationMark1"
-                      value={formData.identificationMark1}
-                      onChange={handleInputChange}
-                      placeholder="Enter identification mark 1"
-                      isInvalid={!!errors.identificationMark1}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.identificationMark1}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Identification Mark 2</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="identificationMark2"
-                      value={formData.identificationMark2}
-                      onChange={handleInputChange}
-                      placeholder="Enter identification mark 2"
-                      isInvalid={!!errors.identificationMark2}
-                      disabled={isViewMode}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.identificationMark2}</Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              <div className="d-flex justify-content-end mt-3">
-                <Button variant="secondary" size="md" className="me-2" onClick={() => navigate("/admission")}>
-                  Cancel
+            <div className="d-flex justify-content-end mt-3">
+              {!isViewMode && (
+                <Button className="custom-btn-premium" size="lg" type="submit">
+                  {id ? "Update Admission" : "Submit Admission"}
                 </Button>
-                {!isViewMode && (
-                  <Button className="custom-btn-clr" size="sm" type="submit">
-                    {id ? "Update Admission" : "Submit Admission"}
-                  </Button>
-                )}
-              </div>
-            </Form>
-          </div>
+              )}
+            </div>
+          </Form>
         </div>
         <ToastContainer />
       </Container>
+
+      <style>
+        {`
+          .custom-breadcrumb {
+            padding: 0.5rem 1rem;
+          }
+
+          .custom-breadcrumb a {
+            color: #0B3D7B;
+            text-decoration: none;
+          }
+
+          .custom-breadcrumb .separator {
+            margin: 0 0.5rem;
+            color: #6c757d;
+          }
+
+          .custom-breadcrumb .current {
+            color: #212529;
+          }
+
+          .custom-btn-premium {
+            background: linear-gradient(to bottom, #1565C0, #0B3D7B);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+          }
+
+          .custom-btn-premium:hover {
+            background: linear-gradient(to bottom, #1565C0, #0B3D7B);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+          }
+
+          .back-button {
+            transition: opacity 0.2s;
+          }
+
+          .back-button:hover {
+            opacity: 0.8;
+          }
+
+          h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0;
+          }
+
+          /* Toastify custom styles */
+          .Toastify__toast-container {
+            z-index: 9999;
+          }
+
+          .Toastify__toast {
+            background-color: #0B3D7B;
+            color: white;
+          }
+
+          .Toastify__toast--success {
+            background-color: #0B3D7B;
+          }
+
+          .Toastify__toast--error {
+            background-color: #dc3545;
+          }
+
+          .Toastify__progress-bar {
+            background-color: rgba(255, 255, 255, 0.7);
+          }
+          .form-group {
+            margin-bottom: 0.5rem;
+          }
+          .form-control, .form-select {
+            margin-bottom: 0.5rem;
+          }
+        `}
+      </style>
     </MainContentPage>
   )
 }
