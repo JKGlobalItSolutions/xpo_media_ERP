@@ -75,6 +75,8 @@ const EnquiryForm = () => {
     motherTongues: [],
     studentCategories: [],
     courses: [],
+    boardingPoints: [],
+    busRoutes: [],
   })
 
   useEffect(() => {
@@ -136,6 +138,7 @@ const EnquiryForm = () => {
         motherTongueData,
         studentCategoryData,
         courseData,
+        busRouteData,
       ] = await Promise.all([
         fetchData("NationalitySetup"),
         fetchData("ReligionSetup"),
@@ -147,7 +150,19 @@ const EnquiryForm = () => {
         fetchData("MotherTongue"),
         fetchData("StudentCategory"),
         fetchData("Courses"),
+        fetchData("RouteSetup"),
       ])
+
+      // Fetch boarding points from PlaceSetup
+      const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
+      const transportSnapshot = await getDocs(transportRef)
+      let boardingPointData = []
+      if (!transportSnapshot.empty) {
+        const transportId = transportSnapshot.docs[0].id
+        const placeSetupRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "PlaceSetup")
+        const placeSetupSnapshot = await getDocs(placeSetupRef)
+        boardingPointData = placeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      }
 
       setSetupData({
         nationalities: nationalityData,
@@ -160,6 +175,8 @@ const EnquiryForm = () => {
         motherTongues: motherTongueData,
         studentCategories: studentCategoryData,
         courses: courseData,
+        boardingPoints: boardingPointData,
+        busRoutes: busRouteData,
       })
 
       console.log("Fetched setup data successfully")
@@ -262,6 +279,7 @@ const EnquiryForm = () => {
       "placePincode",
       "district",
       "phoneNumber",
+      "boardingPoint",
       "nationality",
       "religion",
       "state",
@@ -530,26 +548,40 @@ const EnquiryForm = () => {
 
                   <Form.Group className="mb-3">
                     <Form.Label>Boarding Point</Form.Label>
-                    <Form.Control
-                      type="text"
+                    <Form.Select
                       name="boardingPoint"
                       value={formData.boardingPoint}
                       onChange={handleInputChange}
-                      placeholder="Enter boarding point"
+                      isInvalid={!!errors.boardingPoint}
                       disabled={isViewMode}
-                    />
+                    >
+                      <option value="">Select Boarding Point</option>
+                      {setupData.boardingPoints.map((point) => (
+                        <option key={point.id} value={point.placeName}>
+                          {point.placeName}
+                        </option>
+                      ))}
+                    </Form.Select>
+                    <Form.Control.Feedback type="invalid">{errors.boardingPoint}</Form.Control.Feedback>
                   </Form.Group>
 
                   <Form.Group className="mb-3">
                     <Form.Label>Bus Route Number</Form.Label>
-                    <Form.Control
-                      type="text"
+                    <Form.Select
                       name="busRouteNumber"
                       value={formData.busRouteNumber}
                       onChange={handleInputChange}
-                      placeholder="Enter bus route number"
+                      isInvalid={!!errors.busRouteNumber}
                       disabled={isViewMode}
-                    />
+                    >
+                      <option value="">Select Bus Route Number</option>
+                      {setupData.busRoutes.map((route) => (
+                        <option key={route.id} value={route.route}>
+                          {route.route}
+                        </option>
+                      ))}
+                    </Form.Select>
+                    <Form.Control.Feedback type="invalid">{errors.busRouteNumber}</Form.Control.Feedback>
                   </Form.Group>
 
                   <Form.Group className="mb-3">
