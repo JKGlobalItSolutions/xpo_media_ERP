@@ -80,6 +80,7 @@ const AdmissionForm = () => {
     boardingPoints: [],
     busRoutes: [],
     parentOccupations: [],
+    bloodGroups: [],
   })
   const [enquiryNumbers, setEnquiryNumbers] = useState([])
   const [filteredEnquiryNumbers, setFilteredEnquiryNumbers] = useState([])
@@ -146,6 +147,7 @@ const AdmissionForm = () => {
         studentCategoryData,
         courseData,
         parentOccupationData,
+        bloodGroupData,
       ] = await Promise.all([
         fetchData("NationalitySetup"),
         fetchData("ReligionSetup"),
@@ -158,6 +160,7 @@ const AdmissionForm = () => {
         fetchData("StudentCategory"),
         fetchData("Courses"),
         fetchData("ParentOccupation"),
+        fetchData("BloodGroupSetup"),
       ])
 
       // Fetch boarding points from PlaceSetup
@@ -190,6 +193,7 @@ const AdmissionForm = () => {
         boardingPoints: boardingPointData,
         busRoutes: busRouteData,
         parentOccupations: parentOccupationData,
+        bloodGroups: bloodGroupData,
       })
 
       console.log("Fetched setup data successfully")
@@ -994,14 +998,11 @@ const AdmissionForm = () => {
                     disabled={isViewMode}
                   >
                     <option value="">Select Blood Group</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
+                    {setupData.bloodGroups.map((bloodGroup) => (
+                      <option key={bloodGroup.id} value={bloodGroup.name}>
+                        {bloodGroup.name}
+                      </option>
+                    ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.bloodGroup}</Form.Control.Feedback>
                 </Form.Group>
@@ -1330,4 +1331,3 @@ const AdmissionForm = () => {
 }
 
 export default AdmissionForm
-

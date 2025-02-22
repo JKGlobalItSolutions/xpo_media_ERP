@@ -170,6 +170,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "2-5", title: "• Community and Caste Setup", path: "/admin/community-setup" },
         { id: "2-6", title: "• Parent Occupation Setup", path: "/admin/occupation-setup" },
         { id: "2-7", title: "• Mother Tongue", path: "/admin/Mother-Tongue-Setup" },
+        { id: "2-7", title: "• Blood Group", path: "/admin/blood-group-Setup" },
         { id: "2-8", title: "• State And District Management", path: "/admin/State-And-District-Management" },
         // { id: "2-9", title: "• Subject Head", path: "/admin/Subject-Head" },
         { id: "2-10", title: "• Payment Setup", path: "/admin/payment-setup" },

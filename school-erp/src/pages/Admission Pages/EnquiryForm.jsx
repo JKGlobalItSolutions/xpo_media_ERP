@@ -58,6 +58,7 @@ const EnquiryForm = () => {
     dateOfBirth: "",
     emis: "",
     lunchRefresh: "",
+    bloodGroupId: "",
     bloodGroup: "",
     dateOfAdmission: "",
     motherTongueId: "",
@@ -95,6 +96,7 @@ const EnquiryForm = () => {
     boardingPoints: [],
     busRoutes: [],
     parentOccupations: [],
+    bloodGroups: [],
     transportId: null,
   })
 
@@ -176,6 +178,7 @@ const EnquiryForm = () => {
         studentCategoryData,
         courseData,
         parentOccupationData,
+        bloodGroupData,
       ] = await Promise.all([
         fetchData("NationalitySetup"),
         fetchData("ReligionSetup"),
@@ -188,6 +191,7 @@ const EnquiryForm = () => {
         fetchData("StudentCategory"),
         fetchData("Courses"),
         fetchData("ParentOccupation"),
+        fetchData("BloodGroupSetup"),
       ])
 
       // Fetch boarding points from PlaceSetup
@@ -229,6 +233,7 @@ const EnquiryForm = () => {
           boardingPoints: boardingPointData,
           parentOccupations: parentOccupationData,
           busRoutes: routeData,
+          bloodGroups: bloodGroupData,
         }))
       }
     } catch (error) {
@@ -973,14 +978,11 @@ const EnquiryForm = () => {
                     isInvalid={!!errors.bloodGroup}
                   >
                     <option value="">Select Blood Group</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
+                    {setupData.bloodGroups.map((bloodGroup) => (
+                      <option key={bloodGroup.id} value={bloodGroup.name}>
+                        {bloodGroup.name}
+                      </option>
+                    ))}
                   </Form.Select>
                   <Form.Control.Feedback type="invalid">{errors.bloodGroup}</Form.Control.Feedback>
                 </Form.Group>
