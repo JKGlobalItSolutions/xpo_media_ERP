@@ -9,6 +9,7 @@ import { db, auth } from "../../Firebase/config"
 import { collection, getDocs, query, limit, addDoc, deleteDoc, doc } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import defaultStudentPhoto from "../../images/StudentProfileIcon/studentProfile.jpeg"
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
   if (!isOpen) return null
@@ -93,11 +94,13 @@ const StudentDetails = () => {
     }
   }
 
-  const handleEdit = (studentId) => {
+  const handleEdit = (e, studentId) => {
+    e.stopPropagation()
     navigate(`/admission/AdmissionForm/${studentId}`)
   }
 
-  const handleDeleteClick = (student) => {
+  const handleDeleteClick = (e, student) => {
+    e.stopPropagation()
     setStudentToDelete(student)
     setIsDeleteModalOpen(true)
   }
@@ -145,6 +148,10 @@ const StudentDetails = () => {
       student.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  const toggleViewType = (type) => {
+    setViewType(type)
+  }
+
   return (
     <MainContentPage>
       <Container fluid className="px-0">
@@ -182,17 +189,17 @@ const StudentDetails = () => {
             <div className="d-flex gap-2 justify-content-lg-end justify-content-center w-100 w-md-auto">
               <Button
                 variant={viewType === "table" ? "primary" : "outline-primary"}
-                onClick={() => setViewType("table")}
-                className="px-3 custom-btn-clr"
+                onClick={() => toggleViewType("table")}
+                className={`view-toggle-btn d-flex align-items-center gap-2 ${viewType === "table" ? "active" : ""}`}
               >
-                <FaTable />
+                <FaTable /> <span className="d-none d-sm-inline">Table View</span>
               </Button>
               <Button
                 variant={viewType === "grid" ? "primary" : "outline-primary"}
-                onClick={() => setViewType("grid")}
-                className="px-3 custom-btn-clr"
+                onClick={() => toggleViewType("grid")}
+                className={`view-toggle-btn d-flex align-items-center gap-2 ${viewType === "grid" ? "active" : ""}`}
               >
-                <FaTh />
+                <FaTh /> <span className="d-none d-sm-inline">Card View</span>
               </Button>
             </div>
           </div>
@@ -201,57 +208,65 @@ const StudentDetails = () => {
             <Row className="g-4">
               {filteredStudents.map((student) => (
                 <Col key={student.id} xs={12} sm={6} md={4} lg={3}>
-                  <Card className="h-100 shadow-sm position-relative">
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      className="position-absolute top-0 end-0 m-2"
-                      style={{ zIndex: 1 }}
-                      onClick={() => handleEdit(student.id)}
-                    >
-                      <FaEdit />
-                    </Button>
-                    <div className="text-center pt-4">
-                      <div
-                        className="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
-                        style={{
-                          width: "100px",
-                          height: "100px",
-                          backgroundColor: "#007bff",
-                          color: "white",
-                        }}
-                      >
-                        <i className="fas fa-user fa-3x"></i>
+                  <Card className="student-card h-100" onClick={() => handleView(student.id)}>
+                    <div className="position-relative">
+                      <div className="edit-button-wrapper">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          className="edit-icon-button"
+                          onClick={(e) => handleEdit(e, student.id)}
+                        >
+                          <FaEdit />
+                        </Button>
+                      </div>
+                      <div className="student-image-container">
+                        <img
+                          src={student.profileImage || defaultStudentPhoto}
+                          alt={student.studentName}
+                          className="student-profile-image"
+                        />
                       </div>
                     </div>
                     <Card.Body className="text-center">
-                      <div className="mb-3">
-                        <div className="text-muted small">Admission</div>
-                        <div className="fw-bold text-primary">{student.admissionNumber}</div>
-                      </div>
-                      <div className="mb-3">
-                        <div className="text-muted small">Name</div>
-                        <div>{student.studentName}</div>
-                      </div>
-                      <div className="d-flex justify-content-around">
-                        <div>
-                          <div className="text-muted small">Class</div>
-                          <div>{student.standard}</div>
+                      <div className="student-info">
+                        <div className="info-row">
+                          <span className="info-label">Admission</span>
+                          <span className="info-value">{student.admissionNumber}</span>
                         </div>
-                        <div>
-                          <div className="text-muted small">Section</div>
-                          <div>{student.section}</div>
+                        <div className="info-row">
+                          <span className="info-label">Name</span>
+                          <span className="info-value">{student.studentName}</span>
                         </div>
+                        <div className="info-row">
+                          <span className="info-label">Class</span>
+                          <span className="info-value">{student.standard}</span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-label">Section</span>
+                          <span className="info-value">{student.section}</span>
+                        </div>
+                      </div>
+                      <div className="mt-3 d-flex justify-content-center gap-2">
+                        <Button
+                          variant="primary"
+                          className="d-flex align-items-center gap-2 custom-view-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleView(student.id)
+                          }}
+                        >
+                          <FaEye /> View
+                        </Button>
+                        <Button
+                          variant="danger"
+                          className="d-flex align-items-center gap-2 custom-delete-btn"
+                          onClick={(e) => handleDeleteClick(e, student)}
+                        >
+                          <FaTrash /> Delete
+                        </Button>
                       </div>
                     </Card.Body>
-                    <Card.Footer className="d-flex justify-content-around">
-                      <Button variant="outline-primary" size="sm" onClick={() => handleView(student.id)}>
-                        <FaEye /> View
-                      </Button>
-                      <Button variant="outline-secondary" size="sm" onClick={() => handleEdit(student.id)}>
-                        <FaEdit /> Edit
-                      </Button>
-                    </Card.Footer>
                   </Card>
                 </Col>
               ))}
@@ -301,25 +316,13 @@ const StudentDetails = () => {
                       <td>{student.fatherName}</td>
                       <td>{student.phoneNumber}</td>
                       <td>
-                        <Button
-                          variant="secondary"
-                          className="action-button view-button me-2"
-                          onClick={() => handleView(student.id)}
-                        >
+                        <Button variant="secondary" className="me-2" onClick={() => handleView(student.id)}>
                           <FaEye />
                         </Button>
-                        <Button
-                          variant="link"
-                          className="action-button edit-button me-2"
-                          onClick={() => handleEdit(student.id)}
-                        >
+                        <Button variant="primary" className="me-2" onClick={(e) => handleEdit(e, student.id)}>
                           <FaEdit />
                         </Button>
-                        <Button
-                          variant="link"
-                          className="action-button delete-button"
-                          onClick={() => handleDeleteClick(student)}
-                        >
+                        <Button variant="danger" onClick={(e) => handleDeleteClick(e, student)}>
                           <FaTrash />
                         </Button>
                       </td>
@@ -364,42 +367,118 @@ const StudentDetails = () => {
             color: #212529;
           }
 
-          .action-button {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
+          .view-toggle-btn {
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+          }
+
+          .view-toggle-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+
+          .view-toggle-btn.active {
+            background-color: #0B3D7B;
+            color: white;
+            border-color: #0B3D7B;
+          }
+
+          .student-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            background: white;
+            cursor: pointer;
+          }
+
+          .student-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          }
+
+          .edit-button-wrapper {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 2;
+          }
+
+          .edit-icon-button {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 4px;
-            padding: 0;
-            color: white;
+            transition: all 0.3s ease;
           }
 
-          .view-button {
-            background-color: #6c757d;
+          .edit-icon-button:hover {
+            transform: scale(1.1);
           }
 
-          .view-button:hover {
-            background-color: #5a6268;
-            color: white;
+          .student-image-container {
+            width: 100%;
+            height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 0;
           }
 
-          .edit-button {
+          .student-profile-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #0B3D7B;
+          }
+
+          .student-info {
+            margin-top: 1rem;
+          }
+
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #f0f0f0;
+          }
+
+          .info-label {
+            color: #666;
+            font-weight: 500;
+          }
+
+          .info-value {
+            color: #0B3D7B;
+            font-weight: 600;
+          }
+
+          .custom-view-btn {
             background-color: #0B3D7B;
+            border-color: #0B3D7B;
           }
 
-          .edit-button:hover {
-            background-color: #092a54;
-            color: white;
+          .custom-view-btn:hover {
+            background-color: #092C5C;
+            border-color: #092C5C;
           }
 
-          .delete-button {
+          .custom-delete-btn {
             background-color: #dc3545;
+            border-color: #dc3545;
           }
 
-          .delete-button:hover {
-            background-color: #bb2d3b;
-            color: white;
+          .custom-delete-btn:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
           }
 
           .copy-button {
