@@ -457,7 +457,9 @@ const AdmissionForm = () => {
         navigate("/admission/StudentDetails")
       } catch (error) {
         console.error("Error submitting admission:", error)
-        toast.error(`Failed to submit admission: ${error.message}`)
+        toast.error(`Failed to submit admission
+        console.error("Error submitting admission:", error)
+        toast.error(\`Failed to submit admission: ${error.message}`)
       }
     } else {
       console.log("Form validation failed")
@@ -680,44 +682,6 @@ const AdmissionForm = () => {
                     disabled={isViewMode}
                   />
                   <Form.Control.Feedback type="invalid">{errors.phoneNumber}</Form.Control.Feedback>
-                </Form.Group>
-
-                <Form.Group className="">
-                  <Form.Label>Boarding Point</Form.Label>
-                  <Form.Select
-                    name="boardingPoint"
-                    value={formData.boardingPoint}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.boardingPoint}
-                    disabled={isViewMode}
-                  >
-                    <option value="">Select Boarding Point</option>
-                    {setupData.boardingPoints.map((point) => (
-                      <option key={point.id} value={point.placeName}>
-                        {point.placeName}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.boardingPoint}</Form.Control.Feedback>
-                </Form.Group>
-
-                <Form.Group className="">
-                  <Form.Label>Bus Route Number</Form.Label>
-                  <Form.Select
-                    name="busRouteNumber"
-                    value={formData.busRouteNumber}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.busRouteNumber}
-                    disabled={isViewMode}
-                  >
-                    <option value="">Select Bus Route Number</option>
-                    {setupData.busRoutes.map((route) => (
-                      <option key={route.id} value={route.route}>
-                        {route.route}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.busRouteNumber}</Form.Control.Feedback>
                 </Form.Group>
 
                 <Form.Group className="">
@@ -1104,83 +1068,137 @@ const AdmissionForm = () => {
                   <Form.Control.Feedback type="invalid">{errors.examNumber}</Form.Control.Feedback>
                 </Form.Group>
               </Col>
-              <Col md={4}>
-                <Form.Group className="">
-                  <Form.Label>Bus Fee</Form.Label>
-                  <Form.Control
-                    type="number"
-                    name="busFee"
-                    value={formData.busFee}
-                    onChange={handleInputChange}
-                    placeholder="Enter bus fee"
-                    isInvalid={!!errors.busFee}
-                    disabled={isViewMode}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.busFee}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="">
-                  <Form.Label>Studied Year</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="studiedYear"
-                    value={formData.studiedYear}
-                    onChange={handleInputChange}
-                    placeholder="Enter studied year"
-                    isInvalid={!!errors.studiedYear}
-                    disabled={isViewMode}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.studiedYear}</Form.Control.Feedback>
-                </Form.Group>
+              <Col md={8}>
+                <div className="border p-3 mb-3">
+                  <h6 className="mb-3">Bus Details</h6>
+                  <Row>
+                    <Col md={4}>
+                      <Form.Group className="">
+                        <Form.Label>Boarding Point</Form.Label>
+                        <Form.Select
+                          name="boardingPoint"
+                          value={formData.boardingPoint}
+                          onChange={handleInputChange}
+                          isInvalid={!!errors.boardingPoint}
+                          disabled={isViewMode}
+                        >
+                          <option value="">Select Boarding Point</option>
+                          {setupData.boardingPoints.map((point) => (
+                            <option key={point.id} value={point.placeName}>
+                              {point.placeName}
+                            </option>
+                          ))}
+                        </Form.Select>
+                        <Form.Control.Feedback type="invalid">{errors.boardingPoint}</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group className="">
+                        <Form.Label>Bus Route Number</Form.Label>
+                        <Form.Select
+                          name="busRouteNumber"
+                          value={formData.busRouteNumber}
+                          onChange={handleInputChange}
+                          isInvalid={!!errors.busRouteNumber}
+                          disabled={isViewMode}
+                        >
+                          <option value="">Select Bus Route Number</option>
+                          {setupData.busRoutes.map((route) => (
+                            <option key={route.id} value={route.route}>
+                              {route.route}
+                            </option>
+                          ))}
+                        </Form.Select>
+                        <Form.Control.Feedback type="invalid">{errors.busRouteNumber}</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group className="">
+                        <Form.Label>Bus Fee</Form.Label>
+                        <Form.Control
+                          type="number"
+                          name="busFee"
+                          value={formData.busFee}
+                          onChange={handleInputChange}
+                          placeholder="Enter bus fee"
+                          isInvalid={!!errors.busFee}
+                          disabled={isViewMode}
+                        />
+                        <Form.Control.Feedback type="invalid">{errors.busFee}</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </div>
               </Col>
             </Row>
 
             <Row>
-              <Col md={4}>
-                <Form.Group className="">
-                  <Form.Label>Class Last Studied</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="classLastStudied"
-                    value={formData.classLastStudied}
-                    onChange={handleInputChange}
-                    placeholder="Enter class last studied"
-                    isInvalid={!!errors.classLastStudied}
-                    disabled={isViewMode}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.classLastStudied}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="">
-                  <Form.Label>Class to be Admitted</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="classToBeAdmitted"
-                    value={formData.classToBeAdmitted}
-                    onChange={handleInputChange}
-                    placeholder="Enter class to be admitted"
-                    isInvalid={!!errors.classToBeAdmitted}
-                    disabled={isViewMode}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.classToBeAdmitted}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="">
-                  <Form.Label>Name of the School</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="nameOfSchool"
-                    value={formData.nameOfSchool}
-                    onChange={handleInputChange}
-                    placeholder="Enter name of the school"
-                    isInvalid={!!errors.nameOfSchool}
-                    disabled={isViewMode}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.nameOfSchool}</Form.Control.Feedback>
-                </Form.Group>
+              <Col md={12}>
+                <div className="border p-3 mb-3">
+                  <h6 className="mb-3">Previous Student Details</h6>
+                  <Row>
+                    <Col md={3}>
+                      <Form.Group className="">
+                        <Form.Label>Studied Year</Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="studiedYear"
+                          value={formData.studiedYear}
+                          onChange={handleInputChange}
+                          placeholder="Enter studied year"
+                          isInvalid={!!errors.studiedYear}
+                          disabled={isViewMode}
+                        />
+                        <Form.Control.Feedback type="invalid">{errors.studiedYear}</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                    <Col md={3}>
+                      <Form.Group className="">
+                        <Form.Label>Class Last Studied</Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="classLastStudied"
+                          value={formData.classLastStudied}
+                          onChange={handleInputChange}
+                          placeholder="Enter class last studied"
+                          isInvalid={!!errors.classLastStudied}
+                          disabled={isViewMode}
+                        />
+                        <Form.Control.Feedback type="invalid">{errors.classLastStudied}</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                    <Col md={3}>
+                      <Form.Group className="">
+                        <Form.Label>Class to be Admitted</Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="classToBeAdmitted"
+                          value={formData.classToBeAdmitted}
+                          onChange={handleInputChange}
+                          placeholder="Enter class to be admitted"
+                          isInvalid={!!errors.classToBeAdmitted}
+                          disabled={isViewMode}
+                        />
+                        <Form.Control.Feedback type="invalid">{errors.classToBeAdmitted}</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                    <Col md={3}>
+                      <Form.Group className="">
+                        <Form.Label>Name of the School</Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="nameOfSchool"
+                          value={formData.nameOfSchool}
+                          onChange={handleInputChange}
+                          placeholder="Enter name of the school"
+                          isInvalid={!!errors.nameOfSchool}
+                          disabled={isViewMode}
+                        />
+                        <Form.Control.Feedback type="invalid">{errors.nameOfSchool}</Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </div>
               </Col>
             </Row>
 
@@ -1331,3 +1349,4 @@ const AdmissionForm = () => {
 }
 
 export default AdmissionForm
+
