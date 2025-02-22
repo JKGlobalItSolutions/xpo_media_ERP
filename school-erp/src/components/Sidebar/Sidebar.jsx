@@ -192,7 +192,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "3-1", title: "• External master Setup/Enquiry", path: "/admission/enquiry" },
         { id: "3-1", title: "• Admission Form", path: "/admission/AdmissionForm" },
         { id: "3-3", title: "• Student Detail", path: "/admission/StudentDetails" },
-        { id: "3-2", title: "• Barcode Design", path: "/admission/Bar-code-Design" },
+        { id: "3-2", title: "• QR code Design", path: "/admission/Bar-code-Design" },
         { id: "3-3", title: "• Student Details Report", path: "/admission/Student-Details-Report" },
         { id: "3-3", title: "• Transfer Certificate", path: "/admission/Transfer-Certificate" },
         { id: "3-3", title: "• Demand Report", path: "/admission/Demand-Report" },
