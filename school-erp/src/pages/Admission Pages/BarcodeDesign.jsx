@@ -1,14 +1,18 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { Form, Button, Row, Col, Container, Dropdown } from "react-bootstrap"
 import { db, auth } from "../../Firebase/config"
-import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore"
+import { doc, setDoc, collection, getDocs, query, where } from "firebase/firestore"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { QRCodeSVG } from "qrcode.react"
+import CryptoJS from "crypto-js"
+
+// Define a constant for the encryption key
+const ENCRYPTION_KEY = "your-secret-key-here" // Replace with a secure key
 
 const QRCodeDesign = () => {
   const [formData, setFormData] = useState({
@@ -42,6 +46,9 @@ const QRCodeDesign = () => {
         const adminSnapshot = await getDocs(adminRef)
         if (!adminSnapshot.empty) {
           setAdministrationId(adminSnapshot.docs[0].id)
+        } else {
+          console.error("No administration document found")
+          toast.error("Failed to initialize. No administration found.")
         }
       } catch (error) {
         console.error("Error fetching Administration ID:", error)
@@ -72,10 +79,10 @@ const QRCodeDesign = () => {
         auth.currentUser.uid,
         "AdmissionMaster",
         administrationId,
-        "AdmissionSetup"
+        "AdmissionSetup",
       )
       const snapshot = await getDocs(admissionsRef)
-      const numbers = snapshot.docs.map(doc => doc.data().admissionNumber)
+      const numbers = snapshot.docs.map((doc) => doc.data().admissionNumber)
       setAllAdmissionNumbers(numbers)
     } catch (error) {
       console.error("Error fetching admission numbers:", error)
@@ -101,15 +108,13 @@ const QRCodeDesign = () => {
   }
 
   const filterAdmissionNumbers = (input) => {
-    const filtered = allAdmissionNumbers.filter(number => 
-      number.toLowerCase().includes(input.toLowerCase())
-    )
+    const filtered = allAdmissionNumbers.filter((number) => number.toLowerCase().includes(input.toLowerCase()))
     setFilteredAdmissionNumbers(filtered)
     setShowDropdown(filtered.length > 0)
   }
 
   const handleAdmissionNumberSelect = (selectedNumber) => {
-    setFormData(prev => ({ ...prev, admissionNumber: selectedNumber }))
+    setFormData((prev) => ({ ...prev, admissionNumber: selectedNumber }))
     setShowDropdown(false)
     fetchStudentDetails(selectedNumber)
   }
@@ -127,7 +132,7 @@ const QRCodeDesign = () => {
         auth.currentUser.uid,
         "AdmissionMaster",
         administrationId,
-        "AdmissionSetup"
+        "AdmissionSetup",
       )
       const q = query(admissionsRef, where("admissionNumber", "==", admissionNumber))
       const querySnapshot = await getDocs(q)
@@ -172,10 +177,40 @@ const QRCodeDesign = () => {
     setQRCodeData(qrData)
   }
 
-  const handleSubmit = (e) => {
+  const encryptQRCode = (data) => {
+    return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString()
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log("Form Data:", formData)
-    // Add your form submission logic here
+    if (!qrCodeData) {
+      toast.error("Please generate QR code data first.")
+      return
+    }
+
+    try {
+      if (!administrationId) {
+        throw new Error("Administration ID is not set")
+      }
+
+      const encryptedQRCode = encryptQRCode(qrCodeData)
+      const studentRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "AdmissionSetup",
+        formData.admissionNumber,
+      )
+
+      await setDoc(studentRef, { encrypted: encryptedQRCode }, { merge: true })
+      console.log("QR code saved successfully for admission number:", formData.admissionNumber)
+      toast.success("QR code saved successfully!")
+    } catch (error) {
+      console.error("Error saving QR code:", error)
+      toast.error(`Failed to save QR code: ${error.message}`)
+    }
   }
 
   const handleReset = () => {
@@ -240,10 +275,7 @@ const QRCodeDesign = () => {
                             {showDropdown && (
                               <Dropdown.Menu show className="w-100">
                                 {filteredAdmissionNumbers.map((number) => (
-                                  <Dropdown.Item 
-                                    key={number} 
-                                    onClick={() => handleAdmissionNumberSelect(number)}
-                                  >
+                                  <Dropdown.Item key={number} onClick={() => handleAdmissionNumberSelect(number)}>
                                     {number}
                                   </Dropdown.Item>
                                 ))}
@@ -442,15 +474,8 @@ const QRCodeDesign = () => {
                 <Col md={4} className="bg-light">
                   <div className="p-4 h-100 d-flex flex-column justify-content-center align-items-center">
                     <h5 className="mb-4">QR Code Preview</h5>
-                    <div className="bg-white p-3 rounded shadow-sm" style={{ width: '120px', height: '120px' }}>
-                      {qrCodeData && (
-                        <QRCodeSVG
-                          value={qrCodeData}
-                          size={100}
-                          level="M"
-                          includeMargin={false}
-                        />
-                      )}
+                    <div className="bg-white p-3 rounded shadow-sm" style={{ width: "120px", height: "120px" }}>
+                      {qrCodeData && <QRCodeSVG value={qrCodeData} size={100} level="M" includeMargin={false} />}
                     </div>
                     <p className="mt-3 text-muted">Size: 100x100 pixels</p>
                     <p className="text-muted">Suitable for ID card printing</p>
@@ -483,3 +508,4 @@ const QRCodeDesign = () => {
 }
 
 export default QRCodeDesign
+
