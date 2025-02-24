@@ -13,19 +13,22 @@ import { FaEdit, FaTrash } from "react-icons/fa"
 // Add Book Modal Component
 const AddBookModal = ({ isOpen, onClose, onConfirm, book }) => {
   const [bookName, setBookName] = useState("")
+  const [amount, setAmount] = useState("")
 
   useEffect(() => {
     if (book) {
       setBookName(book.bookname)
+      setAmount(book.amount || "")
     } else {
       setBookName("")
+      setAmount("")
     }
   }, [book])
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(bookName)
+    onConfirm(bookName, amount)
   }
 
   return (
@@ -38,6 +41,13 @@ const AddBookModal = ({ isOpen, onClose, onConfirm, book }) => {
             placeholder="Enter Book Name"
             value={bookName}
             onChange={(e) => setBookName(e.target.value)}
+            className="custom-input mb-3"
+          />
+          <Form.Control
+            type="number"
+            placeholder="Enter Amount"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
             className="custom-input"
           />
         </div>
@@ -80,7 +90,7 @@ const DeleteBookModal = ({ isOpen, onClose, onConfirm, book }) => {
 }
 
 // Confirm Edit Modal Component
-const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName }) => {
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName, currentAmount, newAmount }) => {
   if (!isOpen) return null
 
   return (
@@ -94,6 +104,12 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName }) 
           </p>
           <p>
             <strong>New Name:</strong> {newName}
+          </p>
+          <p>
+            <strong>Current Amount:</strong> {currentAmount}
+          </p>
+          <p>
+            <strong>New Amount:</strong> {newAmount}
           </p>
         </div>
         <div className="modal-buttons">
@@ -118,6 +134,7 @@ const BookMaster = () => {
   const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
   const [selectedBook, setSelectedBook] = useState(null)
   const [newBookName, setNewBookName] = useState("")
+  const [newBookAmount, setNewBookAmount] = useState("")
 
   useEffect(() => {
     const fetchStoreId = async () => {
@@ -175,7 +192,7 @@ const BookMaster = () => {
     }
   }
 
-  const handleAddBook = async (bookName) => {
+  const handleAddBook = async (bookName, amount) => {
     if (!storeId) {
       toast.error("Store not initialized. Please try again.", {
         position: "top-right",
@@ -206,7 +223,7 @@ const BookMaster = () => {
 
     try {
       const booksRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "BookSetup")
-      await addDoc(booksRef, { bookname: bookName })
+      await addDoc(booksRef, { bookname: bookName, amount: amount })
       setIsAddModalOpen(false)
       toast.success("Book added successfully!", {
         position: "top-right",
@@ -233,7 +250,7 @@ const BookMaster = () => {
     }
   }
 
-  const handleEditBook = async (newName) => {
+  const handleEditBook = async (newName, newAmount) => {
     if (!storeId || !selectedBook) {
       toast.error("Store not initialized or no book selected. Please try again.", {
         position: "top-right",
@@ -267,15 +284,17 @@ const BookMaster = () => {
     setIsAddModalOpen(false)
     setIsConfirmEditModalOpen(true)
     setNewBookName(newName)
+    setNewBookAmount(newAmount)
   }
 
   const confirmEditBook = async () => {
     try {
       const bookRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "BookSetup", selectedBook.id)
-      await updateDoc(bookRef, { bookname: newBookName })
+      await updateDoc(bookRef, { bookname: newBookName, amount: newBookAmount })
       setIsConfirmEditModalOpen(false)
       setSelectedBook(null)
       setNewBookName("")
+      setNewBookAmount("")
       toast.success("Book updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -401,6 +420,7 @@ const BookMaster = () => {
               <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
                 <tr>
                   <th>Book Name</th>
+                  <th>Amount</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -408,6 +428,7 @@ const BookMaster = () => {
                 {filteredBooks.map((book) => (
                   <tr key={book.id}>
                     <td>{book.bookname}</td>
+                    <td>{book.amount}</td>
                     <td>
                       <Button
                         variant="link"
@@ -438,7 +459,9 @@ const BookMaster = () => {
           setIsAddModalOpen(false)
           setSelectedBook(null)
         }}
-        onConfirm={(bookName) => (selectedBook ? handleEditBook(bookName) : handleAddBook(bookName))}
+        onConfirm={(bookName, amount) =>
+          selectedBook ? handleEditBook(bookName, amount) : handleAddBook(bookName, amount)
+        }
         book={selectedBook}
       />
 
@@ -458,10 +481,13 @@ const BookMaster = () => {
           setIsConfirmEditModalOpen(false)
           setSelectedBook(null)
           setNewBookName("")
+          setNewBookAmount("")
         }}
         onConfirm={confirmEditBook}
         currentName={selectedBook?.bookname}
         newName={newBookName}
+        currentAmount={selectedBook?.amount}
+        newAmount={newBookAmount}
       />
 
       <ToastContainer />

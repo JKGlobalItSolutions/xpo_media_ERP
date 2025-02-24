@@ -23,7 +23,7 @@ const AddBookSetupModal = ({ isOpen, onClose, onConfirm, standards, books, exist
 
   const handleBookChange = (index, field, value) => {
     const updatedBooks = [...selectedBooks]
-    if (field === "quantity" || field === "amount") {
+    if (field === "quantity") {
       value = Math.max(0, Number.parseInt(value) || 0)
     }
     updatedBooks[index][field] = value
@@ -85,7 +85,14 @@ const AddBookSetupModal = ({ isOpen, onClose, onConfirm, standards, books, exist
           {selectedBooks.map((book, index) => (
             <Row key={index} className="mb-3">
               <Col xs={12} md={4}>
-                <Form.Select value={book.id} onChange={(e) => handleBookChange(index, "id", e.target.value)}>
+                <Form.Select
+                  value={book.id}
+                  onChange={(e) => {
+                    const selectedBook = books.find((b) => b.id === e.target.value)
+                    handleBookChange(index, "id", e.target.value)
+                    handleBookChange(index, "amount", selectedBook ? selectedBook.amount : "")
+                  }}
+                >
                   <option value="">Select Book</option>
                   {books
                     .filter((b) => !selectedBooks.some((sb) => sb.id === b.id && sb !== book))
@@ -106,13 +113,7 @@ const AddBookSetupModal = ({ isOpen, onClose, onConfirm, standards, books, exist
                 />
               </Col>
               <Col xs={6} md={3}>
-                <Form.Control
-                  type="number"
-                  min="0"
-                  placeholder="Amount"
-                  value={book.amount}
-                  onChange={(e) => handleBookChange(index, "amount", e.target.value)}
-                />
+                <Form.Control type="number" min="0" placeholder="Amount" value={book.amount} readOnly />
               </Col>
               <Col xs={12} md={2}>
                 <Button variant="danger" onClick={() => handleRemoveBook(index)} className="w-100">
@@ -158,7 +159,7 @@ const EditBookSetupModal = ({ isOpen, onClose, onConfirm, setup, standards, book
 
   const handleBookChange = (index, field, value) => {
     const updatedBooks = [...selectedBooks]
-    if (field === "quantity" || field === "amount") {
+    if (field === "quantity") {
       value = Math.max(0, Number.parseInt(value) || 0)
     }
     updatedBooks[index][field] = value
@@ -204,7 +205,14 @@ const EditBookSetupModal = ({ isOpen, onClose, onConfirm, setup, standards, book
           {selectedBooks.map((book, index) => (
             <Row key={index} className="mb-3">
               <Col xs={12} md={4}>
-                <Form.Select value={book.id} onChange={(e) => handleBookChange(index, "id", e.target.value)}>
+                <Form.Select
+                  value={book.id}
+                  onChange={(e) => {
+                    const selectedBook = books.find((b) => b.id === e.target.value)
+                    handleBookChange(index, "id", e.target.value)
+                    handleBookChange(index, "amount", selectedBook ? selectedBook.amount : "")
+                  }}
+                >
                   <option value="">Select Book</option>
                   {books
                     .filter((b) => !selectedBooks.some((sb) => sb.id === b.id && sb !== book))
@@ -225,13 +233,7 @@ const EditBookSetupModal = ({ isOpen, onClose, onConfirm, setup, standards, book
                 />
               </Col>
               <Col xs={6} md={3}>
-                <Form.Control
-                  type="number"
-                  min="0"
-                  placeholder="Amount"
-                  value={book.amount}
-                  onChange={(e) => handleBookChange(index, "amount", e.target.value)}
-                />
+                <Form.Control type="number" min="0" placeholder="Amount" value={book.amount} readOnly />
               </Col>
               <Col xs={12} md={2}>
                 <Button variant="danger" onClick={() => handleRemoveBook(index)} className="w-100">
