@@ -1,199 +1,88 @@
-"use client"
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Card, Button, Modal, Form, Spinner, Table } from 'react-bootstrap';
+import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db, auth } from '../../Firebase/config';
+import MainContentPage from '../../components/MainContent/MainContentPage';
+import { QRCodeSVG } from 'qrcode.react';
+import { Edit, Eye, Trash2, Copy } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import defaultStudentPhoto from '../../images/StudentProfileIcon/studentProfile.jpeg';
 
-import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
-import { Form, Button, Row, Col, Container, Dropdown } from "react-bootstrap"
-import { db, auth } from "../../Firebase/config"
-import { doc, setDoc, collection, getDocs, query, where } from "firebase/firestore"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
-import MainContentPage from "../../components/MainContent/MainContentPage"
-import { QRCodeSVG } from "qrcode.react"
-import CryptoJS from "crypto-js"
-
-// Define a constant for the encryption key
-const ENCRYPTION_KEY = "your-secret-key-here" // Replace with a secure key
-
-const QRCodeDesign = () => {
-  const [formData, setFormData] = useState({
-    admissionNumber: "",
-    studentName: "",
-    fatherName: "",
-    streetVillage: "",
-    district: "",
-    placePincode: "",
-    phoneNumber: "",
-    studentType: "",
-    standard: "",
-    section: "",
-    gender: "",
-    community: "",
-    caste: "",
-    dateOfBirth: "",
-    dateOfAdmission: "",
-  })
-
-  const [administrationId, setAdministrationId] = useState(null)
-  const [qrCodeData, setQRCodeData] = useState("")
-  const [allAdmissionNumbers, setAllAdmissionNumbers] = useState([])
-  const [filteredAdmissionNumbers, setFilteredAdmissionNumbers] = useState([])
-  const [showDropdown, setShowDropdown] = useState(false)
+const QRCodeListing = () => {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [showQRConfirmModal, setShowQRConfirmModal] = useState(false);
+  const [currentStudent, setCurrentStudent] = useState(null);
+  const [administrationId, setAdministrationId] = useState(null);
+  const [viewType, setViewType] = useState('grid');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchAdministrationId = async () => {
-      try {
-        const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-        const adminSnapshot = await getDocs(adminRef)
-        if (!adminSnapshot.empty) {
-          setAdministrationId(adminSnapshot.docs[0].id)
-        } else {
-          console.error("No administration document found")
-          toast.error("Failed to initialize. No administration found.")
-        }
-      } catch (error) {
-        console.error("Error fetching Administration ID:", error)
-        toast.error("Failed to initialize. Please try again.")
-      }
-    }
-
-    fetchAdministrationId()
-  }, [])
+    fetchAdministrationId();
+  }, []);
 
   useEffect(() => {
     if (administrationId) {
-      fetchAllAdmissionNumbers()
+      fetchStudents();
     }
-  }, [administrationId])
+  }, [administrationId]);
 
-  useEffect(() => {
-    if (formData.admissionNumber) {
-      generateQRCodeData()
-    }
-  }, [formData])
-
-  const fetchAllAdmissionNumbers = async () => {
+  const fetchAdministrationId = async () => {
     try {
-      const admissionsRef = collection(
+      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration");
+      const adminSnapshot = await getDocs(adminRef);
+      if (!adminSnapshot.empty) {
+        setAdministrationId(adminSnapshot.docs[0].id);
+      }
+    } catch (error) {
+      console.error("Error fetching Administration ID:", error);
+      toast.error("Failed to fetch administration data");
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const studentsRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
         "AdmissionMaster",
         administrationId,
-        "AdmissionSetup",
-      )
-      const snapshot = await getDocs(admissionsRef)
-      const numbers = snapshot.docs.map((doc) => doc.data().admissionNumber)
-      setAllAdmissionNumbers(numbers)
+        "AdmissionSetup"
+      );
+      const studentsSnapshot = await getDocs(studentsRef);
+      const studentsData = studentsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setStudents(studentsData);
+      setLoading(false);
     } catch (error) {
-      console.error("Error fetching admission numbers:", error)
-      toast.error("Failed to fetch admission numbers. Please try again.")
+      console.error("Error fetching students:", error);
+      toast.error("Failed to fetch student data");
+      setLoading(false);
     }
-  }
+  };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
-
-    if (name === "admissionNumber") {
-      if (value.length > 0) {
-        filterAdmissionNumbers(value)
-      } else {
-        setShowDropdown(true)
-        setFilteredAdmissionNumbers(allAdmissionNumbers)
-      }
-    }
-  }
-
-  const filterAdmissionNumbers = (input) => {
-    const filtered = allAdmissionNumbers.filter((number) => number.toLowerCase().includes(input.toLowerCase()))
-    setFilteredAdmissionNumbers(filtered)
-    setShowDropdown(filtered.length > 0)
-  }
-
-  const handleAdmissionNumberSelect = (selectedNumber) => {
-    setFormData((prev) => ({ ...prev, admissionNumber: selectedNumber }))
-    setShowDropdown(false)
-    fetchStudentDetails(selectedNumber)
-  }
-
-  const handleInputFocus = () => {
-    setShowDropdown(true)
-    setFilteredAdmissionNumbers(allAdmissionNumbers)
-  }
-
-  const fetchStudentDetails = async (admissionNumber) => {
-    try {
-      const admissionsRef = collection(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "AdmissionMaster",
-        administrationId,
-        "AdmissionSetup",
-      )
-      const q = query(admissionsRef, where("admissionNumber", "==", admissionNumber))
-      const querySnapshot = await getDocs(q)
-
-      if (!querySnapshot.empty) {
-        const studentData = querySnapshot.docs[0].data()
-        setFormData({
-          admissionNumber: studentData.admissionNumber,
-          studentName: studentData.studentName,
-          fatherName: studentData.fatherName,
-          streetVillage: studentData.streetVillage,
-          district: studentData.district,
-          placePincode: studentData.placePincode,
-          phoneNumber: studentData.phoneNumber,
-          studentType: studentData.studentType,
-          standard: studentData.standard,
-          section: studentData.section,
-          gender: studentData.gender,
-          community: studentData.community,
-          caste: studentData.caste,
-          dateOfBirth: studentData.dateOfBirth,
-          dateOfAdmission: studentData.dateOfAdmission,
-        })
-        toast.success("Student data fetched successfully!")
-      } else {
-        toast.error("No data found for this admission number.")
-      }
-    } catch (error) {
-      console.error("Error fetching student data:", error)
-      toast.error("Failed to fetch student data. Please try again.")
-    }
-  }
-
-  const generateQRCodeData = () => {
+  const generateQRCodeData = (student) => {
     const essentialData = {
-      admissionNumber: formData.admissionNumber,
-      studentName: formData.studentName,
-      standard: formData.standard,
-      section: formData.section,
-    }
-    const qrData = JSON.stringify(essentialData)
-    setQRCodeData(qrData)
-  }
+      admissionNumber: student.admissionNumber,
+      studentName: student.studentName,
+      standard: student.standard,
+      section: student.section,
+    };
+    return JSON.stringify(essentialData);
+  };
 
-  const encryptQRCode = (data) => {
-    return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString()
-  }
+  const handleEdit = (student) => {
+    setCurrentStudent(student);
+    setShowModal(true);
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!qrCodeData) {
-      toast.error("Please generate QR code data first.")
-      return
-    }
-
+  const handleUpdate = async () => {
     try {
-      if (!administrationId) {
-        throw new Error("Administration ID is not set")
-      }
-
-      const encryptedQRCode = encryptQRCode(qrCodeData)
       const studentRef = doc(
         db,
         "Schools",
@@ -201,311 +90,455 @@ const QRCodeDesign = () => {
         "AdmissionMaster",
         administrationId,
         "AdmissionSetup",
-        formData.admissionNumber,
-      )
-
-      await setDoc(studentRef, { encrypted: encryptedQRCode }, { merge: true })
-      console.log("QR code saved successfully for admission number:", formData.admissionNumber)
-      toast.success("QR code saved successfully!")
+        currentStudent.id
+      );
+      const updatedData = {
+        ...currentStudent,
+        qrCode: generateQRCodeData(currentStudent)
+      };
+      await updateDoc(studentRef, updatedData);
+      setShowModal(false);
+      fetchStudents();
+      toast.success("Student information updated successfully");
     } catch (error) {
-      console.error("Error saving QR code:", error)
-      toast.error(`Failed to save QR code: ${error.message}`)
+      console.error("Error updating student:", error);
+      toast.error("Failed to update student information");
     }
-  }
+  };
 
-  const handleReset = () => {
-    setFormData({
-      admissionNumber: "",
-      studentName: "",
-      fatherName: "",
-      streetVillage: "",
-      district: "",
-      placePincode: "",
-      phoneNumber: "",
-      studentType: "",
-      standard: "",
-      section: "",
-      gender: "",
-      community: "",
-      caste: "",
-      dateOfBirth: "",
-      dateOfAdmission: "",
-    })
-    setQRCodeData("")
-    setShowDropdown(false)
-  }
+  const handleDelete = async (studentId) => {
+    if (window.confirm("Are you sure you want to delete this student's QR code?")) {
+      try {
+        const studentRef = doc(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "AdmissionMaster",
+          administrationId,
+          "AdmissionSetup",
+          studentId
+        );
+        await updateDoc(studentRef, { qrCode: null });
+        fetchStudents();
+        toast.success("QR code deleted successfully");
+      } catch (error) {
+        console.error("Error deleting QR code:", error);
+        toast.error("Failed to delete QR code");
+      }
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentStudent(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleNewQRCode = (student) => {
+    setCurrentStudent(student);
+    setShowQRConfirmModal(true);
+  };
+
+  const confirmGenerateQRCode = async () => {
+    try {
+      const qrCodeData = generateQRCodeData(currentStudent);
+      const studentRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "AdmissionSetup",
+        currentStudent.id
+      );
+      await updateDoc(studentRef, { qrCode: qrCodeData });
+      fetchStudents();
+      setShowQRConfirmModal(false);
+      toast.success("QR code generated successfully");
+    } catch (error) {
+      console.error("Error generating new QR code:", error);
+      toast.error("Failed to generate QR code");
+    }
+  };
+
+  const handleCopyAdmissionNumber = (admissionNumber) => {
+    navigator.clipboard.writeText(admissionNumber)
+      .then(() => toast.success("Admission Number copied to clipboard"))
+      .catch(() => toast.error("Failed to copy Admission Number"));
+  };
+
+  const filteredStudents = students.filter(student =>
+    student.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.admissionNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.standard.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.section.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const renderGridView = () => (
+    <Row className="g-4">
+      {filteredStudents.map((student) => (
+        <Col key={student.id} xs={12} sm={6} md={4} lg={3}>
+          <Card className="student-card">
+            <div className="edit-icon" onClick={() => handleEdit(student)}>
+              <Edit size={18} />
+            </div>
+            <div className="avatar-container">
+              <img
+                src={student.studentPhoto || defaultStudentPhoto}
+                alt={student.studentName}
+                className="student-avatar"
+              />
+            </div>
+            <Card.Body>
+              <div className="info-grid">
+                <div className="info-row">
+                  <span className="info-label">Admission</span>
+                  <span className="info-value">{student.admissionNumber}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Name</span>
+                  <span className="info-value">{student.studentName}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Class</span>
+                  <span className="info-value">{student.standard}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Section</span>
+                  <span className="info-value">{student.section}</span>
+                </div>
+              </div>
+              <div className="qr-code-container">
+                {student.qrCode ? (
+                  <QRCodeSVG value={student.qrCode} size={100} level="M" />
+                ) : (
+                  <Button onClick={() => handleNewQRCode(student)} className="generate-btn">Generate QR Code</Button>
+                )}
+              </div>
+              <div className="button-group">
+                <Button 
+                  variant="danger" 
+                  className="delete-btn"
+                  onClick={() => handleDelete(student.id)}
+                >
+                  <Trash2 size={16} className="me-1" />
+                  Delete
+                </Button>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      ))}
+    </Row>
+  );
+
+  const renderTableView = () => (
+    <Table striped bordered hover responsive>
+      <thead>
+        <tr>
+          <th>Photo</th>
+          <th>Admission Number</th>
+          <th>Name</th>
+          <th>Class</th>
+          <th>Section</th>
+          <th>QR Code</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filteredStudents.map((student) => (
+          <tr key={student.id}>
+            <td>
+              <img
+                src={student.studentPhoto || defaultStudentPhoto}
+                alt={student.studentName}
+                className="student-avatar-small"
+              />
+            </td>
+            <td>
+              {student.admissionNumber}
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => handleCopyAdmissionNumber(student.admissionNumber)}
+                className="ms-2"
+              >
+                <Copy size={16} />
+              </Button>
+            </td>
+            <td>{student.studentName}</td>
+            <td>{student.standard}</td>
+            <td>{student.section}</td>
+            <td>
+              {student.qrCode ? (
+                <QRCodeSVG value={student.qrCode} size={50} level="M" />
+              ) : (
+                <Button size="sm" onClick={() => handleNewQRCode(student)} className="generate-btn">Generate</Button>
+              )}
+            </td>
+            <td>
+              <Button variant="secondary" size="sm" className="me-1" onClick={() => handleEdit(student)}>
+                <Edit size={16} />
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => handleDelete(student.id)}>
+                <Trash2 size={16} />
+              </Button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  );
 
   return (
     <MainContentPage>
-      <Container fluid className="px-0">
-        <div className="admission-form">
-          {/* Header and Breadcrumb */}
-          <div className="mb-4">
-            <h2 className="mb-2">QR Code Design</h2>
-            <nav className="custom-breadcrumb py-1 py-lg-3">
-              <Link to="/home">Home</Link>
-              <span className="separator mx-2">&gt;</span>
-              <span>Admission Master</span>
-              <span className="separator mx-2">&gt;</span>
-              <span>QR Code Design</span>
-            </nav>
-          </div>
-
-          {/* Form Content */}
-          <div className="bg-white rounded shadow-sm">
-            <Form onSubmit={handleSubmit}>
-              <Row>
-                {/* Left Column - Form Fields */}
-                <Col md={8}>
-                  <div className="p-4">
-                    <Row className="g-3">
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Admission Number</Form.Label>
-                          <div className="position-relative">
-                            <Form.Control
-                              type="text"
-                              name="admissionNumber"
-                              value={formData.admissionNumber}
-                              onChange={handleInputChange}
-                              onFocus={handleInputFocus}
-                              placeholder="Enter Admission Number"
-                              autoComplete="off"
-                            />
-                            {showDropdown && (
-                              <Dropdown.Menu show className="w-100">
-                                {filteredAdmissionNumbers.map((number) => (
-                                  <Dropdown.Item key={number} onClick={() => handleAdmissionNumberSelect(number)}>
-                                    {number}
-                                  </Dropdown.Item>
-                                ))}
-                              </Dropdown.Menu>
-                            )}
-                          </div>
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Student Name</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="studentName"
-                            value={formData.studentName}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Father's Name</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="fatherName"
-                            value={formData.fatherName}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Street/Village</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="streetVillage"
-                            value={formData.streetVillage}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>District</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="district"
-                            value={formData.district}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Place/Pincode</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="placePincode"
-                            value={formData.placePincode}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Phone Number</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="phoneNumber"
-                            value={formData.phoneNumber}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Student Type</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="studentType"
-                            value={formData.studentType}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label>Standard</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="standard"
-                            value={formData.standard}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label>Section</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="section"
-                            value={formData.section}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label>Gender</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="gender"
-                            value={formData.gender}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Community</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="community"
-                            value={formData.community}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Caste</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="caste"
-                            value={formData.caste}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Date Of Birth</Form.Label>
-                          <Form.Control
-                            type="date"
-                            name="dateOfBirth"
-                            value={formData.dateOfBirth}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Date Of Admission</Form.Label>
-                          <Form.Control
-                            type="date"
-                            name="dateOfAdmission"
-                            value={formData.dateOfAdmission}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-                    </Row>
-                  </div>
-                </Col>
-
-                {/* Right Column - QR Code Preview */}
-                <Col md={4} className="bg-light">
-                  <div className="p-4 h-100 d-flex flex-column justify-content-center align-items-center">
-                    <h5 className="mb-4">QR Code Preview</h5>
-                    <div className="bg-white p-3 rounded shadow-sm" style={{ width: "120px", height: "120px" }}>
-                      {qrCodeData && <QRCodeSVG value={qrCodeData} size={100} level="M" includeMargin={false} />}
-                    </div>
-                    <p className="mt-3 text-muted">Size: 100x100 pixels</p>
-                    <p className="text-muted">Suitable for ID card printing</p>
-                  </div>
-                </Col>
-              </Row>
-
-              {/* Form Actions */}
-              <Row className="mt-4">
-                <Col className="d-flex justify-content-center gap-3 pb-4">
-                  <Button variant="primary" className="custom-btn-clr">
-                    New QR Code Design
-                  </Button>
-                  <Button type="submit" className="custom-btn-clr">
-                    Save
-                  </Button>
-                  <Button variant="danger" onClick={handleReset}>
-                    Reset
-                  </Button>
-                  <Button variant="secondary">Cancel</Button>
-                </Col>
-              </Row>
-            </Form>
+      <Container fluid>
+        <h1 className="mb-4">QR Code Listing</h1>
+        <div className="mb-3 d-flex justify-content-between align-items-center">
+          <Form.Control
+            type="text"
+            placeholder="Search students..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-50"
+          />
+          <div>
+            <Button
+              variant={viewType === 'grid' ? 'primary' : 'outline-primary'}
+              onClick={() => setViewType('grid')}
+              className={`me-2 ${viewType === 'grid' ? 'active-layout-btn' : ''}`}
+            >
+              Grid View
+            </Button>
+            <Button
+              variant={viewType === 'table' ? 'primary' : 'outline-primary'}
+              onClick={() => setViewType('table')}
+              className={viewType === 'table' ? 'active-layout-btn' : ''}
+            >
+              Table View
+            </Button>
           </div>
         </div>
+        {loading ? (
+          <div className="text-center">
+            <Spinner animation="border" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </Spinner>
+          </div>
+        ) : viewType === 'grid' ? renderGridView() : renderTableView()}
+
+        <Modal show={showModal} onHide={() => setShowModal(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title>Edit Student</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>Admission Number</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="admissionNumber"
+                  value={currentStudent?.admissionNumber || ''}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Student Name</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="studentName"
+                  value={currentStudent?.studentName || ''}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Standard</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="standard"
+                  value={currentStudent?.standard || ''}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Section</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="section"
+                  value={currentStudent?.section || ''}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowModal(false)}>
+              Close
+            </Button>
+            <Button variant="primary" onClick={handleUpdate} className="save-btn">
+              Save Changes
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        <Modal show={showQRConfirmModal} onHide={() => setShowQRConfirmModal(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title>Generate QR Code</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            Are you sure you want to generate a QR code for {currentStudent?.studentName}?
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowQRConfirmModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={confirmGenerateQRCode} className="generate-btn">
+              Generate QR Code
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </Container>
       <ToastContainer />
+      <style jsx>{`
+        .student-card {
+          position: relative;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        .student-card:hover {
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          transform: translateY(-2px);
+        }
+
+        .edit-icon {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background-color: #fff;
+          border-radius: 50%;
+          padding: 8px;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          z-index: 1;
+        }
+
+        .avatar-container {
+          display: flex;
+          justify-content: center;
+          padding: 1.5rem 0;
+          background-color: #f8fafc;
+        }
+
+        .student-avatar {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          border: 3px solid #fff;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          object-fit: cover;
+        }
+
+        .student-avatar-small {
+          width: 40px0,0,0.1);
+          object-fit: cover;
+        }
+
+        .student-avatar-small {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+
+        .info-grid {
+          margin-bottom: 1rem;
+        }
+
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 0.5rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .info-row:last-child {
+          border-bottom: none;
+        }
+
+        .info-label {
+          color: #64748b;
+          font-size: 0.875rem;
+        }
+
+        .info-value {
+          color: #1e293b;
+          font-weight: 500;
+        }
+
+        .qr-code-container {
+          display: flex;
+          justify-content: center;
+          margin: 1rem 0;
+          padding: 1rem;
+          background-color: #f8fafc;
+          border-radius: 4px;
+        }
+
+        .button-group {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .delete-btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.5rem;
+          background-color: #dc3545;
+          border-color: #dc3545;
+          color: white;
+        }
+
+        .delete-btn:hover, .delete-btn:focus, .delete-btn:active {
+          background-color: #c82333;
+          border-color: #bd2130;
+        }
+
+        .me-1 {
+          margin-right: 0.25rem;
+        }
+
+        .active-layout-btn {
+          background-color: #0B3D7B;
+          border-color: #0B3D7B;
+          color: white;
+        }
+
+        .active-layout-btn:hover, .active-layout-btn:focus, .active-layout-btn:active {
+          background-color: #082b56;
+          border-color: #082b56;
+          color: white;
+        }
+
+        .generate-btn, .save-btn {
+          background-color: #0B3D7B;
+          border-color: #0B3D7B;
+          color: white;
+        }
+
+        .generate-btn:hover, .generate-btn:focus, .generate-btn:active,
+        .save-btn:hover, .save-btn:focus, .save-btn:active {
+          background-color: #082b56;
+          border-color: #082b56;
+          color: white;
+        }
+      `}</style>
     </MainContentPage>
-  )
-}
+  );
+};
 
-export default QRCodeDesign
-
+export default QRCodeListing;
