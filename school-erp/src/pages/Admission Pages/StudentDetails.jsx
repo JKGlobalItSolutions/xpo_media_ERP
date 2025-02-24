@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
-import { Button, Container, Table, Form, OverlayTrigger, Tooltip, Row, Col, Card } from "react-bootstrap"
-import { FaEdit, FaTrash, FaEye, FaCopy, FaTable, FaTh } from "react-icons/fa"
+import { Button, Container, Table, Form, OverlayTrigger, Tooltip, Row, Col, Card, Modal } from "react-bootstrap"
+import { FaEdit, FaTrash, FaEye, FaCopy, FaTable, FaTh, FaQrcode } from "react-icons/fa"
 import { db, auth } from "../../Firebase/config"
 import { collection, getDocs, query, limit, addDoc, deleteDoc, doc } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import defaultStudentPhoto from "../../images/StudentProfileIcon/studentProfile.jpeg"
+import { QRCodeSVG } from "qrcode.react"
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
   if (!isOpen) return null
@@ -39,9 +40,13 @@ const StudentDetails = () => {
   const [administrationId, setAdministrationId] = useState(null)
   const [students, setStudents] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [classFilter, setClassFilter] = useState("")
+  const [sectionFilter, setSectionFilter] = useState("")
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [studentToDelete, setStudentToDelete] = useState(null)
   const [viewType, setViewType] = useState("table")
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [selectedQRCode, setSelectedQRCode] = useState("")
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -140,17 +145,30 @@ const StudentDetails = () => {
       .catch((error) => toast.error("Failed to copy Admission Number"))
   }
 
-  const filteredStudents = students.filter(
-    (student) =>
-      student.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.standard?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.section?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const handleQRClick = (e, qrCode) => {
+    e.stopPropagation()
+    setSelectedQRCode(qrCode)
+    setShowQRModal(true)
+  }
+
+  const filteredStudents = students
+    .filter(
+      (student) =>
+        student.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.standard?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.section?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    .filter((student) => (classFilter ? student.standard === classFilter : true))
+    .filter((student) => (sectionFilter ? student.section === sectionFilter : true))
+    .sort((a, b) => a.admissionNumber.localeCompare(b.admissionNumber))
 
   const toggleViewType = (type) => {
     setViewType(type)
   }
+
+  const uniqueClasses = [...new Set(students.map((student) => student.standard))].sort()
+  const uniqueSections = [...new Set(students.map((student) => student.section))].sort()
 
   return (
     <MainContentPage>
@@ -184,6 +202,22 @@ const StudentDetails = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="flex-grow-1"
               />
+              <Form.Select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="w-auto">
+                <option value="">All Classes</option>
+                {uniqueClasses.map((cls) => (
+                  <option key={cls} value={cls}>
+                    {cls}
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} className="w-auto">
+                <option value="">All Sections</option>
+                {uniqueSections.map((section) => (
+                  <option key={section} value={section}>
+                    {section}
+                  </option>
+                ))}
+              </Form.Select>
               <Button className="search-btn w-auto w-md-auto">SEARCH</Button>
             </div>
             <div className="d-flex gap-2 justify-content-lg-end justify-content-center w-100 w-md-auto">
@@ -265,6 +299,13 @@ const StudentDetails = () => {
                         >
                           <FaTrash /> Delete
                         </Button>
+                        <Button
+                          variant="primary"
+                          className="d-flex align-items-center gap-2 custom-qr-btn"
+                          onClick={(e) => handleQRClick(e, student.qrCode)}
+                        >
+                          <FaQrcode /> QR
+                        </Button>
                       </div>
                     </Card.Body>
                   </Card>
@@ -316,15 +357,28 @@ const StudentDetails = () => {
                       <td>{student.fatherName}</td>
                       <td>{student.phoneNumber}</td>
                       <td>
-                        <Button variant="secondary" className="me-2" onClick={() => handleView(student.id)}>
-                          <FaEye />
-                        </Button>
-                        <Button variant="primary" className="me-2" onClick={(e) => handleEdit(e, student.id)}>
-                          <FaEdit />
-                        </Button>
-                        <Button variant="danger" onClick={(e) => handleDeleteClick(e, student)}>
-                          <FaTrash />
-                        </Button>
+                        <div className="d-flex justify-content-around align-items-center">
+                          <Button variant="secondary" className="action-btn" onClick={() => handleView(student.id)}>
+                            <FaEye />
+                          </Button>
+                          <Button variant="primary" className="action-btn" onClick={(e) => handleEdit(e, student.id)}>
+                            <FaEdit />
+                          </Button>
+                          <Button
+                            variant="danger"
+                            className="action-btn"
+                            onClick={(e) => handleDeleteClick(e, student)}
+                          >
+                            <FaTrash />
+                          </Button>
+                          <Button
+                            variant="primary"
+                            className="action-btn"
+                            onClick={(e) => handleQRClick(e, student.qrCode)}
+                          >
+                            <FaQrcode />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -344,6 +398,15 @@ const StudentDetails = () => {
         onConfirm={handleDeleteConfirm}
         itemName={studentToDelete?.studentName}
       />
+
+      <Modal show={showQRModal} onHide={() => setShowQRModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Student QR Code</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center">
+          <QRCodeSVG value={selectedQRCode || ""} size={200} />
+        </Modal.Body>
+      </Modal>
 
       <ToastContainer />
 
@@ -378,12 +441,6 @@ const StudentDetails = () => {
           .view-toggle-btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-          }
-
-          .view-toggle-btn.active {
-            background-color: #0B3D7B;
-            color: white;
-            border-color: #0B3D7B;
           }
 
           .student-card {
@@ -481,6 +538,16 @@ const StudentDetails = () => {
             border-color: #bd2130;
           }
 
+          .custom-qr-btn {
+            background-color: #0B3D7B;
+            border-color: #0B3D7B;
+          }
+
+          .custom-qr-btn:hover {
+            background-color: #092C5C;
+            border-color: #092C5C;
+          }
+
           .copy-button {
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
@@ -563,6 +630,11 @@ const StudentDetails = () => {
             border-color: #092C5C;
           }
 
+          .action-btn {
+            padding: 0.25rem 0.5rem;
+            margin: 0 0.1rem;
+          }
+
           /* Toastify custom styles */
           .Toastify__toast-container {
             z-index: 9999;
@@ -596,13 +668,19 @@ const StudentDetails = () => {
             }
 
             .view-toggle-btn {
-              width: 100%;
+              width: 50%;
               margin-bottom: 0.5rem;
+              padding: 0.5rem;
+              font-size: 0.875rem;
             }
 
             .search-btn {
               width: 100%;
               margin-top: 0.5rem;
+            }
+
+            .view-toggle-btn .d-md-none {
+              margin-right: 0.25rem;
             }
           }
         `}
