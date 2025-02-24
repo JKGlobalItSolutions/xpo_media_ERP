@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
 import { Form, Button, Row, Col, Container } from "react-bootstrap"
 import { db, auth, storage } from "../../Firebase/config"
-import { doc, getDoc, setDoc, collection, getDocs, query, limit, where, orderBy } from "firebase/firestore"
+import { doc, getDoc, setDoc, collection, getDocs, query, limit, where, orderBy, deleteDoc } from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import defaultStudentPhoto from "../../images/StudentProfileIcon/studentProfile.jpeg"
+import { QRCodeSVG } from "qrcode.react"
 
 const AdmissionForm = () => {
   const { id } = useParams()
@@ -85,6 +86,7 @@ const AdmissionForm = () => {
   const [enquiryNumbers, setEnquiryNumbers] = useState([])
   const [filteredEnquiryNumbers, setFilteredEnquiryNumbers] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
+  const [qrCodeData, setQRCodeData] = useState("")
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -119,6 +121,21 @@ const AdmissionForm = () => {
       }
     }
   }, [administrationId, id])
+
+  useEffect(() => {
+    const generateQRCodeData = () => {
+      const essentialData = {
+        admissionNumber: formData.admissionNumber,
+        studentName: formData.studentName,
+        standard: formData.standard,
+        section: formData.section,
+      }
+      const qrData = JSON.stringify(essentialData)
+      setQRCodeData(qrData)
+    }
+
+    generateQRCodeData()
+  }, [formData.admissionNumber, formData.studentName, formData.standard, formData.section])
 
   const fetchSetupData = async () => {
     try {
@@ -436,9 +453,19 @@ const AdmissionForm = () => {
           photoUrl = await getDownloadURL(storageRef)
         }
 
+        // Generate QR code data
+        const essentialData = {
+          admissionNumber: formData.admissionNumber,
+          studentName: formData.studentName,
+          standard: formData.standard,
+          section: formData.section,
+        }
+        const qrCodeData = JSON.stringify(essentialData)
+
         const admissionData = {
           ...formData,
           studentPhoto: photoUrl,
+          qrCode: qrCodeData, // Add QR code data to admission data
         }
 
         const admissionRef = collection(
@@ -456,6 +483,25 @@ const AdmissionForm = () => {
         } else {
           await setDoc(doc(admissionRef), admissionData)
           toast.success("Admission submitted successfully!")
+
+          // Delete the used enquiry
+          if (formData.enquiryKey) {
+            const enquiryRef = collection(
+              db,
+              "Schools",
+              auth.currentUser.uid,
+              "AdmissionMaster",
+              administrationId,
+              "EnquirySetup",
+            )
+            const q = query(enquiryRef, where("enquiryKey", "==", formData.enquiryKey))
+            const querySnapshot = await getDocs(q)
+            if (!querySnapshot.empty) {
+              const enquiryDoc = querySnapshot.docs[0]
+              await deleteDoc(doc(enquiryRef, enquiryDoc.id))
+              console.log("Enquiry deleted successfully")
+            }
+          }
         }
 
         // Redirect to the StudentDetails page
@@ -546,7 +592,20 @@ const AdmissionForm = () => {
                     disabled={isViewMode}
                   />
                 </div>
+              </Col>
+              <Col md={6}>
+                {/* QR Code Preview */}
+                <div className="text-center mb-4">
+                  <h3 className="section-title">QR Code Preview</h3>
+                  <div className="qr-code-container mx-auto" style={{ width: "200px", height: "200px" }}>
+                    {qrCodeData && <QRCodeSVG value={qrCodeData} size={200} level="M" includeMargin={true} />}
+                  </div>
+                </div>
+              </Col>
+            </Row>
 
+            <Row>
+              <Col md={6}>
                 {/* Basic Details */}
                 <Form.Group className="mb-3">
                   <Form.Label>Enquiry Key</Form.Label>
@@ -889,7 +948,7 @@ const AdmissionForm = () => {
                 </Form.Group>
               </Col>
 
-              <Col md={6}>
+              <Col md={6}> 
                 {/* Academic Details */}
                 <h3 className="section-title mt-4">Academic Details</h3>
                 <Form.Group className="mb-3">

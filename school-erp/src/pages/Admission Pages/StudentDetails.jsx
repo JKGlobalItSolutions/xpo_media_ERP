@@ -184,7 +184,7 @@ const StudentDetails = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="flex-grow-1"
               />
-              <Button className="custom-btn-clr w-auto w-md-auto">SEARCH</Button>
+              <Button className="search-btn w-auto w-md-auto">SEARCH</Button>
             </div>
             <div className="d-flex gap-2 justify-content-lg-end justify-content-center w-100 w-md-auto">
               <Button
@@ -222,7 +222,7 @@ const StudentDetails = () => {
                       </div>
                       <div className="student-image-container">
                         <img
-                          src={student.profileImage || defaultStudentPhoto}
+                          src={student.studentPhoto || defaultStudentPhoto}
                           alt={student.studentName}
                           className="student-profile-image"
                         />
@@ -552,6 +552,17 @@ const StudentDetails = () => {
             color: white;
           }
 
+          .search-btn {
+            background-color: #0B3D7B;
+            border-color: #0B3D7B;
+            color: white;
+          }
+
+          .search-btn:hover {
+            background-color: #092C5C;
+            border-color: #092C5C;
+          }
+
           /* Toastify custom styles */
           .Toastify__toast-container {
             z-index: 9999;
@@ -572,6 +583,27 @@ const StudentDetails = () => {
 
           .Toastify__progress-bar {
             background-color: rgba(255, 255, 255, 0.7);
+          }
+
+          /* Mobile responsiveness */
+          @media (max-width: 575.98px) {
+            .d-flex.flex-column.flex-md-row {
+              flex-direction: column !important;
+            }
+
+            .w-100.w-md-auto {
+              width: 100% !important;
+            }
+
+            .view-toggle-btn {
+              width: 100%;
+              margin-bottom: 0.5rem;
+            }
+
+            .search-btn {
+              width: 100%;
+              margin-top: 0.5rem;
+            }
           }
         `}
       </style>
