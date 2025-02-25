@@ -684,8 +684,8 @@ const AdmissionForm = () => {
                   >
                     <option value="">Select Father's Occupation</option>
                     {setupData.parentOccupations.map((occupation) => (
-                      <option key={occupation.id} value={occupation.occupation}>
-                        {occupation.occupation}
+                      <option key={occupation.id} value={occupation.name}>
+                        {occupation.name}
                       </option>
                     ))}
                   </Form.Select>
@@ -702,8 +702,8 @@ const AdmissionForm = () => {
                   >
                     <option value="">Select Mother's Occupation</option>
                     {setupData.parentOccupations.map((occupation) => (
-                      <option key={occupation.id} value={occupation.occupation}>
-                        {occupation.occupation}
+                      <option key={occupation.id} value={occupation.name}>
+                        {occupation.name}
                       </option>
                     ))}
                   </Form.Select>
@@ -866,14 +866,14 @@ const AdmissionForm = () => {
                   >
                     <option value="">Select Mother Tongue</option>
                     {setupData.motherTongues.map((mt) => (
-                      <option key={mt.id} value={mt.name}>
-                        {mt.name}
+                      <option key={mt.id} value={mt.MotherTongueName}>
+                        {mt.MotherTongueName}
                       </option>
                     ))}
                   </Form.Select>
                 </Form.Group>
-                                {/* Address Details */}
-                                <h3 className="section-title">Address Details</h3>
+                {/* Address Details */}
+                <h3 className="section-title">Address Details</h3>
                 <Form.Group className="mb-3">
                   <Form.Label>Street/Village</Form.Label>
                   <Form.Control
@@ -948,7 +948,7 @@ const AdmissionForm = () => {
                 </Form.Group>
               </Col>
 
-              <Col md={6}> 
+              <Col md={6}>
                 {/* Academic Details */}
                 <h3 className="section-title mt-4">Academic Details</h3>
                 <Form.Group className="mb-3">
