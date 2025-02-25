@@ -7,7 +7,7 @@ import { Form, Button, Row, Col, Container, Card } from "react-bootstrap"
 import { FaEdit, FaTrash, FaSearch } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
-import { useAuthContext } from "../../../context/AuthContext"
+import { useAuthContext } from "../../../Context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 

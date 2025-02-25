@@ -12,6 +12,9 @@ import ArrearFeeUpdating from '../../pages/Admission Pages/ArrearFeeUpdating';
 import BillCancel from '../../pages/Admission Pages/BillCancel';
 import BarcodeDesign from '../../pages/Admission Pages/BarcodeDesign';
 import EnquiryForm from '../../pages/Admission Pages/EnquiryForm';
+import StudentRegisterReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/StudentRegisterReport';
+import ReligionWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/ReligionwiseReport';
+import StageWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/StageWiseReport';
 
 
 function AdmissionMaster() {
@@ -31,6 +34,9 @@ function AdmissionMaster() {
       <Route path="Bill-Cancel" element={<BillCancel />} />
       <Route path="/enquiry-form/:id" element={<EnquiryForm />} />
       <Route path="/enquiry-form/" element={<EnquiryForm />} />
+      <Route path="Student-Details-Report/student-register-report" element={<StudentRegisterReport />} />
+      <Route path="Student-Details-Report/religion-wise-report" element={<ReligionWiseReport />} />
+      <Route path="Student-Details-Report/stage-wise-report" element={<StageWiseReport />} />
     </Routes>
   );
 }
