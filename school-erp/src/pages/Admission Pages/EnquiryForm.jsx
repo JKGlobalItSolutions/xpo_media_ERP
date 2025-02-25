@@ -9,7 +9,6 @@ import { collection, getDocs, getDoc, updateDoc, addDoc, doc, query, limit, wher
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import { FaArrowLeft } from "react-icons/fa"
 import defaultStudentPhoto from "../../images/StudentProfileIcon/studentProfile.jpeg"
 
 const EnquiryForm = () => {
@@ -452,48 +451,44 @@ const EnquiryForm = () => {
   return (
     <MainContentPage>
       <Container fluid className="px-0">
+        {/* Breadcrumb Navigation */}
         <div className="mb-4">
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <span>Admission</span>
+            <Link to="/admission">Admission</Link>
             <span className="separator mx-2">&gt;</span>
             <Link to="/admission/enquiry">Enquiry</Link>
             <span className="separator mx-2">&gt;</span>
             <span>{isViewMode ? "View Enquiry" : id ? "Edit Enquiry" : "Add Enquiry"}</span>
           </nav>
         </div>
+
+        {/* Card Header */}
         <div
           style={{ backgroundColor: "#0B3D7B" }}
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
         >
           <div className="d-flex align-items-center">
-            <Button variant="link" className="text-white p-0 back-button me-3" onClick={handleBack}>
-              <FaArrowLeft size={20} />
-            </Button>
             <h2 className="mb-0">{isViewMode ? "View Enquiry" : id ? "Edit Enquiry" : "Add Enquiry"}</h2>
           </div>
           <div style={{ width: "20px" }}></div>
         </div>
 
+        {/* Form Container */}
         <div className="bg-white p-4 rounded-bottom shadow">
-          <Form onSubmit={handleSubmit} className="h-100">
-            <Row className="h-100">
-              {/* Left Column */}
-              <Col md={4} className="d-flex flex-column">
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Enquiry Key</Form.Label>
-                  <Form.Control type="text" name="enquiryKey" value={formData.enquiryKey} readOnly disabled />
-                </Form.Group>
-
+          <Form onSubmit={handleSubmit} className="enquiry-form">
+            <Row>
+              <Col md={6}>
+                {/* Student Photo Section */}
                 <div className="text-center mb-4">
-                  <h6>Student Photo</h6>
+                  <h3 className="section-title">Student Photo</h3>
                   <div
                     className="photo-upload-circle mx-auto"
                     onClick={handlePhotoClick}
                     style={{
-                      width: "150px",
-                      height: "150px",
+                      width: "200px",
+                      height: "200px",
                       border: "2px dashed #ccc",
                       borderRadius: "50%",
                       display: "flex",
@@ -502,13 +497,20 @@ const EnquiryForm = () => {
                       cursor: "pointer",
                       overflow: "hidden",
                       backgroundColor: "#f8f9fa",
+                      marginBottom: "20px",
                     }}
                   >
-                    <img
-                      src={photoPreview || "/placeholder.svg"}
-                      alt="Student"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
+                    {photoPreview ? (
+                      <img
+                        src={photoPreview || "/placeholder.svg"}
+                        alt="Student"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <div>Upload Photo Here</div>
+                      </div>
+                    )}
                   </div>
                   <input
                     ref={fileInputRef}
@@ -519,525 +521,77 @@ const EnquiryForm = () => {
                     disabled={isViewMode}
                   />
                 </div>
+              </Col>
+              <Col md={6}>
+                {/* Enquiry Key Preview */}
+                <div className="text-center mb-4">
+                  <h3 className="section-title">Enquiry Key</h3>
+                  <div
+                    className="enquiry-key-container mx-auto"
+                    style={{
+                      width: "200px",
+                      height: "200px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      color: "#0B3D7B",
+                    }}
+                  >
+                    {formData.enquiryKey}
+                  </div>
+                </div>
+              </Col>
+            </Row>
 
-                <Form.Group className="mb-3 flex-grow-1">
+            <Row>
+              <Col md={6}>
+                {/* Basic Details */}
+                <Form.Group className="mb-3">
                   <Form.Label>Student Name</Form.Label>
                   <Form.Control
                     type="text"
                     name="studentName"
                     value={formData.studentName}
                     onChange={handleInputChange}
-                    placeholder="Enter student name"
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.studentName}
+                    className="form-control-blue"
                   />
-                  <Form.Control.Feedback type="invalid">{errors.studentName}</Form.Control.Feedback>
                 </Form.Group>
 
-                <Form.Group className="mb-3 flex-grow-1">
+                <Form.Group className="mb-3">
                   <Form.Label>Father's Name</Form.Label>
                   <Form.Control
                     type="text"
                     name="fatherName"
                     value={formData.fatherName}
                     onChange={handleInputChange}
-                    placeholder="Enter father's name"
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.fatherName}
+                    className="form-control-blue"
                   />
-                  <Form.Control.Feedback type="invalid">{errors.fatherName}</Form.Control.Feedback>
                 </Form.Group>
 
-                <Form.Group className="mb-3 flex-grow-1">
+                <Form.Group className="mb-3">
                   <Form.Label>Mother's Name</Form.Label>
                   <Form.Control
                     type="text"
                     name="motherName"
                     value={formData.motherName}
                     onChange={handleInputChange}
-                    placeholder="Enter mother's name"
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.motherName}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.motherName}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-
-              {/* Middle Column */}
-              <Col md={4} className="d-flex flex-column">
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Street/Village</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="streetVillage"
-                    value={formData.streetVillage}
-                    onChange={handleInputChange}
-                    placeholder="Enter street/village"
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.streetVillage}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.streetVillage}</Form.Control.Feedback>
-                </Form.Group>
-
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Place/Pincode</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="placePincode"
-                    value={formData.placePincode}
-                    onChange={handleInputChange}
-                    placeholder="Enter place/pincode"
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.placePincode}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.placePincode}</Form.Control.Feedback>
-                </Form.Group>
-
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>District</Form.Label>
-                  <Form.Select
-                    name="district"
-                    value={`${formData.districtId}|${formData.district}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.district}
-                  >
-                    <option value="">Select District</option>
-                    {setupData.districts.map((district) => (
-                      <option key={district.id} value={`${district.id}|${district.district}`}>
-                        {district.district}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.district}</Form.Control.Feedback>
-                </Form.Group>
-
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Phone Number</Form.Label>
-                  <Form.Control
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleInputChange}
-                    placeholder="Enter phone number"
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.phoneNumber}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.phoneNumber}</Form.Control.Feedback>
-                </Form.Group>
-
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Boarding Point</Form.Label>
-                  <Form.Select
-                    name="boardingPoint"
-                    value={`${formData.boardingPointId}|${formData.boardingPoint}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.boardingPoint}
-                  >
-                    <option value="">Select Boarding Point</option>
-                    {setupData.boardingPoints.map((point) => (
-                      <option key={point.id} value={`${point.id}|${point.placeName}`}>
-                        {point.placeName}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.boardingPoint}</Form.Control.Feedback>
-                </Form.Group>
-
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Bus Route Number</Form.Label>
-                  <Form.Select
-                    name="busRouteNumber"
-                    value={`${formData.busRouteNumberId}|${formData.busRouteNumber}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.busRouteNumber}
-                  >
-                    <option value="">Select Bus Route Number</option>
-                    {setupData.busRoutes.map((route) => (
-                      <option key={route.id} value={`${route.id}|${route.route}`}>
-                        {route.route}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.busRouteNumber}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-
-              {/* Right Column */}
-              <Col md={4} className="d-flex flex-column">
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Email ID</Form.Label>
-                  <Form.Control
-                    type="email"
-                    name="emailId"
-                    value={formData.emailId}
-                    onChange={handleInputChange}
-                    placeholder="Enter email ID"
-                    disabled={isViewMode}
+                    className="form-control-blue"
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Communication Address</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={3}
-                    name="communicationAddress"
-                    value={formData.communicationAddress}
-                    onChange={handleInputChange}
-                    placeholder="Enter communication address"
-                    disabled={isViewMode}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Nationality</Form.Label>
-                  <Form.Select
-                    name="nationality"
-                    value={`${formData.nationalityId}|${formData.nationality}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.nationality}
-                  >
-                    <option value="">Select Nationality</option>
-                    {setupData.nationalities.map((nationality) => (
-                      <option key={nationality.id} value={`${nationality.id}|${nationality.nationality}`}>
-                        {nationality.nationality}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.nationality}</Form.Control.Feedback>
-                </Form.Group>
-
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Religion</Form.Label>
-                  <Form.Select
-                    name="religion"
-                    value={`${formData.religionId}|${formData.religion}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.religion}
-                  >
-                    <option value="">Select Religion</option>
-                    {setupData.religions.map((religion) => (
-                      <option key={religion.id} value={`${religion.id}|${religion.religion}`}>
-                        {religion.religion}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.religion}</Form.Control.Feedback>
-                </Form.Group>
-
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>State</Form.Label>
-                  <Form.Select
-                    name="state"
-                    value={`${formData.stateId}|${formData.state}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.state}
-                  >
-                    <option value="">Select State</option>
-                    {setupData.states.map((state) => (
-                      <option key={state.id} value={`${state.id}|${state.state}`}>
-                        {state.state}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.state}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Community</Form.Label>
-                  <Form.Select
-                    name="community"
-                    value={`${formData.communityId}|${formData.community}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.community}
-                  >
-                    <option value="">Select Community</option>
-                    {setupData.communities.map((community) => (
-                      <option key={community.id} value={`${community.id}|${community.community}`}>
-                        {community.community}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.community}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Caste</Form.Label>
-                  <Form.Select
-                    name="caste"
-                    value={`${formData.casteId}|${formData.caste}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.caste}
-                  >
-                    <option value="">Select Caste</option>
-                    {setupData.castes.map((caste) => (
-                      <option key={caste.id} value={`${caste.id}|${caste.caste}`}>
-                        {caste.caste}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.caste}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Student Type</Form.Label>
-                  <Form.Select
-                    name="studentType"
-                    value={formData.studentType}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.studentType}
-                  >
-                    <option value="">Select Student Type</option>
-                    <option value="New">New</option>
-                    <option value="Existing">Existing</option>
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.studentType}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Student Category</Form.Label>
-                  <Form.Select
-                    name="studentCategory"
-                    value={`${formData.studentCategoryId}|${formData.studentCategory}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.studentCategory}
-                  >
-                    <option value="">Select Student Category</option>
-                    {setupData.studentCategories.map((category) => (
-                      <option key={category.id} value={`${category.id}|${category.StudentCategoryName}`}>
-                        {category.StudentCategoryName}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.studentCategory}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Standard</Form.Label>
-                  <Form.Select
-                    name="standard"
-                    value={`${formData.standardId}|${formData.standard}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.standard}
-                  >
-                    <option value="">Select Standard</option>
-                    {setupData.courses.map((course) => (
-                      <option key={course.id} value={`${course.id}|${course.standard}`}>
-                        {course.standard}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.standard}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Section</Form.Label>
-                  <Form.Select
-                    name="section"
-                    value={`${formData.sectionId}|${formData.section}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.section}
-                  >
-                    <option value="">Select Section</option>
-                    {setupData.sections.map((section) => (
-                      <option key={section.id} value={`${section.id}|${section.name}`}>
-                        {section.name}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.section}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Gender</Form.Label>
-                  <Form.Select
-                    name="gender"
-                    value={formData.gender}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.gender}
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.gender}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Date of Birth</Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.dateOfBirth}
-                    ref={dateOfBirthRef}
-                    onClick={() => handleDateInputClick(dateOfBirthRef)}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.dateOfBirth}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>EMIS</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="emis"
-                    value={formData.emis}
-                    onChange={handleInputChange}
-                    placeholder="Enter EMIS number"
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.emis}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.emis}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Lunch / Refresh</Form.Label>
-                  <Form.Select
-                    name="lunchRefresh"
-                    value={formData.lunchRefresh}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.lunchRefresh}
-                  >
-                    <option value="">Select Option</option>
-                    <option value="Lunch">Lunch</option>
-                    <option value="Refresh">Refresh</option>
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.lunchRefresh}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Blood Group</Form.Label>
-                  <Form.Select
-                    name="bloodGroup"
-                    value={formData.bloodGroup}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.bloodGroup}
-                  >
-                    <option value="">Select Blood Group</option>
-                    {setupData.bloodGroups.map((bloodGroup) => (
-                      <option key={bloodGroup.id} value={bloodGroup.name}>
-                        {bloodGroup.name}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.bloodGroup}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Date of Admission</Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="dateOfAdmission"
-                    value={formData.dateOfAdmission}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.dateOfAdmission}
-                    ref={dateOfAdmissionRef}
-                    onClick={() => handleDateInputClick(dateOfAdmissionRef)}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.dateOfAdmission}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Mother Tongue</Form.Label>
-                  <Form.Select
-                    name="motherTongue"
-                    value={`${formData.motherTongueId}|${formData.motherTongue}`}
-                    onChange={handleSelectChange}
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.motherTongue}
-                  >
-                    <option value="">Select Mother Tongue</option>
-                    {setupData.motherTongues.map((mt) => (
-                      <option key={mt.id} value={`${mt.id}|${mt.MotherTongueName}`}>
-                        {mt.MotherTongueName}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.motherTongue}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
+                <Form.Group className="mb-3">
                   <Form.Label>Father's Occupation</Form.Label>
                   <Form.Select
                     name="fatherOccupation"
                     value={`${formData.fatherOccupationId}|${formData.fatherOccupation}`}
                     onChange={handleSelectChange}
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.fatherOccupation}
+                    className="form-control-blue"
                   >
                     <option value="">Select Father's Occupation</option>
                     {setupData.parentOccupations.map((occupation) => (
@@ -1046,19 +600,16 @@ const EnquiryForm = () => {
                       </option>
                     ))}
                   </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.fatherOccupation}</Form.Control.Feedback>
                 </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
+
+                <Form.Group className="mb-3">
                   <Form.Label>Mother's Occupation</Form.Label>
                   <Form.Select
                     name="motherOccupation"
                     value={`${formData.motherOccupationId}|${formData.motherOccupation}`}
                     onChange={handleSelectChange}
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.motherOccupation}
+                    className="form-control-blue"
                   >
                     <option value="">Select Mother's Occupation</option>
                     {setupData.parentOccupations.map((occupation) => (
@@ -1067,119 +618,509 @@ const EnquiryForm = () => {
                       </option>
                     ))}
                   </Form.Select>
-                  <Form.Control.Feedback type="invalid">{errors.motherOccupation}</Form.Control.Feedback>
+                </Form.Group>
+
+                {/* Personal Details */}
+                <h3 className="section-title mt-4">Personal Details</h3>
+                <Form.Group className="mb-3">
+                  <Form.Label>Phone Number</Form.Label>
+                  <Form.Control
+                    type="tel"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Email ID</Form.Label>
+                  <Form.Control
+                    type="email"
+                    name="emailId"
+                    value={formData.emailId}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Gender</Form.Label>
+                  <Form.Select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Date Of Birth</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                    ref={dateOfBirthRef}
+                    onClick={() => handleDateInputClick(dateOfBirthRef)}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Blood Group</Form.Label>
+                  <Form.Select
+                    name="bloodGroup"
+                    value={`${formData.bloodGroupId}|${formData.bloodGroup}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Blood Group</option>
+                    {setupData.bloodGroups.map((bg) => (
+                      <option key={bg.id} value={`${bg.id}|${bg.name}`}>
+                        {bg.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Nationality</Form.Label>
+                  <Form.Select
+                    name="nationality"
+                    value={`${formData.nationalityId}|${formData.nationality}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Nationality</option>
+                    {setupData.nationalities.map((nat) => (
+                      <option key={nat.id} value={`${nat.id}|${nat.nationality}`}>
+                        {nat.nationality}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Religion</Form.Label>
+                  <Form.Select
+                    name="religion"
+                    value={`${formData.religionId}|${formData.religion}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Religion</option>
+                    {setupData.religions.map((rel) => (
+                      <option key={rel.id} value={`${rel.id}|${rel.religion}`}>
+                        {rel.religion}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Community</Form.Label>
+                  <Form.Select
+                    name="community"
+                    value={`${formData.communityId}|${formData.community}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Community</option>
+                    {setupData.communities.map((comm) => (
+                      <option key={comm.id} value={`${comm.id}|${comm.community}`}>
+                        {comm.community}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Caste</Form.Label>
+                  <Form.Select
+                    name="caste"
+                    value={`${formData.casteId}|${formData.caste}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Caste</option>
+                    {setupData.castes.map((caste) => (
+                      <option key={caste.id} value={`${caste.id}|${caste.caste}`}>
+                        {caste.caste}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Mother Tongue</Form.Label>
+                  <Form.Select
+                    name="motherTongue"
+                    value={`${formData.motherTongueId}|${formData.motherTongue}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Mother Tongue</option>
+                    {setupData.motherTongues.map((mt) => (
+                      <option key={mt.id} value={`${mt.id}|${mt.MotherTongueName}`}>
+                        {mt.MotherTongueName}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                {/* Address Details */}
+                <h3 className="section-title">Address Details</h3>
+                <Form.Group className="mb-3">
+                  <Form.Label>Street/Village</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="streetVillage"
+                    value={formData.streetVillage}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Place/Pincode</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="placePincode"
+                    value={formData.placePincode}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>State</Form.Label>
+                  <Form.Select
+                    name="state"
+                    value={`${formData.stateId}|${formData.state}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select State</option>
+                    {setupData.states.map((state) => (
+                      <option key={state.id} value={`${state.id}|${state.state}`}>
+                        {state.state}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>District</Form.Label>
+                  <Form.Select
+                    name="district"
+                    value={`${formData.districtId}|${formData.district}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select District</option>
+                    {setupData.districts.map((district) => (
+                      <option key={district.id} value={`${district.id}|${district.district}`}>
+                        {district.district}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Communication Address</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    name="communicationAddress"
+                    value={formData.communicationAddress}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
                 </Form.Group>
               </Col>
-            </Row>
 
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
+              <Col md={6}>
+                {/* Academic Details */}
+                <h3 className="section-title mt-4">Academic Details</h3>
+                <Form.Group className="mb-3">
+                  <Form.Label>Student Type</Form.Label>
+                  <Form.Select
+                    name="studentType"
+                    value={formData.studentType}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Student Type</option>
+                    <option value="New">New</option>
+                    <option value="Existing">Existing</option>
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Student Category</Form.Label>
+                  <Form.Select
+                    name="studentCategory"
+                    value={`${formData.studentCategoryId}|${formData.studentCategory}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Category</option>
+                    {setupData.studentCategories.map((category) => (
+                      <option key={category.id} value={`${category.id}|${category.StudentCategoryName}`}>
+                        {category.StudentCategoryName}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Standard</Form.Label>
+                  <Form.Select
+                    name="standard"
+                    value={`${formData.standardId}|${formData.standard}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Standard</option>
+                    {setupData.courses.map((course) => (
+                      <option key={course.id} value={`${course.id}|${course.standard}`}>
+                        {course.standard}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Section</Form.Label>
+                  <Form.Select
+                    name="section"
+                    value={`${formData.sectionId}|${formData.section}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Section</option>
+                    {setupData.sections.map((section) => (
+                      <option key={section.id} value={`${section.id}|${section.name}`}>
+                        {section.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>EMIS</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="emis"
+                    value={formData.emis}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Lunch / Refresh</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="lunchRefresh"
+                    value={formData.lunchRefresh}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Date Of Admission</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="dateOfAdmission"
+                    value={formData.dateOfAdmission}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                    ref={dateOfAdmissionRef}
+                    onClick={() => handleDateInputClick(dateOfAdmissionRef)}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
                   <Form.Label>Exam Number</Form.Label>
                   <Form.Control
                     type="text"
                     name="examNumber"
                     value={formData.examNumber}
                     onChange={handleInputChange}
-                    placeholder="Enter exam number"
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.examNumber}
+                    className="form-control-blue"
                   />
-                  <Form.Control.Feedback type="invalid">{errors.examNumber}</Form.Control.Feedback>
                 </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3 flex-grow-1">
+
+                {/* Bus Transport Details */}
+                <h3 className="section-title mt-4">Bus Transport Details</h3>
+                <Form.Group className="mb-3">
+                  <Form.Label>Boarding Point</Form.Label>
+                  <Form.Select
+                    name="boardingPoint"
+                    value={`${formData.boardingPointId}|${formData.boardingPoint}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Boarding Point</option>
+                    {setupData.boardingPoints.map((point) => (
+                      <option key={point.id} value={`${point.id}|${point.placeName}`}>
+                        {point.placeName}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Bus Route Number</Form.Label>
+                  <Form.Select
+                    name="busRouteNumber"
+                    value={`${formData.busRouteNumberId}|${formData.busRouteNumber}`}
+                    onChange={handleSelectChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Bus Route</option>
+                    {setupData.busRoutes.map((route) => (
+                      <option key={route.id} value={`${route.id}|${route.route}`}>
+                        {route.route}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
                   <Form.Label>Bus Fee</Form.Label>
                   <Form.Control
                     type="number"
                     name="busFee"
                     value={formData.busFee}
                     onChange={handleInputChange}
-                    placeholder="Enter bus fee"
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.busFee}
+                    className="form-control-blue"
                   />
-                  <Form.Control.Feedback type="invalid">{errors.busFee}</Form.Control.Feedback>
                 </Form.Group>
-              </Col>
-            </Row>
 
-            <Row>
-              <Col md={12}>
-                <h5 className="mt-4 mb-3">Previous Studied Details</h5>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3 flex-grow-1">
+                {/* Previous Studied Details */}
+                <h3 className="section-title mt-4">Previous Studied Details</h3>
+                <Form.Group className="mb-3">
                   <Form.Label>Studied Year</Form.Label>
                   <Form.Control
                     type="text"
                     name="studiedYear"
                     value={formData.studiedYear}
                     onChange={handleInputChange}
-                    placeholder="Enter studied year"
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.studiedYear}
+                    className="form-control-blue"
                   />
-                  <Form.Control.Feedback type="invalid">{errors.studiedYear}</Form.Control.Feedback>
                 </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3 flex-grow-1">
+
+                <Form.Group className="mb-3">
                   <Form.Label>Class Last Studied</Form.Label>
-                  <Form.Control
-                    type="text"
+                  <Form.Select
                     name="classLastStudied"
                     value={formData.classLastStudied}
                     onChange={handleInputChange}
-                    placeholder="Enter class last studied"
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.classLastStudied}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.classLastStudied}</Form.Control.Feedback>
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Class</option>
+                    {setupData.courses.map((course) => (
+                      <option key={course.id} value={course.standard}>
+                        {course.standard}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3 flex-grow-1">
+
+                <Form.Group className="mb-3">
                   <Form.Label>Class to be Admitted</Form.Label>
-                  <Form.Control
-                    type="text"
+                  <Form.Select
                     name="classToBeAdmitted"
                     value={formData.classToBeAdmitted}
                     onChange={handleInputChange}
-                    placeholder="Enter class to be admitted"
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.classToBeAdmitted}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.classToBeAdmitted}</Form.Control.Feedback>
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Class</option>
+                    {setupData.courses.map((course) => (
+                      <option key={course.id} value={course.standard}>
+                        {course.standard}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3 flex-grow-1">
+
+                <Form.Group className="mb-3">
                   <Form.Label>Name of the School</Form.Label>
                   <Form.Control
                     type="text"
                     name="nameOfSchool"
                     value={formData.nameOfSchool}
                     onChange={handleInputChange}
-                    placeholder="Enter name of the school"
-                    required
                     disabled={isViewMode}
-                    isInvalid={!!errors.nameOfSchool}
+                    className="form-control-blue"
                   />
-                  <Form.Control.Feedback type="invalid">{errors.nameOfSchool}</Form.Control.Feedback>
                 </Form.Group>
-              </Col>
-            </Row>
 
-            <Row>
-              <Col md={12}>
-                <Form.Group className="mb-3 flex-grow-1">
+                {/* Remarks and Identification Marks */}
+                <h3 className="section-title mt-4">Remarks</h3>
+                <Form.Group className="mb-3">
+                  <Form.Label>Student Identification Mark 1</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="identificationMark1"
+                    value={formData.identificationMark1}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Student Identification Mark 2</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="identificationMark2"
+                    value={formData.identificationMark2}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
                   <Form.Label>Remarks</Form.Label>
                   <Form.Control
                     as="textarea"
@@ -1187,61 +1128,23 @@ const EnquiryForm = () => {
                     name="remarks"
                     value={formData.remarks}
                     onChange={handleInputChange}
-                    placeholder="Enter remarks"
                     disabled={isViewMode}
+                    className="form-control-blue"
                   />
                 </Form.Group>
               </Col>
             </Row>
 
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Identification Mark 1</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="identificationMark1"
-                    value={formData.identificationMark1}
-                    onChange={handleInputChange}
-                    placeholder="Enter identification mark 1"
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.identificationMark1}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.identificationMark1}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3 flex-grow-1">
-                  <Form.Label>Identification Mark 2</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="identificationMark2"
-                    value={formData.identificationMark2}
-                    onChange={handleInputChange}
-                    placeholder="Enter identification mark 2"
-                    required
-                    disabled={isViewMode}
-                    isInvalid={!!errors.identificationMark2}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors.identificationMark2}</Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <div className="d-flex justify-content-end mt-3">
-              <Button variant="secondary" size="md" className="me-2" onClick={() => navigate("/admission/enquiry")}>
-                Cancel
-              </Button>
+            {/* Submit Button */}
+            <div className="d-flex justify-content-center mt-4">
               {!isViewMode && (
-                <Button className="custom-btn-clr" size="md" type="submit">
-                  {id ? "Update Enquiry" : "Submit Enquiry"}
+                <Button type="submit" className="submit-btn">
+                  SUBMIT ENQUIRY
                 </Button>
               )}
             </div>
           </Form>
         </div>
-        <ToastContainer />
       </Container>
 
       <style>
@@ -1264,47 +1167,99 @@ const EnquiryForm = () => {
             color: #212529;
           }
 
-          .custom-btn-clr {
-            background: #0B3D7B;
-            color:rgb(255, 255, 255);
+          .enquiry-form-container {
+            background-color: #fff;
+            padding: 2rem;
           }
 
-          .back-button {
-            transition: opacity 0.2s;
+          .enquiry-form {
+            max-width: 1200px;
+            margin: 0 auto;
           }
 
-          .back-button:hover {
-            opacity: 0.8;
+          .section-title {
+            color: #0B3D7B;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
           }
 
+          .form-control-blue {
+            background-color: #F0F4FF !important;
+            border: 1px solid #E2E8F0;
+            border-radius: 4px;
+            padding: 0.5rem;
+          }
+
+          .form-control-blue:focus {
+            border-color: #0B3D7B;
+            box-shadow: 0 0 0 0.2rem rgba(11, 61, 123, 0.25);
+          }
+
+          .submit-btn {
+            background: linear-gradient(to bottom, #1565C0, #0B3D7B);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            min-width: 200px;
+          }
+
+          .submit-btn:hover {
+            background: linear-gradient(to bottom, #1976D2, #1565C0);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          }
+
+          .photo-upload-circle {
+            transition: all 0.3s ease;
+          }
+
+          .photo-upload-circle:hover {
+            border-color: #0B3D7B;
+            background-color: #F8FAFF;
+          }
+
+          .form-label {
+            font-weight: 500;
+            color: #2D3748;
+          }
+
+          /* Custom styling for date inputs */
+          input[type="date"].form-control-blue {
+            position: relative;
+            padding-right: 35px;
+          }
+
+          input[type="date"].form-control-blue::-webkit-calendar-picker-indicator {
+            position: absolute;
+            right: 10px;
+            cursor: pointer;
+          }
+
+          /* Card header styles */
           h2 {
             font-size: 1.5rem;
             margin-bottom: 0;
           }
 
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
+          /* Responsive adjustments */
+          @media (max-width: 768px) {
+            .enquiry-form-container {
+              padding: 1rem;
+            }
 
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
+            .section-title {
+              font-size: 1.1rem;
+            }
 
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
+            .submit-btn {
+              width: 100%;
+            }
           }
         `}
       </style>
+      <ToastContainer />
     </MainContentPage>
   )
 }
