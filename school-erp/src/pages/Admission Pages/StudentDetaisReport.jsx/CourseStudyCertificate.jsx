@@ -167,9 +167,9 @@ const StudyCertificate = () => {
         <div className="mb-4">
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
-            <span className="separator mx-2">></span>
+            <span className="separator mx-2"></span>
             <Link to="/certificates">Certificates</Link>
-            <span className="separator mx-2">></span>
+            <span className="separator mx-2"></span>
             <span>Study Certificate</span>
           </nav>
         </div>
@@ -342,4 +342,3 @@ const StudyCertificate = () => {
 
 export default StudyCertificate
 
-    

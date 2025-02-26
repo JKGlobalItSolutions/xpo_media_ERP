@@ -273,9 +273,9 @@ const IndividualFullView = () => {
         <div className="mb-4">
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
-            <span className="separator mx-2">></span>
+            <span className="separator mx-2"></span>
             <Link to="/reports">Reports</Link>
-            <span className="separator mx-2">></span>
+            <span className="separator mx-2"></span>
             <span>Student Details</span>
           </nav>
         </div>
