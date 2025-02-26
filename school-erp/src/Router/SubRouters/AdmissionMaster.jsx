@@ -18,6 +18,7 @@ import StageWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx
 import CategoryWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/CategoryWiseReport';
 import RouteWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/RouteWiserReport';
 import IndividualFullView from '../../pages/Admission Pages/StudentDetaisReport.jsx/IndividualFullView';
+import CourseStudyCertificate from '../../pages/Admission Pages/StudentDetaisReport.jsx/CourseStudyCertificate';
 
 
 function AdmissionMaster() {
@@ -43,6 +44,7 @@ function AdmissionMaster() {
       <Route path="Student-Details-Report/category-wise-report" element={<CategoryWiseReport />} />
       <Route path="Student-Details-Report/route-wise-report" element={<RouteWiseReport />} />
       <Route path="Student-Details-Report/individual-full-view" element={<IndividualFullView />} />
+      <Route path="Student-Details-Report/course-study-certificate" element={<CourseStudyCertificate />} />
     </Routes>
   );
 }
