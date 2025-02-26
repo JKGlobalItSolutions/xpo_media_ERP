@@ -15,6 +15,9 @@ import EnquiryForm from '../../pages/Admission Pages/EnquiryForm';
 import StudentRegisterReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/StudentRegisterReport';
 import ReligionWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/ReligionwiseReport';
 import StageWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/StageWiseReport';
+import CategoryWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/CategoryWiseReport';
+import RouteWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/RouteWiserReport';
+import IndividualFullView from '../../pages/Admission Pages/StudentDetaisReport.jsx/IndividualFullView';
 
 
 function AdmissionMaster() {
@@ -37,6 +40,9 @@ function AdmissionMaster() {
       <Route path="Student-Details-Report/student-register-report" element={<StudentRegisterReport />} />
       <Route path="Student-Details-Report/religion-wise-report" element={<ReligionWiseReport />} />
       <Route path="Student-Details-Report/stage-wise-report" element={<StageWiseReport />} />
+      <Route path="Student-Details-Report/category-wise-report" element={<CategoryWiseReport />} />
+      <Route path="Student-Details-Report/route-wise-report" element={<RouteWiseReport />} />
+      <Route path="Student-Details-Report/individual-full-view" element={<IndividualFullView />} />
     </Routes>
   );
 }

@@ -134,7 +134,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to=""
+            to="category-wise-report"
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -159,11 +159,11 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to=""
+            to="route-wise-report"
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
-                <h5 className="card-title text-white m-0">Routeways</h5>
+                <h5 className="card-title text-white m-0">Route Wise</h5>
               </div>
             </div>
           </Link>
@@ -171,7 +171,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to=""
+            to="individual-full-view"
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
