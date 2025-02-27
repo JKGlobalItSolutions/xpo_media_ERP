@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Container, Form, Button, Row, Col } from "react-bootstrap"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Container, Form, Button, Row, Col, Table } from "react-bootstrap"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom"
 import { db, auth, storage } from "../../Firebase/config"
@@ -18,6 +18,7 @@ const EnquiryForm = () => {
   const isViewMode = new URLSearchParams(location.search).get("view") === "true"
 
   const [administrationId, setAdministrationId] = useState(null)
+  const [transportId, setTransportId] = useState(null)
   const [formData, setFormData] = useState({
     enquiryKey: "",
     admissionNumber: "",
@@ -68,6 +69,8 @@ const EnquiryForm = () => {
     motherOccupation: "",
     examNumber: "",
     busFee: "",
+    hostelFee: "",
+    tutionFees: "",
     studiedYear: "",
     classLastStudied: "",
     classToBeAdmitted: "",
@@ -75,6 +78,7 @@ const EnquiryForm = () => {
     remarks: "",
     identificationMark1: "",
     identificationMark2: "",
+    aadharNumber: "",
   })
   const [errors, setErrors] = useState({})
   const [photoPreview, setPhotoPreview] = useState(defaultStudentPhoto)
@@ -96,8 +100,16 @@ const EnquiryForm = () => {
     busRoutes: [],
     parentOccupations: [],
     bloodGroups: [],
-    transportId: null,
   })
+  const [fees, setFees] = useState([])
+  const [busFee, setBusFee] = useState("")
+  const [hostelFee, setHostelFee] = useState("")
+  const [tuitionFee, setTuitionFee] = useState("")
+  const [tuitionFeeDetails, setTuitionFeeDetails] = useState([])
+  const [busFeeDetails, setBusFeeDetails] = useState([])
+  const [hostelFeeDetails, setHostelFeeDetails] = useState([])
+  const [isSetupDataLoaded, setIsSetupDataLoaded] = useState(false)
+  const [hostelFeeHeads, setHostelFeeHeads] = useState([])
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -119,36 +131,55 @@ const EnquiryForm = () => {
     }
 
     fetchAdministrationId()
-  }, [])
-
-  useEffect(() => {
-    const fetchTransportId = async () => {
-      try {
-        const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
-        const transportSnapshot = await getDocs(transportRef)
-        if (!transportSnapshot.empty) {
-          const transportId = transportSnapshot.docs[0].id
-          setSetupData((prevData) => ({ ...prevData, transportId }))
-        }
-      } catch (error) {
-        console.error("Error fetching Transport ID:", error)
-        toast.error("Failed to fetch transport data. Please try again.")
-      }
-    }
-
     fetchTransportId()
   }, [])
+
+  const fetchTransportId = async () => {
+    try {
+      const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
+      const q = query(transportRef, limit(1))
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        const newTransportRef = await addDoc(transportRef, { createdAt: new Date() })
+        setTransportId(newTransportRef.id)
+      } else {
+        setTransportId(querySnapshot.docs[0].id)
+      }
+    } catch (error) {
+      console.error("Error fetching/creating Transport ID:", error)
+      toast.error("Failed to initialize transport. Please try again.")
+    }
+  }
 
   useEffect(() => {
     if (administrationId) {
       fetchSetupData()
+      fetchHostelFeeHeads()
+    }
+  }, [administrationId])
+
+  useEffect(() => {
+    if (isSetupDataLoaded && administrationId) {
       if (id) {
         fetchEnquiryData(id)
       } else {
         generateEnquiryKey()
       }
     }
-  }, [administrationId, id])
+  }, [isSetupDataLoaded, administrationId, id])
+
+  useEffect(() => {
+    fetchBusFee()
+  }, [formData.boardingPoint, formData.busRouteNumber, transportId])
+
+  useEffect(() => {
+    fetchHostelFee()
+  }, [formData.studentCategory, formData.standard, formData.lunchRefresh, administrationId])
+
+  useEffect(() => {
+    fetchTuitionFee()
+  }, [formData.studentCategory, formData.standard, administrationId])
 
   const fetchSetupData = async () => {
     try {
@@ -193,51 +224,54 @@ const EnquiryForm = () => {
         fetchData("BloodGroupSetup"),
       ])
 
-      // Fetch boarding points from PlaceSetup
-      const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
-      const transportSnapshot = await getDocs(transportRef)
-      let boardingPointData = []
-      if (!transportSnapshot.empty) {
-        const transportId = transportSnapshot.docs[0].id
-        const placeSetupRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "PlaceSetup")
-        const placeSetupSnapshot = await getDocs(placeSetupRef)
-        boardingPointData = placeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      }
+      const busFeeSetupRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "BusFeeSetup")
+      const busFeeSetupSnapshot = await getDocs(busFeeSetupRef)
+      const busFeeSetupData = busFeeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
 
-      if (setupData.transportId) {
-        // Fetch bus routes
-        const routeRef = collection(
-          db,
-          "Schools",
-          auth.currentUser.uid,
-          "Transport",
-          setupData.transportId,
-          "RouteSetup",
-        )
-        const routeSnapshot = await getDocs(routeRef)
-        const routeData = routeSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      const uniqueBoardingPoints = [...new Set(busFeeSetupData.map((item) => item.boardingPoint))]
+      const uniqueRoutes = [...new Set(busFeeSetupData.map((item) => item.routeNumber))]
 
-        setSetupData((prevData) => ({
-          ...prevData,
-          nationalities: nationalityData,
-          religions: religionData,
-          communities: communityData,
-          castes: casteData,
-          districts: districtData,
-          states: stateData,
-          sections: sectionData,
-          motherTongues: motherTongueData,
-          studentCategories: studentCategoryData,
-          courses: courseData,
-          boardingPoints: boardingPointData,
-          parentOccupations: parentOccupationData,
-          busRoutes: routeData,
-          bloodGroups: bloodGroupData,
-        }))
-      }
+      setSetupData({
+        nationalities: nationalityData,
+        religions: religionData,
+        communities: communityData,
+        castes: casteData,
+        districts: districtData,
+        states: stateData,
+        sections: sectionData,
+        motherTongues: motherTongueData,
+        studentCategories: studentCategoryData,
+        courses: courseData,
+        parentOccupations: parentOccupationData,
+        bloodGroups: bloodGroupData,
+        boardingPoints: uniqueBoardingPoints.map((point) => ({ id: point, placeName: point })),
+        busRoutes: uniqueRoutes.map((route) => ({ id: route, route: route })),
+      })
+
+      setFees(busFeeSetupData)
+      setIsSetupDataLoaded(true)
     } catch (error) {
       console.error("Error fetching setup data:", error)
       toast.error("Failed to fetch setup data. Please try again.")
+    }
+  }
+
+  const fetchHostelFeeHeads = async () => {
+    try {
+      const hostelFeeHeadsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "HostelFeeHeadSetup",
+      )
+      const snapshot = await getDocs(hostelFeeHeadsRef)
+      const hostelFeeHeadsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setHostelFeeHeads(hostelFeeHeadsData)
+    } catch (error) {
+      console.error("Error fetching hostel fee heads:", error)
+      toast.error("Failed to fetch hostel fee heads. Please try again.")
     }
   }
 
@@ -257,6 +291,12 @@ const EnquiryForm = () => {
         const enquiryData = enquirySnap.data()
         setFormData(enquiryData)
         setPhotoPreview(enquiryData.studentPhoto || defaultStudentPhoto)
+
+        setBusFee(enquiryData.busFee || "")
+        setHostelFee(enquiryData.hostelFee || "")
+        setTuitionFee(enquiryData.tutionFees || "")
+
+        await Promise.all([fetchBusFee(), fetchHostelFee(), fetchTuitionFee()])
       } else {
         toast.error("Enquiry not found")
         navigate("/admission/enquiry")
@@ -300,6 +340,132 @@ const EnquiryForm = () => {
     }
   }
 
+  const fetchBusFee = useCallback(async () => {
+    if (formData.boardingPoint && formData.busRouteNumber && transportId) {
+      try {
+        const busFeeRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "BusFeeSetup")
+        const q = query(
+          busFeeRef,
+          where("boardingPoint", "==", formData.boardingPoint),
+          where("routeNumber", "==", formData.busRouteNumber),
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          let totalBusFee = 0
+          const details = querySnapshot.docs.map((doc) => {
+            const feeData = doc.data()
+            totalBusFee += Number.parseFloat(feeData.fee) || 0
+            return { type: "Bus Fee", heading: feeData.feeHeading, amount: feeData.fee }
+          })
+          setBusFee(totalBusFee.toFixed(2))
+          setBusFeeDetails(details)
+          setFormData((prev) => ({ ...prev, busFee: totalBusFee.toFixed(2) }))
+        } else {
+          setBusFee("")
+          setBusFeeDetails([])
+          setFormData((prev) => ({ ...prev, busFee: "" }))
+        }
+      } catch (error) {
+        console.error("Error fetching bus fee:", error)
+        toast.error("Failed to fetch bus fee. Please try again.")
+      }
+    } else {
+      setBusFee("")
+      setBusFeeDetails([])
+      setFormData((prev) => ({ ...prev, busFee: "" }))
+    }
+  }, [formData.boardingPoint, formData.busRouteNumber, transportId])
+
+  const fetchHostelFee = useCallback(async () => {
+    if (formData.studentCategory && formData.standard && administrationId && formData.lunchRefresh) {
+      try {
+        const hostelFeeRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Administration",
+          administrationId,
+          "HostelFeeSetup",
+        )
+        const q = query(
+          hostelFeeRef,
+          where("studentCategoryId", "==", formData.studentCategory),
+          where("standardId", "==", formData.standard),
+          where("feeHeading", "==", formData.lunchRefresh),
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          let totalHostelFee = 0
+          const details = querySnapshot.docs.map((doc) => {
+            const fee = doc.data()
+            totalHostelFee += Number.parseFloat(fee.feeAmount) || 0
+            return { type: "Hostel Fee", heading: fee.feeHeading || "Hostel Fee", amount: fee.feeAmount }
+          })
+          setHostelFee(totalHostelFee.toFixed(2))
+          setHostelFeeDetails(details)
+          setFormData((prev) => ({ ...prev, hostelFee: totalHostelFee.toFixed(2) }))
+        } else {
+          setHostelFee("")
+          setHostelFeeDetails([])
+          setFormData((prev) => ({ ...prev, hostelFee: "" }))
+        }
+      } catch (error) {
+        console.error("Error fetching hostel fee:", error)
+        toast.error("Failed to fetch hostel fee. Please try again.")
+      }
+    } else {
+      setHostelFee("")
+      setHostelFeeDetails([])
+      setFormData((prev) => ({ ...prev, hostelFee: "" }))
+    }
+  }, [administrationId, formData.studentCategory, formData.standard, formData.lunchRefresh])
+
+  const fetchTuitionFee = useCallback(async () => {
+    if (formData.studentCategory && formData.standard && administrationId) {
+      try {
+        const tuitionFeeRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Administration",
+          administrationId,
+          "FeeSetup",
+        )
+        const q = query(
+          tuitionFeeRef,
+          where("studentCategoryId", "==", formData.studentCategory),
+          where("standardId", "==", formData.standard),
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          let totalTuitionFee = 0
+          const details = querySnapshot.docs.map((doc) => {
+            const feeData = doc.data()
+            totalTuitionFee += Number.parseFloat(feeData.feeAmount) || 0
+            return { type: "Tuition Fee", heading: feeData.feeHeading || "Tuition Fee", amount: feeData.feeAmount }
+          })
+          setTuitionFee(totalTuitionFee.toFixed(2))
+          setTuitionFeeDetails(details)
+          setFormData((prev) => ({ ...prev, tutionFees: totalTuitionFee.toFixed(2) }))
+        } else {
+          setTuitionFee("")
+          setTuitionFeeDetails([])
+          setFormData((prev) => ({ ...prev, tutionFees: "" }))
+        }
+      } catch (error) {
+        console.error("Error fetching tuition fee:", error)
+        toast.error("Failed to fetch tuition fee. Please try again.")
+      }
+    } else {
+      setTuitionFee("")
+      setTuitionFeeDetails([])
+      setFormData((prev) => ({ ...prev, tutionFees: "" }))
+    }
+  }, [administrationId, formData.studentCategory, formData.standard])
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({
@@ -307,6 +473,35 @@ const EnquiryForm = () => {
       [name]: value,
     }))
     setErrors((prev) => ({ ...prev, [name]: "" }))
+
+    if (name === "boardingPoint") {
+      const selectedBoardingPoint = setupData.boardingPoints.find((point) => point.placeName === value)
+      if (selectedBoardingPoint) {
+        const associatedRoute = setupData.busRoutes.find((route) => {
+          const busFeeEntry = fees.find((fee) => fee.boardingPoint === value && fee.routeNumber === route.route)
+          return busFeeEntry !== undefined
+        })
+        setFormData((prev) => ({
+          ...prev,
+          boardingPoint: value,
+          busRouteNumber: associatedRoute ? associatedRoute.route : "",
+        }))
+        fetchBusFee()
+      }
+    }
+
+    if (name === "busRouteNumber") {
+      fetchBusFee()
+    }
+
+    if (name === "studentCategory" || name === "standard") {
+      fetchHostelFee()
+      fetchTuitionFee()
+    }
+
+    if (name === "lunchRefresh") {
+      fetchHostelFee()
+    }
   }
 
   const handleSelectChange = (e) => {
@@ -318,6 +513,15 @@ const EnquiryForm = () => {
       [name]: displayValue,
     }))
     setErrors((prev) => ({ ...prev, [name]: "" }))
+
+    if (name === "studentCategory" || name === "standard") {
+      fetchHostelFee()
+      fetchTuitionFee()
+    }
+
+    if (name === "boardingPoint" || name === "busRouteNumber") {
+      fetchBusFee()
+    }
   }
 
   const handlePhotoChange = (e) => {
@@ -336,11 +540,15 @@ const EnquiryForm = () => {
   }
 
   const handlePhotoClick = () => {
-    fileInputRef.current.click()
+    if (!isViewMode) {
+      fileInputRef.current.click()
+    }
   }
 
   const handleDateInputClick = (ref) => {
-    ref.current.showPicker()
+    if (!isViewMode) {
+      ref.current.showPicker()
+    }
   }
 
   const validateForm = () => {
@@ -353,7 +561,6 @@ const EnquiryForm = () => {
       "placePincode",
       "district",
       "phoneNumber",
-      "boardingPoint",
       "nationality",
       "religion",
       "state",
@@ -373,13 +580,13 @@ const EnquiryForm = () => {
       "fatherOccupation",
       "motherOccupation",
       "examNumber",
-      "busFee",
       "studiedYear",
       "classLastStudied",
       "classToBeAdmitted",
       "nameOfSchool",
       "identificationMark1",
       "identificationMark2",
+      "aadharNumber",
     ]
 
     requiredFields.forEach((field) => {
@@ -415,6 +622,9 @@ const EnquiryForm = () => {
         const enquiryData = {
           ...formData,
           studentPhoto: photoUrl,
+          busFee: busFee || "",
+          hostelFee: hostelFee || "",
+          tutionFees: tuitionFee || "",
         }
 
         const enquiryRef = collection(
@@ -426,11 +636,16 @@ const EnquiryForm = () => {
           "EnquirySetup",
         )
 
+        const studentFeeData = {
+          ...enquiryData,
+          feeDetails: [...tuitionFeeDetails, ...busFeeDetails, ...hostelFeeDetails],
+        }
+
         if (id) {
           await updateDoc(doc(enquiryRef, id), enquiryData)
           toast.success("Enquiry updated successfully!")
         } else {
-          await addDoc(enquiryRef, enquiryData)
+          const docRef = await addDoc(enquiryRef, enquiryData)
           toast.success("Enquiry submitted successfully!")
         }
 
@@ -444,8 +659,52 @@ const EnquiryForm = () => {
     }
   }
 
-  const handleBack = () => {
-    navigate("/admission/enquiry")
+  const calculateOverallTotal = () => {
+    const tuitionTotal = Number.parseFloat(tuitionFee) || 0
+    const busTotal = Number.parseFloat(busFee) || 0
+    const hostelTotal = Number.parseFloat(hostelFee) || 0
+    return (tuitionTotal + busTotal + hostelTotal).toFixed(2)
+  }
+
+  const renderFeeTableRows = () => {
+    const allFees = [...tuitionFeeDetails, ...busFeeDetails, ...hostelFeeDetails]
+
+    if (!allFees.length) {
+      return (
+        <tr>
+          <td colSpan="3" className="text-center">
+            No fee details available
+          </td>
+        </tr>
+      )
+    }
+
+    const rows = []
+    let currentType = null
+
+    allFees.forEach((detail, index) => {
+      if (currentType !== detail.type) {
+        rows.push(
+          <tr key={`${detail.type}-${index}`}>
+            <td rowSpan={allFees.filter((fee) => fee.type === detail.type).length} style={{ verticalAlign: "middle" }}>
+              {detail.type}
+            </td>
+            <td>{detail.heading}</td>
+            <td>{detail.amount}</td>
+          </tr>,
+        )
+        currentType = detail.type
+      } else {
+        rows.push(
+          <tr key={`${detail.type}-${index}`}>
+            <td>{detail.heading}</td>
+            <td>{detail.amount}</td>
+          </tr>,
+        )
+      }
+    })
+
+    return rows
   }
 
   return (
@@ -494,7 +753,7 @@ const EnquiryForm = () => {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      cursor: "pointer",
+                      cursor: isViewMode ? "default" : "pointer",
                       overflow: "hidden",
                       backgroundColor: "#f8f9fa",
                       marginBottom: "20px",
@@ -553,7 +812,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="studentName"
-                    value={formData.studentName}
+                    value={formData.studentName || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -565,7 +824,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="fatherName"
-                    value={formData.fatherName}
+                    value={formData.fatherName || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -577,7 +836,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="motherName"
-                    value={formData.motherName}
+                    value={formData.motherName || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -588,14 +847,14 @@ const EnquiryForm = () => {
                   <Form.Label>Father's Occupation</Form.Label>
                   <Form.Select
                     name="fatherOccupation"
-                    value={`${formData.fatherOccupationId}|${formData.fatherOccupation}`}
-                    onChange={handleSelectChange}
+                    value={formData.fatherOccupation || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Father's Occupation</option>
                     {setupData.parentOccupations.map((occupation) => (
-                      <option key={occupation.id} value={`${occupation.id}|${occupation.name}`}>
+                      <option key={occupation.id} value={occupation.name}>
                         {occupation.name}
                       </option>
                     ))}
@@ -606,14 +865,14 @@ const EnquiryForm = () => {
                   <Form.Label>Mother's Occupation</Form.Label>
                   <Form.Select
                     name="motherOccupation"
-                    value={`${formData.motherOccupationId}|${formData.motherOccupation}`}
-                    onChange={handleSelectChange}
+                    value={formData.motherOccupation || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Mother's Occupation</option>
                     {setupData.parentOccupations.map((occupation) => (
-                      <option key={occupation.id} value={`${occupation.id}|${occupation.name}`}>
+                      <option key={occupation.id} value={occupation.name}>
                         {occupation.name}
                       </option>
                     ))}
@@ -627,7 +886,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="tel"
                     name="phoneNumber"
-                    value={formData.phoneNumber}
+                    value={formData.phoneNumber || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -639,7 +898,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="email"
                     name="emailId"
-                    value={formData.emailId}
+                    value={formData.emailId || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -650,7 +909,7 @@ const EnquiryForm = () => {
                   <Form.Label>Gender</Form.Label>
                   <Form.Select
                     name="gender"
-                    value={formData.gender}
+                    value={formData.gender || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -667,7 +926,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="date"
                     name="dateOfBirth"
-                    value={formData.dateOfBirth}
+                    value={formData.dateOfBirth || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -680,14 +939,14 @@ const EnquiryForm = () => {
                   <Form.Label>Blood Group</Form.Label>
                   <Form.Select
                     name="bloodGroup"
-                    value={`${formData.bloodGroupId}|${formData.bloodGroup}`}
-                    onChange={handleSelectChange}
+                    value={formData.bloodGroup || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Blood Group</option>
                     {setupData.bloodGroups.map((bg) => (
-                      <option key={bg.id} value={`${bg.id}|${bg.name}`}>
+                      <option key={bg.id} value={bg.name}>
                         {bg.name}
                       </option>
                     ))}
@@ -698,14 +957,14 @@ const EnquiryForm = () => {
                   <Form.Label>Nationality</Form.Label>
                   <Form.Select
                     name="nationality"
-                    value={`${formData.nationalityId}|${formData.nationality}`}
-                    onChange={handleSelectChange}
+                    value={formData.nationality || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Nationality</option>
                     {setupData.nationalities.map((nat) => (
-                      <option key={nat.id} value={`${nat.id}|${nat.nationality}`}>
+                      <option key={nat.id} value={nat.nationality}>
                         {nat.nationality}
                       </option>
                     ))}
@@ -716,14 +975,14 @@ const EnquiryForm = () => {
                   <Form.Label>Religion</Form.Label>
                   <Form.Select
                     name="religion"
-                    value={`${formData.religionId}|${formData.religion}`}
-                    onChange={handleSelectChange}
+                    value={formData.religion || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Religion</option>
                     {setupData.religions.map((rel) => (
-                      <option key={rel.id} value={`${rel.id}|${rel.religion}`}>
+                      <option key={rel.id} value={rel.religion}>
                         {rel.religion}
                       </option>
                     ))}
@@ -734,14 +993,14 @@ const EnquiryForm = () => {
                   <Form.Label>Community</Form.Label>
                   <Form.Select
                     name="community"
-                    value={`${formData.communityId}|${formData.community}`}
-                    onChange={handleSelectChange}
+                    value={formData.community || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Community</option>
                     {setupData.communities.map((comm) => (
-                      <option key={comm.id} value={`${comm.id}|${comm.community}`}>
+                      <option key={comm.id} value={comm.community}>
                         {comm.community}
                       </option>
                     ))}
@@ -752,14 +1011,14 @@ const EnquiryForm = () => {
                   <Form.Label>Caste</Form.Label>
                   <Form.Select
                     name="caste"
-                    value={`${formData.casteId}|${formData.caste}`}
-                    onChange={handleSelectChange}
+                    value={formData.caste || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Caste</option>
                     {setupData.castes.map((caste) => (
-                      <option key={caste.id} value={`${caste.id}|${caste.caste}`}>
+                      <option key={caste.id} value={caste.caste}>
                         {caste.caste}
                       </option>
                     ))}
@@ -770,18 +1029,30 @@ const EnquiryForm = () => {
                   <Form.Label>Mother Tongue</Form.Label>
                   <Form.Select
                     name="motherTongue"
-                    value={`${formData.motherTongueId}|${formData.motherTongue}`}
-                    onChange={handleSelectChange}
+                    value={formData.motherTongue || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Mother Tongue</option>
                     {setupData.motherTongues.map((mt) => (
-                      <option key={mt.id} value={`${mt.id}|${mt.MotherTongueName}`}>
+                      <option key={mt.id} value={mt.MotherTongueName}>
                         {mt.MotherTongueName}
                       </option>
                     ))}
                   </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Aadhar Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="aadharNumber"
+                    value={formData.aadharNumber || ""}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
                 </Form.Group>
 
                 {/* Address Details */}
@@ -791,7 +1062,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="streetVillage"
-                    value={formData.streetVillage}
+                    value={formData.streetVillage || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -803,7 +1074,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="placePincode"
-                    value={formData.placePincode}
+                    value={formData.placePincode || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -814,14 +1085,14 @@ const EnquiryForm = () => {
                   <Form.Label>State</Form.Label>
                   <Form.Select
                     name="state"
-                    value={`${formData.stateId}|${formData.state}`}
-                    onChange={handleSelectChange}
+                    value={formData.state || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select State</option>
                     {setupData.states.map((state) => (
-                      <option key={state.id} value={`${state.id}|${state.state}`}>
+                      <option key={state.id} value={state.state}>
                         {state.state}
                       </option>
                     ))}
@@ -832,14 +1103,14 @@ const EnquiryForm = () => {
                   <Form.Label>District</Form.Label>
                   <Form.Select
                     name="district"
-                    value={`${formData.districtId}|${formData.district}`}
-                    onChange={handleSelectChange}
+                    value={formData.district || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select District</option>
                     {setupData.districts.map((district) => (
-                      <option key={district.id} value={`${district.id}|${district.district}`}>
+                      <option key={district.id} value={district.district}>
                         {district.district}
                       </option>
                     ))}
@@ -852,7 +1123,7 @@ const EnquiryForm = () => {
                     as="textarea"
                     rows={3}
                     name="communicationAddress"
-                    value={formData.communicationAddress}
+                    value={formData.communicationAddress || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -867,7 +1138,7 @@ const EnquiryForm = () => {
                   <Form.Label>Student Type</Form.Label>
                   <Form.Select
                     name="studentType"
-                    value={formData.studentType}
+                    value={formData.studentType || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -882,14 +1153,14 @@ const EnquiryForm = () => {
                   <Form.Label>Student Category</Form.Label>
                   <Form.Select
                     name="studentCategory"
-                    value={`${formData.studentCategoryId}|${formData.studentCategory}`}
-                    onChange={handleSelectChange}
+                    value={formData.studentCategory || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Category</option>
                     {setupData.studentCategories.map((category) => (
-                      <option key={category.id} value={`${category.id}|${category.StudentCategoryName}`}>
+                      <option key={category.id} value={category.id}>
                         {category.StudentCategoryName}
                       </option>
                     ))}
@@ -900,14 +1171,14 @@ const EnquiryForm = () => {
                   <Form.Label>Standard</Form.Label>
                   <Form.Select
                     name="standard"
-                    value={`${formData.standardId}|${formData.standard}`}
-                    onChange={handleSelectChange}
+                    value={formData.standard || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Standard</option>
                     {setupData.courses.map((course) => (
-                      <option key={course.id} value={`${course.id}|${course.standard}`}>
+                      <option key={course.id} value={course.id}>
                         {course.standard}
                       </option>
                     ))}
@@ -918,14 +1189,14 @@ const EnquiryForm = () => {
                   <Form.Label>Section</Form.Label>
                   <Form.Select
                     name="section"
-                    value={`${formData.sectionId}|${formData.section}`}
-                    onChange={handleSelectChange}
+                    value={formData.section || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Section</option>
                     {setupData.sections.map((section) => (
-                      <option key={section.id} value={`${section.id}|${section.name}`}>
+                      <option key={section.id} value={section.name}>
                         {section.name}
                       </option>
                     ))}
@@ -937,19 +1208,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="emis"
-                    value={formData.emis}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Lunch / Refresh</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="lunchRefresh"
-                    value={formData.lunchRefresh}
+                    value={formData.emis || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -961,7 +1220,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="date"
                     name="dateOfAdmission"
-                    value={formData.dateOfAdmission}
+                    value={formData.dateOfAdmission || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -975,7 +1234,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="examNumber"
-                    value={formData.examNumber}
+                    value={formData.examNumber || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -988,14 +1247,14 @@ const EnquiryForm = () => {
                   <Form.Label>Boarding Point</Form.Label>
                   <Form.Select
                     name="boardingPoint"
-                    value={`${formData.boardingPointId}|${formData.boardingPoint}`}
-                    onChange={handleSelectChange}
+                    value={formData.boardingPoint || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Boarding Point</option>
                     {setupData.boardingPoints.map((point) => (
-                      <option key={point.id} value={`${point.id}|${point.placeName}`}>
+                      <option key={point.id} value={point.placeName}>
                         {point.placeName}
                       </option>
                     ))}
@@ -1006,30 +1265,38 @@ const EnquiryForm = () => {
                   <Form.Label>Bus Route Number</Form.Label>
                   <Form.Select
                     name="busRouteNumber"
-                    value={`${formData.busRouteNumberId}|${formData.busRouteNumber}`}
-                    onChange={handleSelectChange}
+                    value={formData.busRouteNumber || ""}
+                    onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Bus Route</option>
                     {setupData.busRoutes.map((route) => (
-                      <option key={route.id} value={`${route.id}|${route.route}`}>
+                      <option key={route.id} value={route.route}>
                         {route.route}
                       </option>
                     ))}
                   </Form.Select>
                 </Form.Group>
 
+                {/* Hostel Details */}
+                <h3 className="section-title mt-4">Hostel Details</h3>
                 <Form.Group className="mb-3">
-                  <Form.Label>Bus Fee</Form.Label>
-                  <Form.Control
-                    type="number"
-                    name="busFee"
-                    value={formData.busFee}
+                  <Form.Label>Hostel Fee Head</Form.Label>
+                  <Form.Select
+                    name="lunchRefresh"
+                    value={formData.lunchRefresh || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
-                  />
+                  >
+                    <option value="">Select Hostel Fee Head</option>
+                    {hostelFeeHeads.map((feeHead) => (
+                      <option key={feeHead.id} value={feeHead.feeHead}>
+                        {feeHead.feeHead}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
 
                 {/* Previous Studied Details */}
@@ -1039,7 +1306,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="studiedYear"
-                    value={formData.studiedYear}
+                    value={formData.studiedYear || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1050,7 +1317,7 @@ const EnquiryForm = () => {
                   <Form.Label>Class Last Studied</Form.Label>
                   <Form.Select
                     name="classLastStudied"
-                    value={formData.classLastStudied}
+                    value={formData.classLastStudied || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1068,7 +1335,7 @@ const EnquiryForm = () => {
                   <Form.Label>Class to be Admitted</Form.Label>
                   <Form.Select
                     name="classToBeAdmitted"
-                    value={formData.classToBeAdmitted}
+                    value={formData.classToBeAdmitted || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1087,7 +1354,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="nameOfSchool"
-                    value={formData.nameOfSchool}
+                    value={formData.nameOfSchool || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1101,7 +1368,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="identificationMark1"
-                    value={formData.identificationMark1}
+                    value={formData.identificationMark1 || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1113,7 +1380,7 @@ const EnquiryForm = () => {
                   <Form.Control
                     type="text"
                     name="identificationMark2"
-                    value={formData.identificationMark2}
+                    value={formData.identificationMark2 || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1126,12 +1393,35 @@ const EnquiryForm = () => {
                     as="textarea"
                     rows={3}
                     name="remarks"
-                    value={formData.remarks}
+                    value={formData.remarks || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
                 </Form.Group>
+
+                {/* Fee Details Table */}
+                <h3 className="section-title mt-4">All Fees Details</h3>
+                <div className="fee-details-table mb-4">
+                  <Table bordered hover size="sm">
+                    <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                      <tr>
+                        <th>Fee Type</th>
+                        <th>Fee Heading</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>{renderFeeTableRows()}</tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan="2" className="text-end fw-bold">
+                          Overall Total:
+                        </td>
+                        <td className="fw-bold">{calculateOverallTotal()}</td>
+                      </tr>
+                    </tfoot>
+                  </Table>
+                </div>
               </Col>
             </Row>
 
@@ -1215,7 +1505,7 @@ const EnquiryForm = () => {
             transition: all 0.3s ease;
           }
 
-          .photo-upload-circle:hover {
+          .photo-upload-circle:hover:not(:disabled) {
             border-color: #0B3D7B;
             background-color: #F8FAFF;
           }
@@ -1243,6 +1533,20 @@ const EnquiryForm = () => {
             margin-bottom: 0;
           }
 
+          .fee-details-table table {
+            margin-bottom: 1rem;
+          }
+
+          .fee-details-table th,
+          .fee-details-table td {
+            vertical-align: middle;
+            padding: 0.5rem;
+          }
+
+          .fee-details-table tfoot td {
+            background-color: #f8f9fa;
+          }
+
           /* Responsive adjustments */
           @media (max-width: 768px) {
             .enquiry-form-container {
@@ -1255,6 +1559,10 @@ const EnquiryForm = () => {
 
             .submit-btn {
               width: 100%;
+            }
+            
+            .fee-details-table table {
+              font-size: 0.9rem;
             }
           }
         `}

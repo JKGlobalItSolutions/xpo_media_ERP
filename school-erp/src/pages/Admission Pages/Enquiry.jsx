@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
-import { Button, Container, Table, Form, OverlayTrigger, Tooltip } from "react-bootstrap"
+import { Button, Container, Table, Form, OverlayTrigger, Tooltip, Badge } from "react-bootstrap"
 import { FaEdit, FaTrash, FaEye, FaCopy } from "react-icons/fa"
 import { db, auth } from "../../Firebase/config"
 import { collection, getDocs, deleteDoc, doc, query, limit, addDoc } from "firebase/firestore"
@@ -135,12 +135,20 @@ const Enquiry = () => {
 
   const filteredEnquiries = enquiries.filter(
     (enquiry) =>
-      enquiry.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      enquiry.fatherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      enquiry.motherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      enquiry.phoneNumber.includes(searchTerm) ||
-      enquiry.enquiryKey.toLowerCase().includes(searchTerm.toLowerCase()),
+      (enquiry.studentName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (enquiry.fatherName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (enquiry.motherName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (enquiry.phoneNumber || "").includes(searchTerm) ||
+      (enquiry.enquiryKey?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (enquiry.standard?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   )
+
+  const calculateTotalFees = (enquiry) => {
+    const tuitionFee = Number.parseFloat(enquiry.tutionFees || 0)
+    const busFee = Number.parseFloat(enquiry.busFee || 0)
+    const hostelFee = Number.parseFloat(enquiry.hostelFee || 0)
+    return (tuitionFee + busFee + hostelFee).toFixed(2)
+  }
 
   return (
     <MainContentPage>
@@ -169,7 +177,7 @@ const Enquiry = () => {
             <Form.Group>
               <Form.Control
                 type="text"
-                placeholder="Search by name or enquiry key"
+                placeholder="Search by name, enquiry key, or standard"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -185,7 +193,8 @@ const Enquiry = () => {
                   <th>Father's Name</th>
                   <th>Mother's Name</th>
                   <th>Phone Number</th>
-                  <th>Studied Year</th>
+                  <th>Standard</th>
+                  <th>Total Fees</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -214,7 +223,12 @@ const Enquiry = () => {
                     <td>{enquiry.fatherName}</td>
                     <td>{enquiry.motherName}</td>
                     <td>{enquiry.phoneNumber}</td>
-                    <td>{enquiry.studiedYear}</td>
+                    <td>{enquiry.standard}</td>
+                    <td>
+                      <Badge bg="info" className="fee-badge">
+                        ₹ {calculateTotalFees(enquiry)}
+                      </Badge>
+                    </td>
                     <td>
                       <Button
                         variant="secondary"
@@ -330,6 +344,12 @@ const Enquiry = () => {
             color: white;
           }
 
+          .fee-badge {
+            font-size: 0.9rem;
+            padding: 0.35rem 0.65rem;
+            font-weight: 600;
+          }
+
           .modal-overlay {
             position: fixed;
             top: 0;
@@ -415,4 +435,3 @@ const Enquiry = () => {
 }
 
 export default Enquiry
-
