@@ -6,7 +6,7 @@ import { collection, getDocs, doc, updateDoc } from "firebase/firestore"
 import { db, auth } from "../../Firebase/config"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { QRCodeSVG } from "qrcode.react"
-import { Edit, Trash2, Copy } from 'lucide-react'
+import { Trash2, Copy } from "lucide-react"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import defaultStudentPhoto from "../../images/StudentProfileIcon/studentProfile.jpeg"
@@ -22,6 +22,8 @@ const QRCodeListing = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [cardsPerPage] = useState(8)
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [selectedQRCode, setSelectedQRCode] = useState(null)
 
   useEffect(() => {
     fetchAdministrationId()
@@ -63,8 +65,8 @@ const QRCodeListing = () => {
       }))
       // Sort students by admission number
       const sortedStudents = studentsData.sort((a, b) => {
-        const aNum = parseInt(a.admissionNumber.replace('ADM', ''))
-        const bNum = parseInt(b.admissionNumber.replace('ADM', ''))
+        const aNum = Number.parseInt(a.admissionNumber.replace("ADM", ""))
+        const bNum = Number.parseInt(b.admissionNumber.replace("ADM", ""))
         return aNum - bNum
       })
       setStudents(sortedStudents)
@@ -84,36 +86,6 @@ const QRCodeListing = () => {
       section: student.section,
     }
     return JSON.stringify(essentialData)
-  }
-
-  const handleEdit = (student) => {
-    setCurrentStudent(student)
-    setShowModal(true)
-  }
-
-  const handleUpdate = async () => {
-    try {
-      const studentRef = doc(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "AdmissionMaster",
-        administrationId,
-        "AdmissionSetup",
-        currentStudent.id,
-      )
-      const updatedData = {
-        ...currentStudent,
-        qrCode: generateQRCodeData(currentStudent),
-      }
-      await updateDoc(studentRef, updatedData)
-      setShowModal(false)
-      fetchStudents()
-      toast.success("Student information updated successfully")
-    } catch (error) {
-      console.error("Error updating student:", error)
-      toast.error("Failed to update student information")
-    }
   }
 
   const handleDelete = async (studentId) => {
@@ -136,11 +108,6 @@ const QRCodeListing = () => {
         toast.error("Failed to delete QR code")
       }
     }
-  }
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setCurrentStudent((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleNewQRCode = (student) => {
@@ -177,6 +144,11 @@ const QRCodeListing = () => {
       .catch(() => toast.error("Failed to copy Admission Number"))
   }
 
+  const handleQRCodeClick = (qrCode) => {
+    setSelectedQRCode(qrCode)
+    setShowQRModal(true)
+  }
+
   const filteredStudents = students.filter(
     (student) =>
       student.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -198,9 +170,6 @@ const QRCodeListing = () => {
         {currentCards.map((student) => (
           <Col key={student.id} xs={12} sm={6} md={4} lg={3}>
             <Card className="student-card h-100">
-              <div className="edit-icon" onClick={() => handleEdit(student)}>
-                <Edit size={18} />
-              </div>
               <div className="avatar-container">
                 <img
                   src={student.studentPhoto || defaultStudentPhoto}
@@ -229,7 +198,13 @@ const QRCodeListing = () => {
                 </div>
                 <div className="qr-code-container mt-auto">
                   {student.qrCode ? (
-                    <QRCodeSVG value={student.qrCode} size={100} level="M" onClick={() => handleNewQRCode(student)} />
+                    <QRCodeSVG
+                      value={student.qrCode}
+                      size={100}
+                      level="M"
+                      onClick={() => handleQRCodeClick(student.qrCode)}
+                      style={{ cursor: "pointer" }}
+                    />
                   ) : (
                     <Button onClick={() => handleNewQRCode(student)} className="generate-btn">
                       Generate QR Code
@@ -310,7 +285,13 @@ const QRCodeListing = () => {
             <td>{student.section}</td>
             <td>
               {student.qrCode ? (
-                <QRCodeSVG value={student.qrCode} size={50} level="M" onClick={() => handleNewQRCode(student)} />
+                <QRCodeSVG
+                  value={student.qrCode}
+                  size={50}
+                  level="M"
+                  onClick={() => handleQRCodeClick(student.qrCode)}
+                  style={{ cursor: "pointer" }}
+                />
               ) : (
                 <Button size="sm" onClick={() => handleNewQRCode(student)} className="generate-btn">
                   Generate
@@ -318,9 +299,6 @@ const QRCodeListing = () => {
               )}
             </td>
             <td>
-              <Button variant="secondary" size="sm" className="me-1" onClick={() => handleEdit(student)}>
-                <Edit size={16} />
-              </Button>
               <Button variant="danger" size="sm" onClick={() => handleDelete(student.id)}>
                 <Trash2 size={16} />
               </Button>
@@ -372,60 +350,6 @@ const QRCodeListing = () => {
           renderTableView()
         )}
 
-        <Modal show={showModal} onHide={() => setShowModal(false)}>
-          <Modal.Header closeButton>
-            <Modal.Title>Edit Student</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form>
-              <Form.Group className="mb-3">
-                <Form.Label>Admission Number</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="admissionNumber"
-                  value={currentStudent?.admissionNumber || ""}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Student Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="studentName"
-                  value={currentStudent?.studentName || ""}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Standard</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="standard"
-                  value={currentStudent?.standard || ""}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Section</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="section"
-                  value={currentStudent?.section || ""}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Close
-            </Button>
-            <Button variant="primary" onClick={handleUpdate} className="save-btn">
-              Save Changes
-            </Button>
-          </Modal.Footer>
-        </Modal>
-
         <Modal show={showQRConfirmModal} onHide={() => setShowQRConfirmModal(false)}>
           <Modal.Header closeButton>
             <Modal.Title>Generate QR Code</Modal.Title>
@@ -439,6 +363,15 @@ const QRCodeListing = () => {
               Generate QR Code
             </Button>
           </Modal.Footer>
+        </Modal>
+
+        <Modal show={showQRModal} onHide={() => setShowQRModal(false)} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>QR Code</Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="text-center">
+            {selectedQRCode && <QRCodeSVG value={selectedQRCode} size={250} level="M" />}
+          </Modal.Body>
         </Modal>
       </Container>
       <ToastContainer />
@@ -455,18 +388,6 @@ const QRCodeListing = () => {
         .student-card:hover {
           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
           transform: translateY(-2px);
-        }
-
-        .edit-icon {
-          position: absolute;
-          top: 10px;
-          right: 10px;
-          background-color: #fff;
-          border-radius: 50%;
-          padding: 8px;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-          z-index: 1;
         }
 
         .avatar-container {
@@ -565,14 +486,13 @@ const QRCodeListing = () => {
           color: white;
         }
 
-        .generate-btn, .save-btn {
+        .generate-btn {
           background-color: #0B3D7B;
           border-color: #0B3D7B;
           color: white;
         }
 
-        .generate-btn:hover, .generate-btn:focus, .generate-btn:active,
-        .save-btn:hover, .save-btn:focus, .save-btn:active {
+        .generate-btn:hover, .generate-btn:focus, .generate-btn:active {
           background-color: #082b56;
           border-color: #082b56;
           color: white;
@@ -583,3 +503,4 @@ const QRCodeListing = () => {
 }
 
 export default QRCodeListing
+

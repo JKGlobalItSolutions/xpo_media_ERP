@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect } from "react"
 import { Container, Row, Col, Card, Form, Button } from "react-bootstrap"
 import { Link } from "react-router-dom"
@@ -14,10 +16,11 @@ import defaultStudentPhoto from "../../../images/StudentProfileIcon/studentProfi
 
 const IndividualFullView = () => {
   const [studentData, setStudentData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [administrationId, setAdministrationId] = useState(null)
   const [admissionNumbers, setAdmissionNumbers] = useState([])
   const [selectedAdmissionNumber, setSelectedAdmissionNumber] = useState("")
+  const [manualAdmissionNumber, setManualAdmissionNumber] = useState("")
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -95,13 +98,25 @@ const IndividualFullView = () => {
   const handleAdmissionNumberChange = (e) => {
     const admissionNumber = e.target.value
     setSelectedAdmissionNumber(admissionNumber)
-    fetchStudentData(admissionNumber)
+    if (admissionNumber) {
+      fetchStudentData(admissionNumber)
+    }
+  }
+
+  const handleManualAdmissionNumberChange = (e) => {
+    setManualAdmissionNumber(e.target.value)
+  }
+
+  const handleManualSearch = () => {
+    if (manualAdmissionNumber) {
+      fetchStudentData(manualAdmissionNumber)
+    }
   }
 
   const handleInputKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault()
-      fetchStudentData(selectedAdmissionNumber)
+      handleManualSearch()
     }
   }
 
@@ -195,6 +210,7 @@ const IndividualFullView = () => {
       ["Student Type:", studentData.studentType || "", "Student Category:", studentData.studentCategory || ""],
       ["Remark I:", studentData.identificationMark1 || "", "Remark II:", studentData.identificationMark2 || ""],
       ["Remarks:", studentData.remarks || "", "", ""],
+      ["Aadhar Number:", studentData.aadharNumber || "", "", ""],
     ]
 
     // Start table after image
@@ -259,6 +275,7 @@ const IndividualFullView = () => {
       ["Remark I", studentData.identificationMark1],
       ["Remark II", studentData.identificationMark2],
       ["Remarks", studentData.remarks],
+      ["Aadhar Number", studentData.aadharNumber],
     ])
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Student Details")
@@ -310,15 +327,10 @@ const IndividualFullView = () => {
             <Card.Body className="p-4">
               <Form.Group as={Row} className="mb-3">
                 <Form.Label column sm={3}>
-                  Select or Enter Admission Number:
+                  Select Admission Number:
                 </Form.Label>
                 <Col sm={9}>
-                  <Form.Control
-                    as="select"
-                    value={selectedAdmissionNumber}
-                    onChange={handleAdmissionNumberChange}
-                    onKeyDown={handleInputKeyDown}
-                  >
+                  <Form.Control as="select" value={selectedAdmissionNumber} onChange={handleAdmissionNumberChange}>
                     <option value="">Select an admission number</option>
                     {admissionNumbers.map((number) => (
                       <option key={number} value={number}>
@@ -326,6 +338,28 @@ const IndividualFullView = () => {
                       </option>
                     ))}
                   </Form.Control>
+                </Col>
+              </Form.Group>
+              <div className="text-center mb-3">
+                <p>OR</p>
+              </div>
+              <Form.Group as={Row} className="mb-3">
+                <Form.Label column sm={3}>
+                  Enter Admission Number:
+                </Form.Label>
+                <Col sm={7}>
+                  <Form.Control
+                    type="text"
+                    value={manualAdmissionNumber}
+                    onChange={handleManualAdmissionNumberChange}
+                    onKeyDown={handleInputKeyDown}
+                    placeholder="Enter admission number"
+                  />
+                </Col>
+                <Col sm={2}>
+                  <Button onClick={handleManualSearch} variant="primary">
+                    Search
+                  </Button>
                 </Col>
               </Form.Group>
             </Card.Body>
@@ -337,7 +371,7 @@ const IndividualFullView = () => {
             </div>
           ) : !studentData ? (
             <div className="text-center py-5">
-              <div>No student data available. Please select an admission number.</div>
+              <div>Please select or enter an admission number to view student details.</div>
             </div>
           ) : (
             /* Report Content */
@@ -398,6 +432,9 @@ const IndividualFullView = () => {
                       </div>
                       <div className="detail-item">
                         <strong>EMIS:</strong> {studentData.emis}
+                      </div>
+                      <div className="detail-item">
+                        <strong>Aadhar Number:</strong> {studentData.aadharNumber}
                       </div>
                     </div>
                   </Col>
@@ -586,3 +623,4 @@ const IndividualFullView = () => {
 }
 
 export default IndividualFullView
+
