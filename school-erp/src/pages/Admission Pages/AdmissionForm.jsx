@@ -1291,6 +1291,21 @@ const AdmissionForm = () => {
               <Col md={6}>
                 <h3 className="section-title mt-4">Academic Details</h3>
                 <Form.Group className="mb-3">
+                  <Form.Label>Student Type</Form.Label>
+                  <Form.Select
+                    name="studentType"
+                    value={formData.studentType || ""}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  >
+                    <option value="">Select Student Type</option>
+                    <option value="New">New</option>
+                    <option value="Existing">Existing</option>
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
                   <Form.Label>Student Category</Form.Label>
                   <Form.Select
                     name="studentCategory"
@@ -1435,21 +1450,6 @@ const AdmissionForm = () => {
 
 
                 <h3 className="section-title mt-4">Previous Studied Details</h3>
-                <Form.Group className="mb-3">
-                  <Form.Label>Student Type</Form.Label>
-                  <Form.Select
-                    name="studentType"
-                    value={formData.studentType || ""}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                  >
-                    <option value="">Select Student Type</option>
-                    <option value="New">New</option>
-                    <option value="Existing">Existing</option>
-                  </Form.Select>
-                </Form.Group>
-
                 <Form.Group className="mb-3">
                   <Form.Label>Studied Year</Form.Label>
                   <Form.Control
