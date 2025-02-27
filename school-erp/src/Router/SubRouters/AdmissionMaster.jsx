@@ -19,6 +19,8 @@ import CategoryWiseReport from '../../pages/Admission Pages/StudentDetaisReport.
 import RouteWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/RouteWiserReport';
 import IndividualFullView from '../../pages/Admission Pages/StudentDetaisReport.jsx/IndividualFullView';
 import CourseStudyCertificate from '../../pages/Admission Pages/StudentDetaisReport.jsx/CourseStudyCertificate';
+import TypeWise from '../../pages/Admission Pages/StudentDetaisReport.jsx/TypeWise';
+import CustomizedReportGenerate from '../../pages/Admission Pages/StudentDetaisReport.jsx/CustomizedReportGenerate';
 
 
 function AdmissionMaster() {
@@ -45,6 +47,8 @@ function AdmissionMaster() {
       <Route path="Student-Details-Report/route-wise-report" element={<RouteWiseReport />} />
       <Route path="Student-Details-Report/individual-full-view" element={<IndividualFullView />} />
       <Route path="Student-Details-Report/course-study-certificate" element={<CourseStudyCertificate />} />
+      <Route path="Student-Details-Report/type-wise-report" element={<TypeWise />} />
+      <Route path="Student-Details-Report/customize-report-generate" element={<CustomizedReportGenerate />} />
     </Routes>
   );
 }
