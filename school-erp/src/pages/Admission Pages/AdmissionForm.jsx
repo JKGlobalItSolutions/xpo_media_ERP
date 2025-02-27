@@ -1,10 +1,22 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
-import { Form, Button, Row, Col, Container } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { db, auth, storage } from "../../Firebase/config"
-import { doc, getDoc, setDoc, collection, getDocs, query, limit, where, orderBy, deleteDoc } from "firebase/firestore"
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  query,
+  limit,
+  where,
+  orderBy,
+  deleteDoc,
+  addDoc,
+} from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
@@ -61,6 +73,9 @@ const AdmissionForm = () => {
     remarks: "",
     identificationMark1: "",
     identificationMark2: "",
+    tutionFees: "",
+    hostelFee: "",
+    aadharNumber: "",
   })
   const [errors, setErrors] = useState({})
   const [photoPreview, setPhotoPreview] = useState(defaultStudentPhoto)
@@ -87,6 +102,15 @@ const AdmissionForm = () => {
   const [filteredEnquiryNumbers, setFilteredEnquiryNumbers] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [qrCodeData, setQRCodeData] = useState("")
+  const [busFee, setBusFee] = useState("")
+  const [transportId, setTransportId] = useState(null)
+  const [fees, setFees] = useState([])
+  const [hostelFee, setHostelFee] = useState("")
+  const [tuitionFee, setTuitionFee] = useState("")
+  const [tuitionFeeDetails, setTuitionFeeDetails] = useState([])
+  const [busFeeDetails, setBusFeeDetails] = useState([])
+  const [hostelFeeDetails, setHostelFeeDetails] = useState([])
+  const [isSetupDataLoaded, setIsSetupDataLoaded] = useState(false)
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -96,7 +120,7 @@ const AdmissionForm = () => {
         const querySnapshot = await getDocs(q)
 
         if (querySnapshot.empty) {
-          const newAdminRef = await setDoc(doc(adminRef), { createdAt: new Date() })
+          const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
           setAdministrationId(newAdminRef.id)
         } else {
           setAdministrationId(querySnapshot.docs[0].id)
@@ -108,11 +132,35 @@ const AdmissionForm = () => {
     }
 
     fetchAdministrationId()
+    fetchTransportId()
   }, [])
+
+  const fetchTransportId = async () => {
+    try {
+      const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
+      const q = query(transportRef, limit(1))
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        const newTransportRef = await addDoc(transportRef, { createdAt: new Date() })
+        setTransportId(newTransportRef.id)
+      } else {
+        setTransportId(querySnapshot.docs[0].id)
+      }
+    } catch (error) {
+      console.error("Error fetching/creating Transport ID:", error)
+      toast.error("Failed to initialize transport. Please try again.")
+    }
+  }
 
   useEffect(() => {
     if (administrationId) {
       fetchSetupData()
+    }
+  }, [administrationId])
+
+  useEffect(() => {
+    if (isSetupDataLoaded && administrationId) {
       fetchEnquiryNumbers()
       if (id) {
         fetchAdmissionData()
@@ -120,22 +168,32 @@ const AdmissionForm = () => {
         generateAdmissionNumber()
       }
     }
-  }, [administrationId, id])
+  }, [isSetupDataLoaded, administrationId, id])
 
   useEffect(() => {
-    const generateQRCodeData = () => {
+    if (setupData.courses.length > 0 && formData.studentName) {
+      const standardName = setupData.courses.find(course => course.id === formData.standard)?.standard || formData.standard
       const essentialData = {
         admissionNumber: formData.admissionNumber,
         studentName: formData.studentName,
-        standard: formData.standard,
+        standard: standardName,
         section: formData.section,
       }
-      const qrData = JSON.stringify(essentialData)
-      setQRCodeData(qrData)
+      setQRCodeData(JSON.stringify(essentialData))
     }
+  }, [formData.admissionNumber, formData.studentName, formData.standard, formData.section, setupData.courses])
 
-    generateQRCodeData()
-  }, [formData.admissionNumber, formData.studentName, formData.standard, formData.section])
+  useEffect(() => {
+    fetchBusFee()
+  }, [formData.boardingPoint, formData.busRouteNumber, transportId])
+
+  useEffect(() => {
+    fetchHostelFee()
+  }, [formData.studentCategory, formData.standard, administrationId])
+
+  useEffect(() => {
+    fetchTuitionFee()
+  }, [formData.studentCategory, formData.standard, administrationId])
 
   const fetchSetupData = async () => {
     try {
@@ -146,7 +204,7 @@ const AdmissionForm = () => {
           auth.currentUser.uid,
           "Administration",
           administrationId,
-          collectionName,
+          collectionName
         )
         const snapshot = await getDocs(dataRef)
         return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -180,21 +238,12 @@ const AdmissionForm = () => {
         fetchData("BloodGroupSetup"),
       ])
 
-      // Fetch boarding points from PlaceSetup
-      const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
-      const transportSnapshot = await getDocs(transportRef)
-      let boardingPointData = []
-      let busRouteData = []
-      if (!transportSnapshot.empty) {
-        const transportId = transportSnapshot.docs[0].id
-        const placeSetupRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "PlaceSetup")
-        const placeSetupSnapshot = await getDocs(placeSetupRef)
-        boardingPointData = placeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      const busFeeSetupRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "BusFeeSetup")
+      const busFeeSetupSnapshot = await getDocs(busFeeSetupRef)
+      const busFeeSetupData = busFeeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
 
-        const routeSetupRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "RouteSetup")
-        const routeSetupSnapshot = await getDocs(routeSetupRef)
-        busRouteData = routeSetupSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      }
+      const uniqueBoardingPoints = [...new Set(busFeeSetupData.map((item) => item.boardingPoint))]
+      const uniqueRoutes = [...new Set(busFeeSetupData.map((item) => item.routeNumber))]
 
       setSetupData({
         nationalities: nationalityData,
@@ -207,13 +256,14 @@ const AdmissionForm = () => {
         motherTongues: motherTongueData,
         studentCategories: studentCategoryData,
         courses: courseData,
-        boardingPoints: boardingPointData,
-        busRoutes: busRouteData,
         parentOccupations: parentOccupationData,
         bloodGroups: bloodGroupData,
+        boardingPoints: uniqueBoardingPoints.map((point) => ({ id: point, placeName: point })),
+        busRoutes: uniqueRoutes.map((route) => ({ id: route, route: route })),
       })
 
-      console.log("Fetched setup data successfully")
+      setFees(busFeeSetupData)
+      setIsSetupDataLoaded(true)
     } catch (error) {
       console.error("Error fetching setup data:", error)
       toast.error("Failed to fetch setup data. Please try again.")
@@ -228,7 +278,7 @@ const AdmissionForm = () => {
         auth.currentUser.uid,
         "AdmissionMaster",
         administrationId,
-        "EnquirySetup",
+        "EnquirySetup"
       )
       const snapshot = await getDocs(enquiriesRef)
       const enquiryKeys = snapshot.docs.map((doc) => doc.data().enquiryKey).filter(Boolean)
@@ -249,12 +299,59 @@ const AdmissionForm = () => {
         "AdmissionMaster",
         administrationId,
         "AdmissionSetup",
-        id,
+        id
       )
-      const admissionSnap = await getDoc(admissionRef)
+      const studentFeeDetailsRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "StudentFeeDetails",
+        id
+      )
+
+      const [admissionSnap, feeSnap] = await Promise.all([
+        getDoc(admissionRef),
+        getDoc(studentFeeDetailsRef)
+      ])
+
       if (admissionSnap.exists()) {
-        setFormData(admissionSnap.data())
-        setPhotoPreview(admissionSnap.data().studentPhoto || defaultStudentPhoto)
+        const admissionData = admissionSnap.data()
+        
+        const standardId = setupData.courses.find(course => 
+          course.standard === admissionData.standard)?.id || ""
+        const studentCategoryId = setupData.studentCategories.find(category => 
+          category.StudentCategoryName === admissionData.studentCategory)?.id || ""
+
+        const updatedFormData = {
+          ...formData,
+          ...admissionData,
+          standard: standardId,
+          studentCategory: studentCategoryId
+        }
+
+        setFormData(updatedFormData)
+        setPhotoPreview(admissionData.studentPhoto || defaultStudentPhoto)
+        
+        setBusFee(admissionData.busFee || "")
+        setHostelFee(admissionData.hostelFee || "")
+        setTuitionFee(admissionData.tutionFees || "")
+
+        if (feeSnap.exists()) {
+          const feeData = feeSnap.data()
+          const feeDetails = feeData.feeDetails || []
+          
+          setTuitionFeeDetails(feeDetails.filter(fee => fee.type === "Tuition Fee"))
+          setBusFeeDetails(feeDetails.filter(fee => fee.type === "Bus Fee"))
+          setHostelFeeDetails(feeDetails.filter(fee => fee.type === "Hostel Fee"))
+        }
+        
+        await Promise.all([
+          fetchBusFee(),
+          fetchHostelFee(),
+          fetchTuitionFee()
+        ])
       }
     } catch (error) {
       console.error("Error fetching admission data:", error)
@@ -270,16 +367,39 @@ const AdmissionForm = () => {
         auth.currentUser.uid,
         "AdmissionMaster",
         administrationId,
-        "AdmissionSetup",
+        "AdmissionSetup"
       )
-      const q = query(admissionsRef, orderBy("admissionNumber", "desc"), limit(1))
-      const querySnapshot = await getDocs(q)
+      const querySnapshot = await getDocs(admissionsRef)
+      
+      const existingNumbers = querySnapshot.docs
+        .map(doc => doc.data().admissionNumber)
+        .filter(num => num && num.startsWith("ADM"))
+        .map(num => parseInt(num.replace("ADM", ""), 10))
+        .sort((a, b) => a - b)
 
-      let newAdmissionNumber = "ADM1"
-      if (!querySnapshot.empty) {
-        const lastAdmissionNumber = querySnapshot.docs[0].data().admissionNumber
-        const lastNumber = Number.parseInt(lastAdmissionNumber.replace("ADM", ""))
-        newAdmissionNumber = `ADM${lastNumber + 1}`
+      let nextNumber = 1
+      if (existingNumbers.length > 0) {
+        const highestNumber = existingNumbers[existingNumbers.length - 1]
+        nextNumber = highestNumber + 1
+        
+        // Ensure no gaps are missed by checking sequence
+        for (let i = 0; i < existingNumbers.length; i++) {
+          if (existingNumbers[i] !== i + 1) {
+            nextNumber = i + 1
+            break
+          }
+        }
+      }
+
+      const newAdmissionNumber = `ADM${nextNumber}`
+      
+      // Double-check if the number exists
+      const checkQuery = query(admissionsRef, where("admissionNumber", "==", newAdmissionNumber))
+      const checkSnapshot = await getDocs(checkQuery)
+      
+      if (!checkSnapshot.empty) {
+        // If number exists, recurse to get next available number
+        return generateAdmissionNumber()
       }
 
       setFormData((prev) => ({ ...prev, admissionNumber: newAdmissionNumber }))
@@ -297,7 +417,7 @@ const AdmissionForm = () => {
         auth.currentUser.uid,
         "AdmissionMaster",
         administrationId,
-        "EnquirySetup",
+        "EnquirySetup"
       )
       const q = query(enquiriesRef, where("enquiryKey", "==", enquiryKey))
       const querySnapshot = await getDocs(q)
@@ -307,7 +427,7 @@ const AdmissionForm = () => {
         setFormData((prevData) => ({
           ...prevData,
           ...enquiryData,
-          admissionNumber: prevData.admissionNumber, // Preserve the existing admission number
+          admissionNumber: prevData.admissionNumber,
         }))
         setPhotoPreview(enquiryData.studentPhoto || defaultStudentPhoto)
         toast.success("Enquiry data fetched successfully!")
@@ -319,6 +439,131 @@ const AdmissionForm = () => {
       toast.error("Failed to fetch enquiry data. Please try again.")
     }
   }
+
+  const fetchBusFee = useCallback(async () => {
+    if (formData.boardingPoint && formData.busRouteNumber && transportId) {
+      try {
+        const busFeeRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "BusFeeSetup")
+        const q = query(
+          busFeeRef,
+          where("boardingPoint", "==", formData.boardingPoint),
+          where("routeNumber", "==", formData.busRouteNumber)
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          let totalBusFee = 0
+          const details = querySnapshot.docs.map((doc) => {
+            const feeData = doc.data()
+            totalBusFee += parseFloat(feeData.fee) || 0
+            return { type: "Bus Fee", heading: feeData.feeHeading, amount: feeData.fee }
+          })
+          setBusFee(totalBusFee.toFixed(2))
+          setBusFeeDetails(details)
+          setFormData((prev) => ({ ...prev, busFee: totalBusFee.toFixed(2) }))
+        } else {
+          setBusFee("")
+          setBusFeeDetails([])
+          setFormData((prev) => ({ ...prev, busFee: "" }))
+        }
+      } catch (error) {
+        console.error("Error fetching bus fee:", error)
+        toast.error("Failed to fetch bus fee. Please try again.")
+      }
+    } else {
+      setBusFee("")
+      setBusFeeDetails([])
+      setFormData((prev) => ({ ...prev, busFee: "" }))
+    }
+  }, [formData.boardingPoint, formData.busRouteNumber, transportId])
+
+  const fetchHostelFee = useCallback(async () => {
+    if (formData.studentCategory && formData.standard && administrationId) {
+      try {
+        const hostelFeeRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Administration",
+          administrationId,
+          "HostelFeeSetup"
+        )
+        const q = query(
+          hostelFeeRef,
+          where("studentCategoryId", "==", formData.studentCategory),
+          where("standardId", "==", formData.standard)
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          let totalHostelFee = 0
+          const details = querySnapshot.docs.map((doc) => {
+            const fee = doc.data()
+            totalHostelFee += parseFloat(fee.feeAmount) || 0
+            return { type: "Hostel Fee", heading: fee.feeHeading || "Hostel Fee", amount: fee.feeAmount }
+          })
+          setHostelFee(totalHostelFee.toFixed(2))
+          setHostelFeeDetails(details)
+          setFormData((prev) => ({ ...prev, hostelFee: totalHostelFee.toFixed(2) }))
+        } else {
+          setHostelFee("")
+          setHostelFeeDetails([])
+          setFormData((prev) => ({ ...prev, hostelFee: "" }))
+        }
+      } catch (error) {
+        console.error("Error fetching hostel fee:", error)
+        toast.error("Failed to fetch hostel fee. Please try again.")
+      }
+    } else {
+      setHostelFee("")
+      setHostelFeeDetails([])
+      setFormData((prev) => ({ ...prev, hostelFee: "" }))
+    }
+  }, [administrationId, formData.studentCategory, formData.standard])
+
+  const fetchTuitionFee = useCallback(async () => {
+    if (formData.studentCategory && formData.standard && administrationId) {
+      try {
+        const tuitionFeeRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Administration",
+          administrationId,
+          "FeeSetup"
+        )
+        const q = query(
+          tuitionFeeRef,
+          where("studentCategoryId", "==", formData.studentCategory),
+          where("standardId", "==", formData.standard)
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          let totalTuitionFee = 0
+          const details = querySnapshot.docs.map((doc) => {
+            const feeData = doc.data()
+            totalTuitionFee += parseFloat(feeData.feeAmount) || 0
+            return { type: "Tuition Fee", heading: feeData.feeHeading || "Tuition Fee", amount: feeData.feeAmount }
+          })
+          setTuitionFee(totalTuitionFee.toFixed(2))
+          setTuitionFeeDetails(details)
+          setFormData((prev) => ({ ...prev, tutionFees: totalTuitionFee.toFixed(2) }))
+        } else {
+          setTuitionFee("")
+          setTuitionFeeDetails([])
+          setFormData((prev) => ({ ...prev, tutionFees: "" }))
+        }
+      } catch (error) {
+        console.error("Error fetching tuition fee:", error)
+        toast.error("Failed to fetch tuition fee. Please try again.")
+      }
+    } else {
+      setTuitionFee("")
+      setTuitionFeeDetails([])
+      setFormData((prev) => ({ ...prev, tutionFees: "" }))
+    }
+  }, [administrationId, formData.studentCategory, formData.standard])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -333,20 +578,41 @@ const AdmissionForm = () => {
       setFilteredEnquiryNumbers(filtered)
       setShowDropdown(filtered.length > 0)
 
-      // Fetch enquiry data when a key is selected
       if (enquiryNumbers.includes(value)) {
         fetchEnquiryData(value)
       }
     }
 
-    // Allow manual editing of admission number
-    if (name === "admissionNumber") {
-      if (!value.startsWith("ADM")) {
+    if (name === "admissionNumber" && value && !value.startsWith("ADM")) {
+      setFormData((prev) => ({
+        ...prev,
+        admissionNumber: "ADM" + value,
+      }))
+    }
+
+    if (name === "boardingPoint") {
+      const selectedBoardingPoint = setupData.boardingPoints.find((point) => point.placeName === value)
+      if (selectedBoardingPoint) {
+        const associatedRoute = setupData.busRoutes.find((route) => {
+          const busFeeEntry = fees.find((fee) => fee.boardingPoint === value && fee.routeNumber === route.route)
+          return busFeeEntry !== undefined
+        })
         setFormData((prev) => ({
           ...prev,
-          admissionNumber: "ADM" + value,
+          boardingPoint: value,
+          busRouteNumber: associatedRoute ? associatedRoute.route : "",
         }))
+        fetchBusFee()
       }
+    }
+
+    if (name === "busRouteNumber") {
+      fetchBusFee()
+    }
+
+    if (name === "studentCategory" || name === "standard") {
+      fetchHostelFee()
+      fetchTuitionFee()
     }
   }
 
@@ -375,11 +641,15 @@ const AdmissionForm = () => {
   }
 
   const handlePhotoClick = () => {
-    fileInputRef.current.click()
+    if (!isViewMode) {
+      fileInputRef.current.click()
+    }
   }
 
   const handleDateInputClick = (ref) => {
-    ref.current.showPicker()
+    if (!isViewMode) {
+      ref.current.showPicker()
+    }
   }
 
   const validateForm = () => {
@@ -411,13 +681,13 @@ const AdmissionForm = () => {
       "fatherOccupation",
       "motherOccupation",
       "examNumber",
-      "busFee",
       "studiedYear",
       "classLastStudied",
       "classToBeAdmitted",
       "nameOfSchool",
       "identificationMark1",
       "identificationMark2",
+      "aadharNumber",
     ]
 
     requiredFields.forEach((field) => {
@@ -438,26 +708,25 @@ const AdmissionForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log("Form submission started")
     if (validateForm()) {
       try {
-        console.log("Form is valid, attempting to submit")
-
         let photoUrl = formData.studentPhoto
         if (formData.studentPhoto instanceof File) {
           const storageRef = ref(
             storage,
-            `studentPhotos/${auth.currentUser.uid}/${Date.now()}_${formData.studentPhoto.name}`,
+            `studentPhotos/${auth.currentUser.uid}/${Date.now()}_${formData.studentPhoto.name}`
           )
           await uploadBytes(storageRef, formData.studentPhoto)
           photoUrl = await getDownloadURL(storageRef)
         }
 
-        // Generate QR code data
+        const standardName = setupData.courses.find(course => course.id === formData.standard)?.standard || formData.standard
+        const studentCategoryName = setupData.studentCategories.find(category => category.id === formData.studentCategory)?.StudentCategoryName || formData.studentCategory
+
         const essentialData = {
           admissionNumber: formData.admissionNumber,
           studentName: formData.studentName,
-          standard: formData.standard,
+          standard: standardName,
           section: formData.section,
         }
         const qrCodeData = JSON.stringify(essentialData)
@@ -465,7 +734,12 @@ const AdmissionForm = () => {
         const admissionData = {
           ...formData,
           studentPhoto: photoUrl,
-          qrCode: qrCodeData, // Add QR code data to admission data
+          qrCode: qrCodeData,
+          standard: standardName,
+          studentCategory: studentCategoryName,
+          busFee: busFee || "",
+          hostelFee: hostelFee || "",
+          tutionFees: tuitionFee || "",
         }
 
         const admissionRef = collection(
@@ -474,17 +748,37 @@ const AdmissionForm = () => {
           auth.currentUser.uid,
           "AdmissionMaster",
           administrationId,
-          "AdmissionSetup",
+          "AdmissionSetup"
         )
+        const studentFeeDetailsRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "AdmissionMaster",
+          administrationId,
+          "StudentFeeDetails"
+        )
+
+        const allFeeDetails = [
+          ...tuitionFeeDetails,
+          ...busFeeDetails,
+          ...hostelFeeDetails,
+        ]
+
+        const studentFeeData = {
+          ...admissionData,
+          feeDetails: allFeeDetails,
+        }
 
         if (id) {
           await setDoc(doc(admissionRef, id), admissionData)
+          await setDoc(doc(studentFeeDetailsRef, id), studentFeeData)
           toast.success("Admission updated successfully!")
         } else {
-          await setDoc(doc(admissionRef), admissionData)
+          const admissionDocRef = await addDoc(admissionRef, admissionData)
+          await setDoc(doc(studentFeeDetailsRef, admissionDocRef.id), studentFeeData)
           toast.success("Admission submitted successfully!")
 
-          // Delete the used enquiry
           if (formData.enquiryKey) {
             const enquiryRef = collection(
               db,
@@ -492,50 +786,91 @@ const AdmissionForm = () => {
               auth.currentUser.uid,
               "AdmissionMaster",
               administrationId,
-              "EnquirySetup",
+              "EnquirySetup"
             )
             const q = query(enquiryRef, where("enquiryKey", "==", formData.enquiryKey))
             const querySnapshot = await getDocs(q)
             if (!querySnapshot.empty) {
               const enquiryDoc = querySnapshot.docs[0]
               await deleteDoc(doc(enquiryRef, enquiryDoc.id))
-              console.log("Enquiry deleted successfully")
             }
           }
         }
 
-        // Redirect to the StudentDetails page
         navigate("/admission/StudentDetails")
       } catch (error) {
         console.error("Error submitting admission:", error)
         toast.error(`Failed to submit admission: ${error.message}`)
       }
     } else {
-      console.log("Form validation failed")
       const missingFields = Object.keys(errors).join(", ")
       toast.error(`Please fill in all required fields. Missing: ${missingFields}`)
     }
   }
 
-  const handleBack = () => {
-    navigate("/admission")
+  const calculateOverallTotal = () => {
+    const tuitionTotal = parseFloat(tuitionFee) || 0
+    const busTotal = parseFloat(busFee) || 0
+    const hostelTotal = parseFloat(hostelFee) || 0
+    return (tuitionTotal + busTotal + hostelTotal).toFixed(2)
+  }
+
+  const renderFeeTableRows = () => {
+    const allFees = [
+      ...tuitionFeeDetails,
+      ...busFeeDetails,
+      ...hostelFeeDetails,
+    ]
+
+    if (!allFees.length) {
+      return (
+        <tr>
+          <td colSpan="3" className="text-center">No fee details available</td>
+        </tr>
+      )
+    }
+
+    const rows = []
+    let currentType = null
+
+    allFees.forEach((detail, index) => {
+      if (currentType !== detail.type) {
+        rows.push(
+          <tr key={`${detail.type}-${index}`}>
+            <td rowSpan={allFees.filter(fee => fee.type === detail.type).length} style={{ verticalAlign: 'middle' }}>
+              {detail.type}
+            </td>
+            <td>{detail.heading}</td>
+            <td>{detail.amount}</td>
+          </tr>
+        )
+        currentType = detail.type
+      } else {
+        rows.push(
+          <tr key={`${detail.type}-${index}`}>
+            <td>{detail.heading}</td>
+            <td>{detail.amount}</td>
+          </tr>
+        )
+      }
+    })
+
+    return rows
   }
 
   return (
     <MainContentPage>
       <Container fluid className="px-0">
-        {/* Breadcrumb Navigation */}
         <div className="mb-4">
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
-            <span className="separator mx-2">&gt;</span>
+            <span className="separator mx-2"></span>
             <Link to="/admission">Admission</Link>
-            <span className="separator mx-2">&gt;</span>
+            <span className="separator mx-2"></span>
             <span>{isViewMode ? "View Admission" : id ? "Edit Admission" : "Add Admission"}</span>
           </nav>
         </div>
 
-        {/* Card Header */}
         <div
           style={{ backgroundColor: "#0B3D7B" }}
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
@@ -546,12 +881,10 @@ const AdmissionForm = () => {
           <div style={{ width: "20px" }}></div>
         </div>
 
-        {/* Form Container */}
         <div className="bg-white p-4 rounded-bottom shadow">
           <Form onSubmit={handleSubmit} className="admission-form">
             <Row>
               <Col md={6}>
-                {/* Student Photo Section */}
                 <div className="text-center mb-4">
                   <h3 className="section-title">Student Photo</h3>
                   <div
@@ -565,7 +898,7 @@ const AdmissionForm = () => {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      cursor: "pointer",
+                      cursor: isViewMode ? "default" : "pointer",
                       overflow: "hidden",
                       backgroundColor: "#f8f9fa",
                       marginBottom: "20px",
@@ -573,14 +906,12 @@ const AdmissionForm = () => {
                   >
                     {photoPreview ? (
                       <img
-                        src={photoPreview || "/placeholder.svg"}
+                        src={photoPreview}
                         alt="Student"
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />
                     ) : (
-                      <div className="text-center">
-                        <div>Upload Photo Here</div>
-                      </div>
+                      <div className="text-center">Upload Photo Here</div>
                     )}
                   </div>
                   <input
@@ -594,7 +925,6 @@ const AdmissionForm = () => {
                 </div>
               </Col>
               <Col md={6}>
-                {/* QR Code Preview */}
                 <div className="text-center mb-4">
                   <h3 className="section-title">QR Code Preview</h3>
                   <div className="qr-code-container mx-auto" style={{ width: "200px", height: "200px" }}>
@@ -606,12 +936,11 @@ const AdmissionForm = () => {
 
             <Row>
               <Col md={6}>
-                {/* Basic Details */}
                 <Form.Group className="mb-3">
                   <Form.Label>Enquiry Key</Form.Label>
                   <Form.Select
                     name="enquiryKey"
-                    value={formData.enquiryKey}
+                    value={formData.enquiryKey || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -630,7 +959,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="admissionNumber"
-                    value={formData.admissionNumber}
+                    value={formData.admissionNumber || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -642,7 +971,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="studentName"
-                    value={formData.studentName}
+                    value={formData.studentName || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -654,7 +983,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="fatherName"
-                    value={formData.fatherName}
+                    value={formData.fatherName || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -666,7 +995,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="motherName"
-                    value={formData.motherName}
+                    value={formData.motherName || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -677,7 +1006,7 @@ const AdmissionForm = () => {
                   <Form.Label>Father's Occupation</Form.Label>
                   <Form.Select
                     name="fatherOccupation"
-                    value={formData.fatherOccupation}
+                    value={formData.fatherOccupation || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -695,7 +1024,7 @@ const AdmissionForm = () => {
                   <Form.Label>Mother's Occupation</Form.Label>
                   <Form.Select
                     name="motherOccupation"
-                    value={formData.motherOccupation}
+                    value={formData.motherOccupation || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -709,14 +1038,13 @@ const AdmissionForm = () => {
                   </Form.Select>
                 </Form.Group>
 
-                {/* Personal Details */}
                 <h3 className="section-title mt-4">Personal Details</h3>
                 <Form.Group className="mb-3">
                   <Form.Label>Phone Number</Form.Label>
                   <Form.Control
                     type="tel"
                     name="phoneNumber"
-                    value={formData.phoneNumber}
+                    value={formData.phoneNumber || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -728,7 +1056,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="email"
                     name="emailId"
-                    value={formData.emailId}
+                    value={formData.emailId || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -739,7 +1067,7 @@ const AdmissionForm = () => {
                   <Form.Label>Gender</Form.Label>
                   <Form.Select
                     name="gender"
-                    value={formData.gender}
+                    value={formData.gender || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -756,7 +1084,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="date"
                     name="dateOfBirth"
-                    value={formData.dateOfBirth}
+                    value={formData.dateOfBirth || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -769,7 +1097,7 @@ const AdmissionForm = () => {
                   <Form.Label>Blood Group</Form.Label>
                   <Form.Select
                     name="bloodGroup"
-                    value={formData.bloodGroup}
+                    value={formData.bloodGroup || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -787,7 +1115,7 @@ const AdmissionForm = () => {
                   <Form.Label>Nationality</Form.Label>
                   <Form.Select
                     name="nationality"
-                    value={formData.nationality}
+                    value={formData.nationality || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -805,7 +1133,7 @@ const AdmissionForm = () => {
                   <Form.Label>Religion</Form.Label>
                   <Form.Select
                     name="religion"
-                    value={formData.religion}
+                    value={formData.religion || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -823,7 +1151,7 @@ const AdmissionForm = () => {
                   <Form.Label>Community</Form.Label>
                   <Form.Select
                     name="community"
-                    value={formData.community}
+                    value={formData.community || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -841,7 +1169,7 @@ const AdmissionForm = () => {
                   <Form.Label>Caste</Form.Label>
                   <Form.Select
                     name="caste"
-                    value={formData.caste}
+                    value={formData.caste || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -859,7 +1187,7 @@ const AdmissionForm = () => {
                   <Form.Label>Mother Tongue</Form.Label>
                   <Form.Select
                     name="motherTongue"
-                    value={formData.motherTongue}
+                    value={formData.motherTongue || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -872,14 +1200,26 @@ const AdmissionForm = () => {
                     ))}
                   </Form.Select>
                 </Form.Group>
-                {/* Address Details */}
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Aadhar Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="aadharNumber"
+                    value={formData.aadharNumber || ""}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
+
                 <h3 className="section-title">Address Details</h3>
                 <Form.Group className="mb-3">
                   <Form.Label>Street/Village</Form.Label>
                   <Form.Control
                     type="text"
                     name="streetVillage"
-                    value={formData.streetVillage}
+                    value={formData.streetVillage || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -891,7 +1231,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="placePincode"
-                    value={formData.placePincode}
+                    value={formData.placePincode || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -902,7 +1242,7 @@ const AdmissionForm = () => {
                   <Form.Label>State</Form.Label>
                   <Form.Select
                     name="state"
-                    value={formData.state}
+                    value={formData.state || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -920,7 +1260,7 @@ const AdmissionForm = () => {
                   <Form.Label>District</Form.Label>
                   <Form.Select
                     name="district"
-                    value={formData.district}
+                    value={formData.district || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -940,7 +1280,7 @@ const AdmissionForm = () => {
                     as="textarea"
                     rows={3}
                     name="communicationAddress"
-                    value={formData.communicationAddress}
+                    value={formData.communicationAddress || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -949,35 +1289,19 @@ const AdmissionForm = () => {
               </Col>
 
               <Col md={6}>
-                {/* Academic Details */}
                 <h3 className="section-title mt-4">Academic Details</h3>
-                <Form.Group className="mb-3">
-                  <Form.Label>Student Type</Form.Label>
-                  <Form.Select
-                    name="studentType"
-                    value={formData.studentType}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                  >
-                    <option value="">Select Student Type</option>
-                    <option value="New">New</option>
-                    <option value="Existing">Existing</option>
-                  </Form.Select>
-                </Form.Group>
-
                 <Form.Group className="mb-3">
                   <Form.Label>Student Category</Form.Label>
                   <Form.Select
                     name="studentCategory"
-                    value={formData.studentCategory}
+                    value={formData.studentCategory || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Category</option>
                     {setupData.studentCategories.map((category) => (
-                      <option key={category.id} value={category.StudentCategoryName}>
+                      <option key={category.id} value={category.id}>
                         {category.StudentCategoryName}
                       </option>
                     ))}
@@ -988,14 +1312,14 @@ const AdmissionForm = () => {
                   <Form.Label>Standard</Form.Label>
                   <Form.Select
                     name="standard"
-                    value={formData.standard}
+                    value={formData.standard || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   >
                     <option value="">Select Standard</option>
                     {setupData.courses.map((course) => (
-                      <option key={course.id} value={course.standard}>
+                      <option key={course.id} value={course.id}>
                         {course.standard}
                       </option>
                     ))}
@@ -1006,7 +1330,7 @@ const AdmissionForm = () => {
                   <Form.Label>Section</Form.Label>
                   <Form.Select
                     name="section"
-                    value={formData.section}
+                    value={formData.section || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1025,7 +1349,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="emis"
-                    value={formData.emis}
+                    value={formData.emis || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1037,7 +1361,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="lunchRefresh"
-                    value={formData.lunchRefresh}
+                    value={formData.lunchRefresh || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1049,7 +1373,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="date"
                     name="dateOfAdmission"
-                    value={formData.dateOfAdmission}
+                    value={formData.dateOfAdmission || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1063,20 +1387,19 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="examNumber"
-                    value={formData.examNumber}
+                    value={formData.examNumber || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
                 </Form.Group>
 
-                {/* Bus Transport Details */}
                 <h3 className="section-title mt-4">Bus Transport Details</h3>
                 <Form.Group className="mb-3">
                   <Form.Label>Boarding Point</Form.Label>
                   <Form.Select
                     name="boardingPoint"
-                    value={formData.boardingPoint}
+                    value={formData.boardingPoint || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1094,7 +1417,7 @@ const AdmissionForm = () => {
                   <Form.Label>Bus Route Number</Form.Label>
                   <Form.Select
                     name="busRouteNumber"
-                    value={formData.busRouteNumber}
+                    value={formData.busRouteNumber || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1108,26 +1431,31 @@ const AdmissionForm = () => {
                   </Form.Select>
                 </Form.Group>
 
+                <h3 className="section-title mt-4">Hostel Details</h3>
+
+
+                <h3 className="section-title mt-4">Previous Studied Details</h3>
                 <Form.Group className="mb-3">
-                  <Form.Label>Bus Fee</Form.Label>
-                  <Form.Control
-                    type="number"
-                    name="busFee"
-                    value={formData.busFee}
+                  <Form.Label>Student Type</Form.Label>
+                  <Form.Select
+                    name="studentType"
+                    value={formData.studentType || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
-                  />
+                  >
+                    <option value="">Select Student Type</option>
+                    <option value="New">New</option>
+                    <option value="Existing">Existing</option>
+                  </Form.Select>
                 </Form.Group>
 
-                {/* Previous Studied Details */}
-                <h3 className="section-title mt-4">Previous Studied Details</h3>
                 <Form.Group className="mb-3">
                   <Form.Label>Studied Year</Form.Label>
                   <Form.Control
                     type="text"
                     name="studiedYear"
-                    value={formData.studiedYear}
+                    value={formData.studiedYear || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1138,7 +1466,7 @@ const AdmissionForm = () => {
                   <Form.Label>Class Last Studied</Form.Label>
                   <Form.Select
                     name="classLastStudied"
-                    value={formData.classLastStudied}
+                    value={formData.classLastStudied || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1156,7 +1484,7 @@ const AdmissionForm = () => {
                   <Form.Label>Class to be Admitted</Form.Label>
                   <Form.Select
                     name="classToBeAdmitted"
-                    value={formData.classToBeAdmitted}
+                    value={formData.classToBeAdmitted || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1175,21 +1503,20 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="nameOfSchool"
-                    value={formData.nameOfSchool}
+                    value={formData.nameOfSchool || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
                 </Form.Group>
 
-                {/* Remarks and Identification Marks */}
                 <h3 className="section-title mt-4">Remarks</h3>
                 <Form.Group className="mb-3">
                   <Form.Label>Student Identification Mark 1</Form.Label>
                   <Form.Control
                     type="text"
                     name="identificationMark1"
-                    value={formData.identificationMark1}
+                    value={formData.identificationMark1 || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1201,7 +1528,7 @@ const AdmissionForm = () => {
                   <Form.Control
                     type="text"
                     name="identificationMark2"
-                    value={formData.identificationMark2}
+                    value={formData.identificationMark2 || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
@@ -1214,16 +1541,37 @@ const AdmissionForm = () => {
                     as="textarea"
                     rows={3}
                     name="remarks"
-                    value={formData.remarks}
+                    value={formData.remarks || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
                 </Form.Group>
+
+                <h3 className="section-title mt-4">All Fees Details</h3>
+                <div className="fee-details-table mb-4">
+                  <Table bordered hover size="sm">
+                    <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                      <tr>
+                        <th>Fee Type</th>
+                        <th>Fee Heading</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {renderFeeTableRows()}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan="2" className="text-end fw-bold">Overall Total:</td>
+                        <td className="fw-bold">{calculateOverallTotal()}</td>
+                      </tr>
+                    </tfoot>
+                  </Table>
+                </div>
               </Col>
             </Row>
 
-            {/* Submit Button */}
             <div className="d-flex justify-content-center mt-4">
               {!isViewMode && (
                 <Button type="submit" className="submit-btn">
@@ -1249,15 +1597,6 @@ const AdmissionForm = () => {
           .custom-breadcrumb .separator {
             margin: 0 0.5rem;
             color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          .admission-form-container {
-            background-color: #fff;
-            padding: 2rem;
           }
 
           .admission-form {
@@ -1303,7 +1642,7 @@ const AdmissionForm = () => {
             transition: all 0.3s ease;
           }
 
-          .photo-upload-circle:hover {
+          .photo-upload-circle:hover:not(:disabled) {
             border-color: #0B3D7B;
             background-color: #F8FAFF;
           }
@@ -1313,7 +1652,6 @@ const AdmissionForm = () => {
             color: #2D3748;
           }
 
-          /* Custom styling for date inputs */
           input[type="date"].form-control-blue {
             position: relative;
             padding-right: 35px;
@@ -1325,13 +1663,25 @@ const AdmissionForm = () => {
             cursor: pointer;
           }
 
-          /* Card header styles */
           h2 {
             font-size: 1.5rem;
             margin-bottom: 0;
           }
 
-          /* Responsive adjustments */
+          .fee-details-table table {
+            margin-bottom: 1rem;
+          }
+
+          .fee-details-table th,
+          .fee-details-table td {
+            vertical-align: middle;
+            padding: 0.5rem;
+          }
+
+          .fee-details-table tfoot td {
+            background-color: #f8f9fa;
+          }
+
           @media (max-width: 768px) {
             .admission-form-container {
               padding: 1rem;
@@ -1344,6 +1694,10 @@ const AdmissionForm = () => {
             .submit-btn {
               width: 100%;
             }
+
+            .fee-details-table table {
+              font-size: 0.9rem;
+            }
           }
         `}
       </style>
@@ -1353,4 +1707,3 @@ const AdmissionForm = () => {
 }
 
 export default AdmissionForm
-
