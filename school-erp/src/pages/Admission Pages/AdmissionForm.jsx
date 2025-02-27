@@ -4,19 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
 import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { db, auth, storage } from "../../Firebase/config"
-import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  getDocs,
-  query,
-  limit,
-  where,
-  orderBy,
-  deleteDoc,
-  addDoc,
-} from "firebase/firestore"
+import { doc, getDoc, setDoc, collection, getDocs, query, limit, where, deleteDoc, addDoc } from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
@@ -111,6 +99,7 @@ const AdmissionForm = () => {
   const [busFeeDetails, setBusFeeDetails] = useState([])
   const [hostelFeeDetails, setHostelFeeDetails] = useState([])
   const [isSetupDataLoaded, setIsSetupDataLoaded] = useState(false)
+  const [hostelFeeHeads, setHostelFeeHeads] = useState([])
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -156,6 +145,7 @@ const AdmissionForm = () => {
   useEffect(() => {
     if (administrationId) {
       fetchSetupData()
+      fetchHostelFeeHeads()
     }
   }, [administrationId])
 
@@ -172,7 +162,8 @@ const AdmissionForm = () => {
 
   useEffect(() => {
     if (setupData.courses.length > 0 && formData.studentName) {
-      const standardName = setupData.courses.find(course => course.id === formData.standard)?.standard || formData.standard
+      const standardName =
+        setupData.courses.find((course) => course.id === formData.standard)?.standard || formData.standard
       const essentialData = {
         admissionNumber: formData.admissionNumber,
         studentName: formData.studentName,
@@ -189,7 +180,7 @@ const AdmissionForm = () => {
 
   useEffect(() => {
     fetchHostelFee()
-  }, [formData.studentCategory, formData.standard, administrationId])
+  }, [formData.studentCategory, formData.standard, formData.lunchRefresh, administrationId])
 
   useEffect(() => {
     fetchTuitionFee()
@@ -204,7 +195,7 @@ const AdmissionForm = () => {
           auth.currentUser.uid,
           "Administration",
           administrationId,
-          collectionName
+          collectionName,
         )
         const snapshot = await getDocs(dataRef)
         return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -270,6 +261,25 @@ const AdmissionForm = () => {
     }
   }
 
+  const fetchHostelFeeHeads = async () => {
+    try {
+      const hostelFeeHeadsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Administration",
+        administrationId,
+        "HostelFeeHeadSetup",
+      )
+      const snapshot = await getDocs(hostelFeeHeadsRef)
+      const hostelFeeHeadsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setHostelFeeHeads(hostelFeeHeadsData)
+    } catch (error) {
+      console.error("Error fetching hostel fee heads:", error)
+      toast.error("Failed to fetch hostel fee heads. Please try again.")
+    }
+  }
+
   const fetchEnquiryNumbers = async () => {
     try {
       const enquiriesRef = collection(
@@ -278,7 +288,7 @@ const AdmissionForm = () => {
         auth.currentUser.uid,
         "AdmissionMaster",
         administrationId,
-        "EnquirySetup"
+        "EnquirySetup",
       )
       const snapshot = await getDocs(enquiriesRef)
       const enquiryKeys = snapshot.docs.map((doc) => doc.data().enquiryKey).filter(Boolean)
@@ -299,7 +309,7 @@ const AdmissionForm = () => {
         "AdmissionMaster",
         administrationId,
         "AdmissionSetup",
-        id
+        id,
       )
       const studentFeeDetailsRef = doc(
         db,
@@ -308,32 +318,29 @@ const AdmissionForm = () => {
         "AdmissionMaster",
         administrationId,
         "StudentFeeDetails",
-        id
+        id,
       )
 
-      const [admissionSnap, feeSnap] = await Promise.all([
-        getDoc(admissionRef),
-        getDoc(studentFeeDetailsRef)
-      ])
+      const [admissionSnap, feeSnap] = await Promise.all([getDoc(admissionRef), getDoc(studentFeeDetailsRef)])
 
       if (admissionSnap.exists()) {
         const admissionData = admissionSnap.data()
-        
-        const standardId = setupData.courses.find(course => 
-          course.standard === admissionData.standard)?.id || ""
-        const studentCategoryId = setupData.studentCategories.find(category => 
-          category.StudentCategoryName === admissionData.studentCategory)?.id || ""
+
+        const standardId = setupData.courses.find((course) => course.standard === admissionData.standard)?.id || ""
+        const studentCategoryId =
+          setupData.studentCategories.find((category) => category.StudentCategoryName === admissionData.studentCategory)
+            ?.id || ""
 
         const updatedFormData = {
           ...formData,
           ...admissionData,
           standard: standardId,
-          studentCategory: studentCategoryId
+          studentCategory: studentCategoryId,
         }
 
         setFormData(updatedFormData)
         setPhotoPreview(admissionData.studentPhoto || defaultStudentPhoto)
-        
+
         setBusFee(admissionData.busFee || "")
         setHostelFee(admissionData.hostelFee || "")
         setTuitionFee(admissionData.tutionFees || "")
@@ -341,17 +348,13 @@ const AdmissionForm = () => {
         if (feeSnap.exists()) {
           const feeData = feeSnap.data()
           const feeDetails = feeData.feeDetails || []
-          
-          setTuitionFeeDetails(feeDetails.filter(fee => fee.type === "Tuition Fee"))
-          setBusFeeDetails(feeDetails.filter(fee => fee.type === "Bus Fee"))
-          setHostelFeeDetails(feeDetails.filter(fee => fee.type === "Hostel Fee"))
+
+          setTuitionFeeDetails(feeDetails.filter((fee) => fee.type === "Tuition Fee"))
+          setBusFeeDetails(feeDetails.filter((fee) => fee.type === "Bus Fee"))
+          setHostelFeeDetails(feeDetails.filter((fee) => fee.type === "Hostel Fee"))
         }
-        
-        await Promise.all([
-          fetchBusFee(),
-          fetchHostelFee(),
-          fetchTuitionFee()
-        ])
+
+        await Promise.all([fetchBusFee(), fetchHostelFee(), fetchTuitionFee()])
       }
     } catch (error) {
       console.error("Error fetching admission data:", error)
@@ -367,21 +370,21 @@ const AdmissionForm = () => {
         auth.currentUser.uid,
         "AdmissionMaster",
         administrationId,
-        "AdmissionSetup"
+        "AdmissionSetup",
       )
       const querySnapshot = await getDocs(admissionsRef)
-      
+
       const existingNumbers = querySnapshot.docs
-        .map(doc => doc.data().admissionNumber)
-        .filter(num => num && num.startsWith("ADM"))
-        .map(num => parseInt(num.replace("ADM", ""), 10))
+        .map((doc) => doc.data().admissionNumber)
+        .filter((num) => num && num.startsWith("ADM"))
+        .map((num) => Number.parseInt(num.replace("ADM", ""), 10))
         .sort((a, b) => a - b)
 
       let nextNumber = 1
       if (existingNumbers.length > 0) {
         const highestNumber = existingNumbers[existingNumbers.length - 1]
         nextNumber = highestNumber + 1
-        
+
         // Ensure no gaps are missed by checking sequence
         for (let i = 0; i < existingNumbers.length; i++) {
           if (existingNumbers[i] !== i + 1) {
@@ -392,11 +395,11 @@ const AdmissionForm = () => {
       }
 
       const newAdmissionNumber = `ADM${nextNumber}`
-      
+
       // Double-check if the number exists
       const checkQuery = query(admissionsRef, where("admissionNumber", "==", newAdmissionNumber))
       const checkSnapshot = await getDocs(checkQuery)
-      
+
       if (!checkSnapshot.empty) {
         // If number exists, recurse to get next available number
         return generateAdmissionNumber()
@@ -417,7 +420,7 @@ const AdmissionForm = () => {
         auth.currentUser.uid,
         "AdmissionMaster",
         administrationId,
-        "EnquirySetup"
+        "EnquirySetup",
       )
       const q = query(enquiriesRef, where("enquiryKey", "==", enquiryKey))
       const querySnapshot = await getDocs(q)
@@ -447,7 +450,7 @@ const AdmissionForm = () => {
         const q = query(
           busFeeRef,
           where("boardingPoint", "==", formData.boardingPoint),
-          where("routeNumber", "==", formData.busRouteNumber)
+          where("routeNumber", "==", formData.busRouteNumber),
         )
         const querySnapshot = await getDocs(q)
 
@@ -455,7 +458,7 @@ const AdmissionForm = () => {
           let totalBusFee = 0
           const details = querySnapshot.docs.map((doc) => {
             const feeData = doc.data()
-            totalBusFee += parseFloat(feeData.fee) || 0
+            totalBusFee += Number.parseFloat(feeData.fee) || 0
             return { type: "Bus Fee", heading: feeData.feeHeading, amount: feeData.fee }
           })
           setBusFee(totalBusFee.toFixed(2))
@@ -478,7 +481,7 @@ const AdmissionForm = () => {
   }, [formData.boardingPoint, formData.busRouteNumber, transportId])
 
   const fetchHostelFee = useCallback(async () => {
-    if (formData.studentCategory && formData.standard && administrationId) {
+    if (formData.studentCategory && formData.standard && administrationId && formData.lunchRefresh) {
       try {
         const hostelFeeRef = collection(
           db,
@@ -486,12 +489,13 @@ const AdmissionForm = () => {
           auth.currentUser.uid,
           "Administration",
           administrationId,
-          "HostelFeeSetup"
+          "HostelFeeSetup",
         )
         const q = query(
           hostelFeeRef,
           where("studentCategoryId", "==", formData.studentCategory),
-          where("standardId", "==", formData.standard)
+          where("standardId", "==", formData.standard),
+          where("feeHeading", "==", formData.lunchRefresh),
         )
         const querySnapshot = await getDocs(q)
 
@@ -499,7 +503,7 @@ const AdmissionForm = () => {
           let totalHostelFee = 0
           const details = querySnapshot.docs.map((doc) => {
             const fee = doc.data()
-            totalHostelFee += parseFloat(fee.feeAmount) || 0
+            totalHostelFee += Number.parseFloat(fee.feeAmount) || 0
             return { type: "Hostel Fee", heading: fee.feeHeading || "Hostel Fee", amount: fee.feeAmount }
           })
           setHostelFee(totalHostelFee.toFixed(2))
@@ -519,7 +523,7 @@ const AdmissionForm = () => {
       setHostelFeeDetails([])
       setFormData((prev) => ({ ...prev, hostelFee: "" }))
     }
-  }, [administrationId, formData.studentCategory, formData.standard])
+  }, [administrationId, formData.studentCategory, formData.standard, formData.lunchRefresh])
 
   const fetchTuitionFee = useCallback(async () => {
     if (formData.studentCategory && formData.standard && administrationId) {
@@ -530,12 +534,12 @@ const AdmissionForm = () => {
           auth.currentUser.uid,
           "Administration",
           administrationId,
-          "FeeSetup"
+          "FeeSetup",
         )
         const q = query(
           tuitionFeeRef,
           where("studentCategoryId", "==", formData.studentCategory),
-          where("standardId", "==", formData.standard)
+          where("standardId", "==", formData.standard),
         )
         const querySnapshot = await getDocs(q)
 
@@ -543,7 +547,7 @@ const AdmissionForm = () => {
           let totalTuitionFee = 0
           const details = querySnapshot.docs.map((doc) => {
             const feeData = doc.data()
-            totalTuitionFee += parseFloat(feeData.feeAmount) || 0
+            totalTuitionFee += Number.parseFloat(feeData.feeAmount) || 0
             return { type: "Tuition Fee", heading: feeData.feeHeading || "Tuition Fee", amount: feeData.feeAmount }
           })
           setTuitionFee(totalTuitionFee.toFixed(2))
@@ -613,6 +617,10 @@ const AdmissionForm = () => {
     if (name === "studentCategory" || name === "standard") {
       fetchHostelFee()
       fetchTuitionFee()
+    }
+
+    if (name === "lunchRefresh") {
+      fetchHostelFee()
     }
   }
 
@@ -714,14 +722,17 @@ const AdmissionForm = () => {
         if (formData.studentPhoto instanceof File) {
           const storageRef = ref(
             storage,
-            `studentPhotos/${auth.currentUser.uid}/${Date.now()}_${formData.studentPhoto.name}`
+            `studentPhotos/${auth.currentUser.uid}/${Date.now()}_${formData.studentPhoto.name}`,
           )
           await uploadBytes(storageRef, formData.studentPhoto)
           photoUrl = await getDownloadURL(storageRef)
         }
 
-        const standardName = setupData.courses.find(course => course.id === formData.standard)?.standard || formData.standard
-        const studentCategoryName = setupData.studentCategories.find(category => category.id === formData.studentCategory)?.StudentCategoryName || formData.studentCategory
+        const standardName =
+          setupData.courses.find((course) => course.id === formData.standard)?.standard || formData.standard
+        const studentCategoryName =
+          setupData.studentCategories.find((category) => category.id === formData.studentCategory)
+            ?.StudentCategoryName || formData.studentCategory
 
         const essentialData = {
           admissionNumber: formData.admissionNumber,
@@ -748,7 +759,7 @@ const AdmissionForm = () => {
           auth.currentUser.uid,
           "AdmissionMaster",
           administrationId,
-          "AdmissionSetup"
+          "AdmissionSetup",
         )
         const studentFeeDetailsRef = collection(
           db,
@@ -756,14 +767,10 @@ const AdmissionForm = () => {
           auth.currentUser.uid,
           "AdmissionMaster",
           administrationId,
-          "StudentFeeDetails"
+          "StudentFeeDetails",
         )
 
-        const allFeeDetails = [
-          ...tuitionFeeDetails,
-          ...busFeeDetails,
-          ...hostelFeeDetails,
-        ]
+        const allFeeDetails = [...tuitionFeeDetails, ...busFeeDetails, ...hostelFeeDetails]
 
         const studentFeeData = {
           ...admissionData,
@@ -786,7 +793,7 @@ const AdmissionForm = () => {
               auth.currentUser.uid,
               "AdmissionMaster",
               administrationId,
-              "EnquirySetup"
+              "EnquirySetup",
             )
             const q = query(enquiryRef, where("enquiryKey", "==", formData.enquiryKey))
             const querySnapshot = await getDocs(q)
@@ -797,7 +804,10 @@ const AdmissionForm = () => {
           }
         }
 
-        navigate("/admission/StudentDetails")
+        toast.success("Admission submitted successfully!")
+        setTimeout(() => {
+          navigate("/admission/StudentDetails")
+        }, 1000)
       } catch (error) {
         console.error("Error submitting admission:", error)
         toast.error(`Failed to submit admission: ${error.message}`)
@@ -809,23 +819,21 @@ const AdmissionForm = () => {
   }
 
   const calculateOverallTotal = () => {
-    const tuitionTotal = parseFloat(tuitionFee) || 0
-    const busTotal = parseFloat(busFee) || 0
-    const hostelTotal = parseFloat(hostelFee) || 0
+    const tuitionTotal = Number.parseFloat(tuitionFee) || 0
+    const busTotal = Number.parseFloat(busFee) || 0
+    const hostelTotal = Number.parseFloat(hostelFee) || 0
     return (tuitionTotal + busTotal + hostelTotal).toFixed(2)
   }
 
   const renderFeeTableRows = () => {
-    const allFees = [
-      ...tuitionFeeDetails,
-      ...busFeeDetails,
-      ...hostelFeeDetails,
-    ]
+    const allFees = [...tuitionFeeDetails, ...busFeeDetails, ...hostelFeeDetails]
 
     if (!allFees.length) {
       return (
         <tr>
-          <td colSpan="3" className="text-center">No fee details available</td>
+          <td colSpan="3" className="text-center">
+            No fee details available
+          </td>
         </tr>
       )
     }
@@ -837,12 +845,12 @@ const AdmissionForm = () => {
       if (currentType !== detail.type) {
         rows.push(
           <tr key={`${detail.type}-${index}`}>
-            <td rowSpan={allFees.filter(fee => fee.type === detail.type).length} style={{ verticalAlign: 'middle' }}>
+            <td rowSpan={allFees.filter((fee) => fee.type === detail.type).length} style={{ verticalAlign: "middle" }}>
               {detail.type}
             </td>
             <td>{detail.heading}</td>
             <td>{detail.amount}</td>
-          </tr>
+          </tr>,
         )
         currentType = detail.type
       } else {
@@ -850,7 +858,7 @@ const AdmissionForm = () => {
           <tr key={`${detail.type}-${index}`}>
             <td>{detail.heading}</td>
             <td>{detail.amount}</td>
-          </tr>
+          </tr>,
         )
       }
     })
@@ -906,7 +914,7 @@ const AdmissionForm = () => {
                   >
                     {photoPreview ? (
                       <img
-                        src={photoPreview}
+                        src={photoPreview || "/placeholder.svg"}
                         alt="Student"
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />
@@ -1436,15 +1444,21 @@ const AdmissionForm = () => {
 
                 <h3 className="section-title mt-4">Hostel Details</h3>
                 <Form.Group className="mb-3">
-                  <Form.Label>Lunch / Refresh</Form.Label>
-                  <Form.Control
-                    type="text"
+                  <Form.Label>Hostel Fee Head</Form.Label>
+                  <Form.Select
                     name="lunchRefresh"
                     value={formData.lunchRefresh || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
-                  />
+                  >
+                    <option value="">Select Hostel Fee Head</option>
+                    {hostelFeeHeads.map((feeHead) => (
+                      <option key={feeHead.id} value={feeHead.feeHead}>
+                        {feeHead.feeHead}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
 
                 <h3 className="section-title mt-4">Previous Studied Details</h3>
@@ -1556,12 +1570,12 @@ const AdmissionForm = () => {
                         <th>Amount</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {renderFeeTableRows()}
-                    </tbody>
+                    <tbody>{renderFeeTableRows()}</tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan="2" className="text-end fw-bold">Overall Total:</td>
+                        <td colSpan="2" className="text-end fw-bold">
+                          Overall Total:
+                        </td>
                         <td className="fw-bold">{calculateOverallTotal()}</td>
                       </tr>
                     </tfoot>
