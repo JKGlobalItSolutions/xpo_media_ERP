@@ -1372,18 +1372,6 @@ const AdmissionForm = () => {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Lunch / Refresh</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="lunchRefresh"
-                    value={formData.lunchRefresh || ""}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
                   <Form.Label>Date Of Admission</Form.Label>
                   <Form.Control
                     type="date"
@@ -1447,7 +1435,17 @@ const AdmissionForm = () => {
                 </Form.Group>
 
                 <h3 className="section-title mt-4">Hostel Details</h3>
-
+                <Form.Group className="mb-3">
+                  <Form.Label>Lunch / Refresh</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="lunchRefresh"
+                    value={formData.lunchRefresh || ""}
+                    onChange={handleInputChange}
+                    disabled={isViewMode}
+                    className="form-control-blue"
+                  />
+                </Form.Group>
 
                 <h3 className="section-title mt-4">Previous Studied Details</h3>
                 <Form.Group className="mb-3">
