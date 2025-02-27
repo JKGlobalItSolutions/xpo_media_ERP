@@ -807,7 +807,7 @@ const AdmissionForm = () => {
         toast.success("Admission submitted successfully!")
         setTimeout(() => {
           navigate("/admission/StudentDetails")
-        }, 1000)
+        }, 1500)
       } catch (error) {
         console.error("Error submitting admission:", error)
         toast.error(`Failed to submit admission: ${error.message}`)
