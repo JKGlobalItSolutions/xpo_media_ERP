@@ -228,7 +228,7 @@ const StudyCertificate = () => {
                     </p>
 
                     <p className="text-lg mb-4">
-                      during the academic year <strong>2024-2025</strong>. His/her date of Birth is{" "}
+                      during the academic year <strong>2024-2025</strong>. His/Her Date of Birth is{" "}
                       <strong>{new Date(selectedStudent.dateOfBirth).toLocaleDateString()}</strong> as per school
                       records
                     </p>
