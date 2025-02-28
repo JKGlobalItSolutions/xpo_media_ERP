@@ -72,7 +72,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to=""
+            to="adhaar-emis-number"
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">
@@ -184,7 +184,7 @@ const StudentDetailsReport = () => {
           <Link
             style={{ textDecoration: "none" }}
             className="col-12 col-md-6 col-lg-3"
-            to=""
+            to="grade-wise-report"
           >
             <div className="card fee-setup-card h-100">
               <div className="card-body d-flex align-items-center justify-content-center">

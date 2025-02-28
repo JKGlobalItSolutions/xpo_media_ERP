@@ -21,6 +21,8 @@ import IndividualFullView from '../../pages/Admission Pages/StudentDetaisReport.
 import CourseStudyCertificate from '../../pages/Admission Pages/StudentDetaisReport.jsx/CourseStudyCertificate';
 import TypeWise from '../../pages/Admission Pages/StudentDetaisReport.jsx/TypeWise';
 import CustomizedReportGenerate from '../../pages/Admission Pages/StudentDetaisReport.jsx/CustomizedReportGenerate';
+import GradeWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/GradeFullView';
+import AdhaarEmisNumber from '../../pages/Admission Pages/StudentDetaisReport.jsx/AadharEmis';
 
 
 function AdmissionMaster() {
@@ -49,6 +51,8 @@ function AdmissionMaster() {
       <Route path="Student-Details-Report/course-study-certificate" element={<CourseStudyCertificate />} />
       <Route path="Student-Details-Report/type-wise-report" element={<TypeWise />} />
       <Route path="Student-Details-Report/customize-report-generate" element={<CustomizedReportGenerate />} />
+      <Route path="Student-Details-Report/grade-wise-report" element={<GradeWiseReport />} />
+      <Route path="Student-Details-Report/adhaar-emis-number" element={<AdhaarEmisNumber />} />
     </Routes>
   );
 }
