@@ -16,36 +16,28 @@ import {
   where,
   limit,
   addDoc,
-  updateDoc,
   serverTimestamp,
+  runTransaction,
 } from "firebase/firestore"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import { FaChevronDown, FaCalendarAlt, FaCreditCard, FaMoneyBillWave } from "react-icons/fa"
 
 const BillingEntry = () => {
   const [formData, setFormData] = useState({
     billNumber: "",
     admissionNumber: "",
-    barCodeNumber: "",
     studentName: "",
     fatherName: "",
     course: "",
     section: "",
-    pickupPoint: "",
     date: new Date().toISOString().split("T")[0],
-    balance: "",
-    paidAmount: "",
-    balanceAmount: "",
+    totalBalance: "0",
+    totalPaidAmount: "0",
     paymentMode: "Online",
     number: "",
-    operatorName: "XpoAdmin",
-    concessPercent: "",
-    concessHead: "",
-    concessAmount: "",
-    balanceBefore: "",
-    balanceAfter: "",
+    operatorName: "XPO admin",
     transactionNarrat: "",
-    transactionDate: new Date().toISOString().split("T")[0],
   })
 
   const [administrationId, setAdministrationId] = useState(null)
@@ -54,7 +46,6 @@ const BillingEntry = () => {
   const [showDropdown, setShowDropdown] = useState(false)
   const [studentFeeDetails, setStudentFeeDetails] = useState([])
   const [previousPayments, setPreviousPayments] = useState([])
-  const [feeHeadings, setFeeHeadings] = useState([])
   const [selectedFeeHeadings, setSelectedFeeHeadings] = useState([])
   const [totalPaidAmount, setTotalPaidAmount] = useState(0)
   const [errors, setErrors] = useState({})
@@ -64,6 +55,11 @@ const BillingEntry = () => {
   const [feeTypes, setFeeTypes] = useState([])
   const [selectedFeeType, setSelectedFeeType] = useState("")
   const [feeHeadsByType, setFeeHeadsByType] = useState([])
+  const [splitPayments, setSplitPayments] = useState({})
+  const [selectedFeeHeads, setSelectedFeeHeads] = useState([])
+  const [paymentAllocation, setPaymentAllocation] = useState({})
+  const [totalFeesByType, setTotalFeesByType] = useState({})
+  const [overallFeeBalance, setOverallFeeBalance] = useState(0)
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -101,13 +97,9 @@ const BillingEntry = () => {
     const currentYear = currentDate.getFullYear()
     const month = currentDate.getMonth()
 
-    // Academic year typically starts in June/July
-    // If current month is before June, academic year is previous year to current year
-    // Otherwise, it's current year to next year
     let academicYearStart, academicYearEnd
 
     if (month < 5) {
-      // Before June
       academicYearStart = currentYear - 1
       academicYearEnd = currentYear
     } else {
@@ -121,11 +113,9 @@ const BillingEntry = () => {
 
   const fetchLastBillNumber = async () => {
     try {
-      const billsRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "Payments")
+      const billsRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
 
       const querySnapshot = await getDocs(billsRef)
-
-      // Extract bill numbers and find the highest counter
       let highestCounter = 0
 
       querySnapshot.docs.forEach((doc) => {
@@ -138,10 +128,7 @@ const BillingEntry = () => {
         }
       })
 
-      // Set the next bill counter
       setBillCounter(highestCounter + 1)
-
-      // Generate the bill number
       const newBillNumber = `${highestCounter + 1}/${academicYear}`
       setFormData((prev) => ({
         ...prev,
@@ -149,9 +136,6 @@ const BillingEntry = () => {
       }))
     } catch (error) {
       console.error("Error fetching last bill number:", error)
-      toast.error("Failed to generate bill number. Using default.")
-
-      // Use default bill number if fetch fails
       const defaultBillNumber = `1/${academicYear}`
       setFormData((prev) => ({
         ...prev,
@@ -176,7 +160,7 @@ const BillingEntry = () => {
       setFilteredAdmissionNumbers(numbers)
     } catch (error) {
       console.error("Error fetching admission numbers:", error)
-      toast.error("Failed to fetch admission numbers. Please try again.")
+      toast.error("Failed to fetch admission numbers.")
     }
   }
 
@@ -195,27 +179,7 @@ const BillingEntry = () => {
       setFeeTypes(types)
     } catch (error) {
       console.error("Error fetching fee types:", error)
-      toast.error("Failed to fetch fee types. Please try again.")
-    }
-  }
-
-  const fetchFeeHeadingsByType = async (typeId) => {
-    try {
-      const feeHeadingsRef = collection(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "Administration",
-        administrationId,
-        "FeeHeadings",
-      )
-      const q = query(feeHeadingsRef, where("typeId", "==", typeId))
-      const snapshot = await getDocs(q)
-      const headings = snapshot.docs.map((doc) => ({ id: doc.id, name: doc.data().name }))
-      setFeeHeadsByType(headings)
-    } catch (error) {
-      console.error("Error fetching fee headings by type:", error)
-      toast.error("Failed to fetch fee headings. Please try again.")
+      toast.error("Failed to fetch fee types.")
     }
   }
 
@@ -244,9 +208,6 @@ const BillingEntry = () => {
           fatherName: studentData.fatherName,
           course: studentData.standard,
           section: studentData.section,
-          pickupPoint: studentData.boardingPoint || "",
-          balance: studentData.tutionFees || "0",
-          balanceBefore: studentData.tutionFees || "0",
         }))
 
         // Fetch student fee details
@@ -263,9 +224,35 @@ const BillingEntry = () => {
 
         if (feeSnapshot.exists()) {
           const feeData = feeSnapshot.data()
-          setStudentFeeDetails(feeData.feeDetails || [])
-        } else {
-          setStudentFeeDetails([])
+          const feeDetails = feeData.feeDetails || []
+
+          // Ensure all fee details have proper numeric values for balance and amount
+          const processedFeeDetails = feeDetails.map((fee) => ({
+            ...fee,
+            balance: fee.balance ? Number.parseFloat(fee.balance).toString() : "0",
+            amount: fee.amount ? Number.parseFloat(fee.amount).toString() : "0",
+          }))
+
+          setStudentFeeDetails(processedFeeDetails)
+
+          // Calculate totals by fee type
+          const totals = processedFeeDetails.reduce((acc, fee) => {
+            const type = fee.type || "Other"
+            acc[type] = (acc[type] || 0) + Number.parseFloat(fee.balance || 0)
+            return acc
+          }, {})
+
+          setTotalFeesByType(totals)
+
+          // Calculate total balance
+          const totalBalance = Object.values(totals).reduce((sum, val) => sum + val, 0)
+
+          setFormData((prev) => ({
+            ...prev,
+            totalBalance: totalBalance.toFixed(2),
+          }))
+
+          setOverallFeeBalance(totalBalance)
         }
 
         // Fetch previous payments
@@ -280,8 +267,7 @@ const BillingEntry = () => {
 
         setPreviousPayments(payments)
 
-        // Calculate total paid amount
-        const totalPaid = payments.reduce((sum, payment) => sum + (Number.parseFloat(payment.paidAmount) || 0), 0)
+        const totalPaid = payments.reduce((sum, payment) => sum + (Number.parseFloat(payment.totalPaidAmount) || 0), 0)
         setTotalPaidAmount(totalPaid)
 
         toast.success("Student data fetched successfully!")
@@ -290,7 +276,7 @@ const BillingEntry = () => {
       }
     } catch (error) {
       console.error("Error fetching student data:", error)
-      toast.error("Failed to fetch student data. Please try again.")
+      toast.error("Failed to fetch student data.")
     }
   }
 
@@ -311,91 +297,82 @@ const BillingEntry = () => {
         fetchStudentData(value)
       }
     }
+  }
 
-    if (name === "paidAmount") {
-      const paid = Number.parseFloat(value) || 0
-      const balance = Number.parseFloat(formData.balance) || 0
-      const balanceAfter = balance - paid
+  const handlePaymentAllocation = (headId, value) => {
+    // Allow empty string for better user experience while typing
+    if (value === "") {
+      setPaymentAllocation((prev) => ({
+        ...prev,
+        [headId]: {
+          ...prev[headId],
+          amount: "",
+        },
+      }))
+
+      // Recalculate total without this empty value
+      const totalPaid = Object.entries(paymentAllocation)
+        .filter(([id, _]) => id !== headId)
+        .reduce((sum, [_, data]) => sum + (Number.parseFloat(data.amount) || 0), 0)
 
       setFormData((prev) => ({
         ...prev,
-        balanceAmount: balanceAfter.toFixed(2),
-        balanceAfter: balanceAfter.toFixed(2),
+        totalPaidAmount: totalPaid.toFixed(2),
       }))
+
+      return
     }
 
-    if (name === "concessPercent") {
-      const percent = Number.parseFloat(value) || 0
-      const balance = Number.parseFloat(formData.balance) || 0
-      const concessAmount = (balance * percent) / 100
+    // Parse input value and validate
+    const amount = Number.parseFloat(value) || 0
+    const feeHead = studentFeeDetails.find((fee) => fee.id === headId)
 
-      setFormData((prev) => ({
-        ...prev,
-        concessAmount: concessAmount.toFixed(2),
-      }))
-    }
+    // Ensure maxAmount is a valid number
+    const maxAmount = Number.parseFloat(feeHead?.balance) || 0
 
-    if (name === "concessAmount") {
-      const concessAmount = Number.parseFloat(value) || 0
-      const balance = Number.parseFloat(formData.balance) || 0
-      const percent = (concessAmount / balance) * 100
-
-      if (!isNaN(percent) && isFinite(percent)) {
-        setFormData((prev) => ({
-          ...prev,
-          concessPercent: percent.toFixed(2),
-        }))
+    if (amount > maxAmount) {
+      // Only show error if the balance is actually greater than 0
+      if (maxAmount > 0) {
+        toast.error(`Payment amount cannot exceed balance of ${maxAmount}`)
+      } else {
+        toast.error(`Cannot make payment for a fee with zero balance`)
       }
+      return
     }
-  }
 
-  const handleFeeTypeChange = (e) => {
-    const typeId = e.target.value
-    setSelectedFeeType(typeId)
-    if (typeId) {
-      fetchFeeHeadingsByType(typeId)
-    } else {
-      setFeeHeadsByType([])
-    }
-  }
+    setPaymentAllocation((prev) => ({
+      ...prev,
+      [headId]: {
+        ...prev[headId],
+        amount: amount.toString(),
+      },
+    }))
 
-  const handleAdmissionSelect = (admissionNumber) => {
+    // Calculate total paid amount from all allocations
+    const totalPaid = Object.entries({
+      ...paymentAllocation,
+      [headId]: { amount: amount.toString() },
+    }).reduce((sum, [_, data]) => sum + (Number.parseFloat(data.amount) || 0), 0)
+
     setFormData((prev) => ({
       ...prev,
-      admissionNumber,
+      totalPaidAmount: totalPaid.toFixed(2),
     }))
-    setShowDropdown(false)
-    fetchStudentData(admissionNumber)
-  }
 
-  const handleFeeHeadingSelect = (heading) => {
-    if (!selectedFeeHeadings.some((h) => h.name === heading.name)) {
-      const feeDetail = studentFeeDetails.find((detail) => detail.heading === heading.name)
-      const amount = feeDetail ? feeDetail.amount : "0"
-      const balance = feeDetail ? feeDetail.amount : "0"
-      const feeType = feeTypes.find((type) => type.id === selectedFeeType)?.name || ""
+    // Update the overall fee balance
+    setOverallFeeBalance((prev) => prev - amount)
 
-      setSelectedFeeHeadings([
-        ...selectedFeeHeadings,
-        {
-          ...heading,
-          amount,
-          balance,
-          feeType,
-        },
-      ])
-    }
-  }
-
-  const handleRemoveFeeHeading = (index) => {
-    const updatedHeadings = [...selectedFeeHeadings]
-    updatedHeadings.splice(index, 1)
-    setSelectedFeeHeadings(updatedHeadings)
+    // Update the balance for the specific fee head
+    setStudentFeeDetails((prev) =>
+      prev.map((fee) =>
+        fee.id === headId ? { ...fee, balance: (Number.parseFloat(fee.balance) - amount).toFixed(2) } : fee,
+      ),
+    )
   }
 
   const validateForm = () => {
     const newErrors = {}
-    const requiredFields = ["admissionNumber", "studentName", "paidAmount", "paymentMode"]
+    const requiredFields = ["admissionNumber", "studentName", "paymentMode", "operatorName"]
 
     requiredFields.forEach((field) => {
       if (!formData[field]) {
@@ -409,147 +386,134 @@ const BillingEntry = () => {
       }
     })
 
-    if (Number.parseFloat(formData.paidAmount) <= 0) {
-      newErrors.paidAmount = "Paid amount must be greater than zero"
+    const totalPaid = Number.parseFloat(formData.totalPaidAmount) || 0
+    if (totalPaid <= 0) {
+      newErrors.totalPaidAmount = "Total paid amount must be greater than zero"
+      return false
     }
 
-    if (selectedFeeHeadings.length === 0) {
-      newErrors.feeHeadings = "At least one fee heading must be selected"
-    }
+    // Validate each payment allocation
+    let isValid = true
+    studentFeeDetails.forEach((fee) => {
+      const allocation = paymentAllocation[fee.id]
+      if (allocation) {
+        const paidAmount = Number.parseFloat(allocation.amount) || 0
+        const feeBalance = Number.parseFloat(fee.balance) || 0
+
+        if (paidAmount <= 0) {
+          newErrors[`payment_${fee.id}`] = "Payment amount must be greater than zero"
+          isValid = false
+        } else if (paidAmount > feeBalance) {
+          newErrors[`payment_${fee.id}`] = "Payment cannot exceed balance"
+          isValid = false
+        }
+      }
+    })
 
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    return isValid && Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (validateForm()) {
       try {
-        // Use the generated bill number
-        const billNumber = formData.billNumber
-
-        // Calculate total amount from selected fee headings
-        const totalAmount = selectedFeeHeadings.reduce(
-          (sum, heading) => sum + Number.parseFloat(heading.amount || 0),
-          0,
-        )
-
-        // Create payment data
-        const paymentData = {
-          ...formData,
-          billNumber,
-          feeHeadings: selectedFeeHeadings,
-          createdAt: serverTimestamp(),
-          totalPaidAmount: formData.paidAmount,
-          studentId: currentStudentId,
-        }
-
-        // Add to FeeLog collection
-        const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
-
-        await addDoc(feeLogRef, paymentData)
-
-        // Update StudentFeeDetails to reduce fees
-        if (currentStudentId) {
-          const studentFeeRef = doc(
-            db,
-            "Schools",
-            auth.currentUser.uid,
-            "AdmissionMaster",
-            administrationId,
-            "StudentFeeDetails",
-            currentStudentId,
-          )
-
-          const feeSnapshot = await getDoc(studentFeeRef)
-
-          if (feeSnapshot.exists()) {
-            const feeData = feeSnapshot.data()
-            const updatedFeeDetails = feeData.feeDetails.map((detail) => {
-              // Find if this fee detail was part of the payment
-              const paidDetail = selectedFeeHeadings.find((h) => h.heading === detail.heading)
-
-              if (paidDetail) {
-                // Reduce the amount by the paid amount
-                const currentAmount = Number.parseFloat(detail.amount) || 0
-                const paidAmount = Number.parseFloat(formData.paidAmount) || 0
-                const newAmount = Math.max(0, currentAmount - paidAmount).toFixed(2)
-
-                return {
-                  ...detail,
-                  amount: newAmount,
-                }
+        await runTransaction(db, async (transaction) => {
+          // Create payment data
+          const paymentData = {
+            ...formData,
+            createdAt: serverTimestamp(),
+            studentId: currentStudentId,
+            paymentAllocation,
+            feeHeadPayments: Object.entries(paymentAllocation).map(([headId, allocation]) => {
+              const feeHead = studentFeeDetails.find((fee) => fee.id === headId)
+              const paidAmount = Number.parseFloat(allocation.amount)
+              return {
+                headId,
+                heading: feeHead.heading,
+                type: feeHead.type,
+                paidAmount,
+                balanceBefore: feeHead.balance,
+                balanceAfter: (Number.parseFloat(feeHead.balance) - paidAmount).toFixed(2),
               }
+            }),
+          }
 
-              return detail
-            })
+          // Add to FeeLog collection
+          const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
 
-            // Update the student fee details
-            await updateDoc(studentFeeRef, {
-              feeDetails: updatedFeeDetails,
-            })
+          await addDoc(feeLogRef, paymentData)
 
-            // Update the student's total fees in AdmissionSetup
-            const studentRef = doc(
+          // Update StudentFeeDetails
+          if (currentStudentId) {
+            const studentFeeRef = doc(
               db,
               "Schools",
               auth.currentUser.uid,
               "AdmissionMaster",
               administrationId,
-              "AdmissionSetup",
+              "StudentFeeDetails",
               currentStudentId,
             )
 
-            const newBalance = (Number.parseFloat(formData.balance) - Number.parseFloat(formData.paidAmount)).toFixed(2)
+            const updatedFeeDetails = studentFeeDetails.map((fee) => {
+              const paidAmount = Number.parseFloat(paymentAllocation[fee.id]?.amount || "0")
+              return {
+                ...fee,
+                balance: (Number.parseFloat(fee.balance) - paidAmount).toFixed(2),
+              }
+            })
 
-            await updateDoc(studentRef, {
-              tutionFees: newBalance,
+            transaction.update(studentFeeRef, {
+              feeDetails: updatedFeeDetails,
             })
           }
-        }
+        })
 
         toast.success("Payment recorded successfully!")
 
-        // Increment bill counter for next bill
+        // Reset form
         setBillCounter((prev) => prev + 1)
         const newBillNumber = `${billCounter + 1}/${academicYear}`
 
-        // Reset form
         setFormData({
           billNumber: newBillNumber,
           admissionNumber: "",
-          barCodeNumber: "",
           studentName: "",
           fatherName: "",
           course: "",
           section: "",
-          pickupPoint: "",
           date: new Date().toISOString().split("T")[0],
-          balance: "",
-          paidAmount: "",
-          balanceAmount: "",
+          totalBalance: "0",
+          totalPaidAmount: "0",
           paymentMode: "Online",
           number: "",
-          operatorName: "XpoAdmin",
-          concessPercent: "",
-          concessHead: "",
-          concessAmount: "",
-          balanceBefore: "",
-          balanceAfter: "",
+          operatorName: "XPO admin",
           transactionNarrat: "",
-          transactionDate: new Date().toISOString().split("T")[0],
         })
-        setSelectedFeeHeadings([])
+
+        setPaymentAllocation({})
         setStudentFeeDetails([])
         setPreviousPayments([])
         setCurrentStudentId(null)
+        setTotalFeesByType({})
+        setOverallFeeBalance(0)
       } catch (error) {
         console.error("Error submitting payment:", error)
-        toast.error("Failed to submit payment. Please try again.")
+        toast.error("Failed to submit payment.")
       }
     } else {
       toast.error("Please fill in all required fields correctly.")
     }
+  }
+
+  const handleAdmissionSelect = (admissionNumber) => {
+    setFormData((prev) => ({
+      ...prev,
+      admissionNumber: admissionNumber,
+    }))
+    fetchStudentData(admissionNumber)
+    setShowDropdown(false)
   }
 
   const styles = {
@@ -578,44 +542,39 @@ const BillingEntry = () => {
         </div>
 
         <div className="billing-container d-flex flex-column">
-          <div className="card flex-grow-1">
-            <div className="card-header py-2" style={styles.headerBg}>
-              <h6 className="mb-0">Billing Entry</h6>
+          <div className="card flex-grow-1 shadow-sm">
+            <div className="card-header py-3" style={styles.headerBg}>
+              <h5 className="mb-0 fw-bold">Billing Entry</h5>
             </div>
-            <div className="card-body p-3">
-              <Form className="h-100 d-flex flex-column" onSubmit={handleSubmit}>
-                <Row className="g-3">
-                  <Col md={3}>
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Bill Number</Form.Label>
+            <div className="card-body p-4">
+              <Form className="d-flex flex-column h-100" onSubmit={handleSubmit}>
+                <Row className="g-4">
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="form-label fw-bold mb-2">Bill Number</Form.Label>
                       <Form.Control
                         type="text"
-                        className="form-control form-control-sm py-1"
+                        className="form-control py-2"
                         name="billNumber"
                         value={formData.billNumber}
-                        onChange={handleInputChange}
                         readOnly
                       />
                     </Form.Group>
 
-                    <Form.Group className="mb-2 position-relative">
-                      <Form.Label className="form-label small mb-1">Admin Number</Form.Label>
-                      <div className="input-group input-group-sm">
+                    <Form.Group className="mt-3 position-relative">
+                      <Form.Label className="form-label fw-bold mb-2">Admin Number</Form.Label>
+                      <div className="input-group">
                         <Form.Control
                           type="text"
-                          className="form-control form-control-sm py-1"
+                          className="form-control py-2"
                           name="admissionNumber"
                           value={formData.admissionNumber}
                           onChange={handleInputChange}
                           isInvalid={!!errors.admissionNumber}
                         />
-                        <button
-                          className="btn btn-outline-secondary dropdown-toggle"
-                          type="button"
-                          onClick={() => setShowDropdown(!showDropdown)}
-                        >
-                          <i className="fas fa-chevron-down"></i>
-                        </button>
+                        <Button variant="outline-secondary" onClick={() => setShowDropdown(!showDropdown)}>
+                          <FaChevronDown />
+                        </Button>
                       </div>
                       <Form.Control.Feedback type="invalid">{errors.admissionNumber}</Form.Control.Feedback>
 
@@ -634,25 +593,13 @@ const BillingEntry = () => {
                       )}
                     </Form.Group>
 
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Bar Code Number</Form.Label>
+                    <Form.Group className="mt-3">
+                      <Form.Label className="form-label fw-bold mb-2">Student Name</Form.Label>
                       <Form.Control
                         type="text"
-                        className="form-control form-control-sm py-1"
-                        name="barCodeNumber"
-                        value={formData.barCodeNumber}
-                        onChange={handleInputChange}
-                      />
-                    </Form.Group>
-
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Student Name</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control form-control-sm py-1"
+                        className="form-control py-2"
                         name="studentName"
                         value={formData.studentName}
-                        onChange={handleInputChange}
                         readOnly
                         isInvalid={!!errors.studentName}
                       />
@@ -660,109 +607,60 @@ const BillingEntry = () => {
                     </Form.Group>
                   </Col>
 
-                  <Col md={3}>
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Father Name</Form.Label>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="form-label fw-bold mb-2">Father Name</Form.Label>
                       <Form.Control
                         type="text"
-                        className="form-control form-control-sm py-1"
+                        className="form-control py-2"
                         name="fatherName"
                         value={formData.fatherName}
-                        onChange={handleInputChange}
                         readOnly
                       />
                     </Form.Group>
 
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Course</Form.Label>
+                    <Form.Group className="mt-3">
+                      <Form.Label className="form-label fw-bold mb-2">Course</Form.Label>
                       <Form.Control
                         type="text"
-                        className="form-control form-control-sm py-1"
+                        className="form-control py-2"
                         name="course"
                         value={formData.course}
-                        onChange={handleInputChange}
                         readOnly
                       />
                     </Form.Group>
 
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Section</Form.Label>
+                    <Form.Group className="mt-3">
+                      <Form.Label className="form-label fw-bold mb-2">Section</Form.Label>
                       <Form.Control
                         type="text"
-                        className="form-control form-control-sm py-1"
+                        className="form-control py-2"
                         name="section"
                         value={formData.section}
-                        onChange={handleInputChange}
-                        readOnly
-                      />
-                    </Form.Group>
-
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Pickup Point</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control form-control-sm py-1"
-                        name="pickupPoint"
-                        value={formData.pickupPoint}
-                        onChange={handleInputChange}
                         readOnly
                       />
                     </Form.Group>
                   </Col>
 
-                  <Col md={3}>
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Date</Form.Label>
-                      <Form.Control
-                        type="date"
-                        className="form-control form-control-sm py-1"
-                        name="date"
-                        value={formData.date}
-                        onChange={handleInputChange}
-                      />
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="form-label fw-bold mb-2">Date</Form.Label>
+                      <div className="input-group">
+                        <Form.Control
+                          type="date"
+                          className="form-control py-2"
+                          name="date"
+                          value={formData.date}
+                          onChange={handleInputChange}
+                        />
+                        <Button variant="outline-secondary">
+                          <FaCalendarAlt />
+                        </Button>
+                      </div>
                     </Form.Group>
 
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Balance</Form.Label>
-                      <Form.Control
-                        type="number"
-                        className="form-control form-control-sm py-1"
-                        name="balance"
-                        value={formData.balance}
-                        onChange={handleInputChange}
-                        readOnly
-                      />
-                    </Form.Group>
-
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Paid Amount</Form.Label>
-                      <Form.Control
-                        type="number"
-                        className="form-control form-control-sm py-1"
-                        name="paidAmount"
-                        value={formData.paidAmount}
-                        onChange={handleInputChange}
-                        isInvalid={!!errors.paidAmount}
-                      />
-                      <Form.Control.Feedback type="invalid">{errors.paidAmount}</Form.Control.Feedback>
-                    </Form.Group>
-
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Balance Amount</Form.Label>
-                      <Form.Control
-                        type="number"
-                        className="form-control form-control-sm py-1"
-                        name="balanceAmount"
-                        value={formData.balanceAmount}
-                        onChange={handleInputChange}
-                        readOnly
-                      />
-                    </Form.Group>
-                  </Col>
-
-                  <Col md={3}>
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Payment Mode</Form.Label>
+                    <Form.Group className="mt-3">
+                      <Form.Label className="form-label fw-bold mb-2">Payment Mode</Form.Label>
                       <div>
                         {["Online", "D.D.", "Cash"].map((mode, index) => (
                           <Form.Check
@@ -775,246 +673,150 @@ const BillingEntry = () => {
                             value={mode}
                             checked={formData.paymentMode === mode}
                             onChange={handleInputChange}
-                            className="form-check-inline small"
+                            className="form-check-inline"
                           />
                         ))}
                       </div>
                       {errors.paymentMode && <div className="text-danger small">{errors.paymentMode}</div>}
                     </Form.Group>
 
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Number</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control form-control-sm py-1"
-                        name="number"
-                        value={formData.number}
-                        onChange={handleInputChange}
-                        disabled={formData.paymentMode === "Cash"}
-                      />
+                    <Form.Group className="mt-3">
+                      <Form.Label className="form-label fw-bold mb-2">Transaction Number</Form.Label>
+                      <div className="input-group">
+                        <Form.Control
+                          type="text"
+                          className="form-control py-2"
+                          name="number"
+                          value={formData.number}
+                          onChange={handleInputChange}
+                          disabled={formData.paymentMode === "Cash"}
+                        />
+                        <Button variant="outline-secondary">
+                          {formData.paymentMode === "Online" ? <FaCreditCard /> : <FaMoneyBillWave />}
+                        </Button>
+                      </div>
                     </Form.Group>
+                  </Col>
+                </Row>
 
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Select Operator Name</Form.Label>
+                <Row className="mt-4">
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label className="form-label fw-bold mb-2">Operator Name</Form.Label>
                       <Form.Control
                         type="text"
-                        className="form-control form-control-sm py-1"
+                        className="form-control py-2"
                         name="operatorName"
                         value={formData.operatorName}
                         onChange={handleInputChange}
+                        isInvalid={!!errors.operatorName}
+                      />
+                      <Form.Control.Feedback type="invalid">{errors.operatorName}</Form.Control.Feedback>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label className="form-label fw-bold mb-2">Overall Fee Balance</Form.Label>
+                      <Form.Control
+                        type="text"
+                        className="form-control py-2"
+                        value={overallFeeBalance.toFixed(2)}
                         readOnly
                       />
                     </Form.Group>
-
-                    <Form.Group className="mb-2">
-                      <Form.Label className="form-label small mb-1">Fee Type</Form.Label>
-                      <Form.Select
-                        className="form-select form-select-sm py-1"
-                        onChange={handleFeeTypeChange}
-                        value={selectedFeeType}
-                      >
-                        <option value="">Select Fee Type</option>
-                        {feeTypes.map((type) => (
-                          <option key={type.id} value={type.id}>
-                            {type.name}
-                          </option>
-                        ))}
-                      </Form.Select>
-                    </Form.Group>
                   </Col>
                 </Row>
 
-                <Row className="g-3 mt-1">
-                  <Col md={4}>
-                    <div className="card">
-                      <div className="card-header py-1" style={styles.headerBg}>
-                        <h6 className="mb-0 small">Concession</h6>
-                      </div>
-                      <div className="card-body p-2">
-                        <Row className="g-2">
-                          <Col md={4}>
-                            <Form.Group>
-                              <Form.Label className="form-label small mb-1">Enter concess %</Form.Label>
-                              <Form.Control
-                                type="number"
-                                className="form-control form-control-sm py-1"
-                                name="concessPercent"
-                                value={formData.concessPercent}
-                                onChange={handleInputChange}
-                              />
-                            </Form.Group>
-                          </Col>
-                          <Col md={4}>
-                            <Form.Group>
-                              <Form.Label className="form-label small mb-1">Concess Head</Form.Label>
-                              <Form.Select
-                                className="form-select form-select-sm py-1"
-                                name="concessHead"
-                                value={formData.concessHead}
-                                onChange={handleInputChange}
-                              >
-                                <option value="">Select Head</option>
-                                {feeHeadsByType.map((heading) => (
-                                  <option key={heading.id} value={heading.name}>
-                                    {heading.name}
-                                  </option>
-                                ))}
-                              </Form.Select>
-                            </Form.Group>
-                          </Col>
-                          <Col md={4}>
-                            <Form.Group>
-                              <Form.Label className="form-label small mb-1">Enter Concess</Form.Label>
-                              <Form.Control
-                                type="number"
-                                className="form-control form-control-sm py-1"
-                                name="concessAmount"
-                                value={formData.concessAmount}
-                                onChange={handleInputChange}
-                              />
-                            </Form.Group>
-                          </Col>
-                        </Row>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={4}>
-                    <Row className="g-2">
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label className="form-label small mb-1">Balance Before</Form.Label>
-                          <Form.Control
-                            type="number"
-                            className="form-control form-control-sm py-1"
-                            name="balanceBefore"
-                            value={formData.balanceBefore}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label className="form-label small mb-1">Balance After</Form.Label>
-                          <Form.Control
-                            type="number"
-                            className="form-control form-control-sm py-1"
-                            name="balanceAfter"
-                            value={formData.balanceAfter}
-                            onChange={handleInputChange}
-                            readOnly
-                          />
-                        </Form.Group>
-                      </Col>
-                    </Row>
-                    <Form.Group className="mt-2">
-                      <Form.Label className="form-label small mb-1">Entered Amount [ In Rupees ]</Form.Label>
-                      <Form.Control
-                        type="number"
-                        className="form-control form-control-sm py-1"
-                        name="paidAmount"
-                        value={formData.paidAmount}
-                        onChange={handleInputChange}
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Row className="g-2">
-                      <Col md={8}>
-                        <Form.Group>
-                          <Form.Label className="form-label small mb-1">Transaction/Narration</Form.Label>
-                          <Form.Control
-                            type="text"
-                            className="form-control form-control-sm py-1"
-                            name="transactionNarrat"
-                            value={formData.transactionNarrat}
-                            onChange={handleInputChange}
-                          />
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group>
-                          <Form.Label className="form-label small mb-1">Date</Form.Label>
-                          <Form.Control
-                            type="date"
-                            className="form-control form-control-sm py-1"
-                            name="transactionDate"
-                            value={formData.transactionDate}
-                            onChange={handleInputChange}
-                          />
-                        </Form.Group>
-                      </Col>
-                    </Row>
-                  </Col>
-                </Row>
-
-                <Row className="mt-3">
-                  <Col md={6}>
+                <Row className="mt-4">
+                  <Col md={12}>
                     <div className="table-responsive">
-                      <Table className="table table-bordered table-sm small mb-0">
+                      <Table className="table table-bordered table-hover mb-0">
                         <thead>
                           <tr style={styles.headerBg}>
                             <th>Fee Type</th>
-                            <th>Fee Heading</th>
-                            <th>Amount in Rs</th>
+                            <th>Fee Head</th>
+                            <th>Total Amount</th>
+                            <th>Paid Amount</th>
                             <th>Balance</th>
-                            <th>Action</th>
+                            <th>Payment Amount</th>
+                            <th>Balance After Payment</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedFeeHeadings.length > 0 ? (
-                            selectedFeeHeadings.map((heading, index) => (
+                          {studentFeeDetails.map((fee, index) => {
+                            const balance = Number.parseFloat(fee.balance) || 0
+                            const paymentAmount = Number.parseFloat(paymentAllocation[fee.id]?.amount || 0)
+                            const balanceAfterPayment = balance - paymentAmount
+                            return (
                               <tr key={index}>
-                                <td>{heading.feeType}</td>
-                                <td>{heading.name}</td>
-                                <td>{heading.amount}</td>
-                                <td>{heading.balance}</td>
+                                <td>{fee.type}</td>
+                                <td>{fee.heading}</td>
+                                <td>{Number.parseFloat(fee.amount || 0).toFixed(2)}</td>
+                                <td>{(Number.parseFloat(fee.amount || 0) - balance).toFixed(2)}</td>
+                                <td>{balance.toFixed(2)}</td>
                                 <td>
-                                  <Button
+                                  <Form.Control
+                                    type="text"
                                     size="sm"
-                                    variant="danger"
-                                    onClick={() => handleRemoveFeeHeading(index)}
-                                    className="py-0 px-1"
-                                  >
-                                    Remove
-                                  </Button>
+                                    value={paymentAllocation[fee.id]?.amount || ""}
+                                    onChange={(e) => handlePaymentAllocation(fee.id, e.target.value)}
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    isInvalid={!!errors[`payment_${fee.id}`]}
+                                    disabled={balance <= 0}
+                                  />
+                                  {errors[`payment_${fee.id}`] && (
+                                    <Form.Control.Feedback type="invalid">
+                                      {errors[`payment_${fee.id}`]}
+                                    </Form.Control.Feedback>
+                                  )}
                                 </td>
+                                <td>{balanceAfterPayment.toFixed(2)}</td>
                               </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan="5" className="text-center">
-                                No fee headings selected
-                              </td>
-                            </tr>
-                          )}
+                            )
+                          })}
                         </tbody>
+                        <tfoot>
+                          <tr>
+                            <td colSpan="4" className="text-end fw-bold">
+                              Total:
+                            </td>
+                            <td className="fw-bold">{Number.parseFloat(formData.totalBalance).toFixed(2)}</td>
+                            <td className="fw-bold">{Number.parseFloat(formData.totalPaidAmount).toFixed(2)}</td>
+                            <td className="fw-bold">{overallFeeBalance.toFixed(2)}</td>
+                          </tr>
+                        </tfoot>
                       </Table>
                     </div>
                   </Col>
-                  <Col md={6}>
+                </Row>
+
+                <Row className="mt-4">
+                  <Col md={12}>
                     <div className="table-responsive">
-                      <Table className="table table-bordered table-sm small mb-0">
+                      <Table className="table table-bordered table-hover mb-0">
                         <thead>
                           <tr style={styles.headerBg}>
                             <th>Date</th>
                             <th>Bill Number</th>
-                            <th>Description</th>
+                            <th>Fee Head</th>
                             <th>Paid Amount</th>
-                            <th>Narration</th>
+                            <th>Balance After Payment</th>
                           </tr>
                         </thead>
                         <tbody>
                           {previousPayments.length > 0 ? (
-                            previousPayments.map((payment, index) => (
-                              <tr key={index}>
-                                <td>{payment.date}</td>
-                                <td>{payment.billNumber}</td>
-                                <td>{payment.transactionNarrat || "-"}</td>
-                                <td>{payment.paidAmount}</td>
-                                <td>{payment.transactionNarrat || "-"}</td>
-                              </tr>
-                            ))
+                            previousPayments.map((payment, index) =>
+                              payment.feeHeadPayments?.map((feeHead, subIndex) => (
+                                <tr key={`${index}-${subIndex}`}>
+                                  <td>{payment.date}</td>
+                                  <td>{payment.billNumber}</td>
+                                  <td>{feeHead.heading}</td>
+                                  <td>{feeHead.paidAmount}</td>
+                                  <td>{feeHead.balanceAfter}</td>
+                                </tr>
+                              )),
+                            )
                           ) : (
                             <tr>
                               <td colSpan="5" className="text-center">
@@ -1026,7 +828,7 @@ const BillingEntry = () => {
                         <tfoot>
                           <tr>
                             <td colSpan="5" style={styles.headerBg}>
-                              <small>Previous Paid Amount Rs: {totalPaidAmount.toFixed(2)}/-</small>
+                              <small>Total Previous Paid Amount: Rs. {totalPaidAmount.toFixed(2)}/-</small>
                             </td>
                           </tr>
                         </tfoot>
@@ -1035,27 +837,21 @@ const BillingEntry = () => {
                   </Col>
                 </Row>
 
-                <div className="d-flex flex-wrap gap-1 mt-3">
-                  <Button type="submit" className="btn btn-sm" style={styles.customBtn}>
+                <div className="d-flex justify-content-end mt-4">
+                  <Button
+                    type="submit"
+                    className="btn btn-lg"
+                    style={{
+                      ...styles.customBtn,
+                      padding: "0.75rem 2.5rem",
+                      fontSize: "1.1rem",
+                      fontWeight: "600",
+                      borderRadius: "0.5rem",
+                      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                    }}
+                    disabled={Number.parseFloat(formData.totalPaidAmount) <= 0}
+                  >
                     Confirm Bill Entry
-                  </Button>
-                  <Button type="button" className="btn btn-sm" style={styles.customBtn}>
-                    View
-                  </Button>
-                  <Button type="button" className="btn btn-sm" style={styles.customBtn}>
-                    Bill Cancel
-                  </Button>
-                  <Button type="button" className="btn btn-sm" style={styles.customBtn}>
-                    Row Del
-                  </Button>
-                  <Button type="button" className="btn btn-sm" style={styles.customBtn}>
-                    Bus Bill
-                  </Button>
-                  <Button type="button" className="btn btn-sm" style={styles.customBtn}>
-                    Print
-                  </Button>
-                  <Button type="button" className="btn btn-sm" style={styles.customBtn}>
-                    Due status
                   </Button>
                 </div>
               </Form>
@@ -1066,8 +862,49 @@ const BillingEntry = () => {
 
       <style>
         {`
+          .form-control:disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+          }
+
+          .btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+          }
+
+          .table td {
+            vertical-align: middle;
+          }
+
+          .form-control {
+            font-size: 0.9rem;
+          }
+
+          .invalid-feedback {
+            display: block;
+            margin-top: 0.25rem;
+          }
+
+          .btn-outline-primary:hover,
+          .btn-outline-danger:hover {
+            color: white;
+          }
+
+          .table tfoot tr td {
+            background-color: #f8f9fa;
+          }
+
+          @media (max-width: 768px) {
+            .btn {
+              padding: 0.375rem 1rem !important;
+              font-size: 0.875rem !important;
+            }
+          }
+
           .custom-breadcrumb {
             padding: 0.5rem 1rem;
+            background-color: #f8f9fa;
+            border-radius: 0.25rem;
           }
 
           .custom-breadcrumb a {
@@ -1081,7 +918,7 @@ const BillingEntry = () => {
           }
 
           .form-label {
-            font-weight: 500;
+            font-weight: 600;
             color: #2D3748;
           }
 
@@ -1102,6 +939,7 @@ const BillingEntry = () => {
           .admission-dropdown-item {
             padding: 0.5rem;
             cursor: pointer;
+            transition: background-color 0.2s ease;
           }
 
           .admission-dropdown-item:hover {
@@ -1110,16 +948,123 @@ const BillingEntry = () => {
 
           .billing-container {
             min-height: calc(100vh - 150px);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+          }
+
+          .billing-container .card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+          }
+
+          .billing-container .card-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
           }
 
           @media (max-width: 768px) {
             .card-body {
-              padding: 0.75rem;
+              padding: 1rem;
             }
             
-            .form-control-sm, .form-select-sm {
-              font-size: 0.8rem;
+            .form-control, .form-select {
+              font-size: 0.9rem;
             }
+          }
+
+          .table-responsive {
+            max-height: 400px;
+            overflow-y: auto;
+          }
+
+          /* For Firefox */
+          .table-responsive {
+            scrollbar-width: thin;
+            scrollbar-color: #0B3D7B #f1f1f1;
+          }
+
+          /* For Chrome, Edge, and Safari */
+          .table-responsive::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+
+          .table-responsive::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+          }
+
+          .table-responsive::-webkit-scrollbar-thumb {
+            background: #0B3D7B;
+            border-radius: 4px;
+          }
+
+          .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #1470E1;
+          }
+
+          /* Card body scrolling */
+          .card-body::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+
+          .card-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+          }
+
+          .card-body::-webkit-scrollbar-thumb {
+            background: #0B3D7B;
+            border-radius: 4px;
+          }
+
+          .card-body::-webkit-scrollbar-thumb:hover {
+            background: #1470E1;
+          }
+
+          /* For Firefox */
+          .card-body {
+            scrollbar-width: thin;
+            scrollbar-color: #0B3D7B #f1f1f1;
+          }
+
+          /* Fix table header */
+          .table-responsive thead tr th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background-color: #0B3D7B;
+          }
+
+          .card {
+            border: none;
+            transition: box-shadow 0.3s ease;
+          }
+
+          .card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+          }
+
+          .form-control:focus,
+          .form-select:focus {
+            border-color: #1470E1;
+            box-shadow: 0 0 0 0.2rem rgba(20, 112, 225, 0.25);
+          }
+
+          .btn-outline-secondary {
+            color: #6c757d;
+            border-color: #6c757d;
+          }
+
+          .btn-outline-secondary:hover {
+            color: #fff;
+            background-color: #6c757d;
+            border-color: #6c757d;
           }
         `}
       </style>
