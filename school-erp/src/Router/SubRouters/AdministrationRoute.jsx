@@ -27,7 +27,6 @@ import StateAndDistrictManagement from '../../pages/Administration Pages/MainPag
 import MotherTongueSetup from '../../pages/Administration Pages/MainPages/MotherTongueSetup';
 import SectionSetup from '../../pages/Administration Pages/MainPages/SectionSetup';
 import BloodGroupSetup from '../../pages/Administration Pages/MainPages/BloodGroupSetup';
-import Test from '../../pages/Administration Pages/MainPages/Test';
 
 
 
@@ -62,7 +61,6 @@ function AdministrationRoute() {
       <Route path="Mother-Tongue-Setup" element={<MotherTongueSetup/>} />
       <Route path="blood-group-Setup" element={<BloodGroupSetup/>} />
       <Route path="section-setup" element={<SectionSetup/>} />
-      <Route path="test" element={<Test/>} />
 
     
     </Routes>
