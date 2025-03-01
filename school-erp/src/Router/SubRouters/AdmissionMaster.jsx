@@ -26,6 +26,7 @@ import AdhaarEmisNumber from '../../pages/Admission Pages/StudentDetaisReport.js
 import ServiceCertificate from '../../pages/Admission Pages/StudentDetaisReport.jsx/ServiceCertificate';
 import StrengthReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/StrengthReport';
 import FullViewReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/FullViewReport';
+import HostelStatusReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/HostelStatusReport';
 
 
 function AdmissionMaster() {
@@ -59,6 +60,7 @@ function AdmissionMaster() {
       <Route path="Student-Details-Report/service-certificate" element={<ServiceCertificate />} />
       <Route path="Student-Details-Report/strength-report" element={<StrengthReport />} />
       <Route path="Student-Details-Report/full-view-report" element={<FullViewReport />} />
+      <Route path="Student-Details-Report/hostel-status-report" element={<HostelStatusReport />} />
     </Routes>
   );
 }
