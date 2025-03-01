@@ -24,6 +24,8 @@ import CustomizedReportGenerate from '../../pages/Admission Pages/StudentDetaisR
 import GradeWiseReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/GradeFullView';
 import AdhaarEmisNumber from '../../pages/Admission Pages/StudentDetaisReport.jsx/AadharEmis';
 import ServiceCertificate from '../../pages/Admission Pages/StudentDetaisReport.jsx/ServiceCertificate';
+import StrengthReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/StrengthReport';
+import FullViewReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/FullViewReport';
 
 
 function AdmissionMaster() {
@@ -55,6 +57,8 @@ function AdmissionMaster() {
       <Route path="Student-Details-Report/grade-wise-report" element={<GradeWiseReport />} />
       <Route path="Student-Details-Report/adhaar-emis-number" element={<AdhaarEmisNumber />} />
       <Route path="Student-Details-Report/service-certificate" element={<ServiceCertificate />} />
+      <Route path="Student-Details-Report/strength-report" element={<StrengthReport />} />
+      <Route path="Student-Details-Report/full-view-report" element={<FullViewReport />} />
     </Routes>
   );
 }

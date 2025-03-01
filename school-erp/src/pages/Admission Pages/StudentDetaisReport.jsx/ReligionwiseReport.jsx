@@ -210,7 +210,8 @@ const ReligionWiseReport = () => {
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link to="/reports">Reports</Link>
+            {/* <Link to="/reports">Reports</Link> */}
+            <span>Reports</span>
             <span className="separator mx-2">&gt;</span>
             <span>Religion Wise Report</span>
           </nav>

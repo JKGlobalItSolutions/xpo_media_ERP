@@ -62,9 +62,7 @@ function AdministrationRoute() {
       <Route path="Mother-Tongue-Setup" element={<MotherTongueSetup/>} />
       <Route path="blood-group-Setup" element={<BloodGroupSetup/>} />
       <Route path="section-setup" element={<SectionSetup/>} />
-      <Route path="service-certificate" element={<ServiceCertificate/>} />
-
-    
+      
     </Routes>
   );
 }

@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { Container, Form, Button, Card } from "react-bootstrap"
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore"
 import { db, auth } from "../../../Firebase/config"
@@ -9,7 +7,6 @@ import { Link } from "react-router-dom"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import jsPDF from "jspdf"
-import * as XLSX from "xlsx"
 
 const StudyCertificate = () => {
   const [administrationId, setAdministrationId] = useState(null)
@@ -141,35 +138,16 @@ const StudyCertificate = () => {
     doc.save(`${selectedStudent.admissionNumber}_certificate.pdf`)
   }
 
-  const downloadXLSX = () => {
-    const data = [
-      {
-        "Admission Number": selectedStudent.admissionNumber,
-        "EMIS Number": selectedStudent.emis,
-        "Student Name": selectedStudent.studentName,
-        "Father Name": selectedStudent.fatherName,
-        Standard: selectedStudent.standard,
-        "Academic Year": "2024-2025",
-        "Date of Birth": new Date(selectedStudent.dateOfBirth).toLocaleDateString(),
-        "Certificate Type": "Bonafide Certificate",
-      },
-    ]
-
-    const ws = XLSX.utils.json_to_sheet(data)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Certificate")
-    XLSX.writeFile(wb, `${selectedStudent.admissionNumber}_certificate.xlsx`)
-  }
-
   return (
     <MainContentPage>
       <Container fluid className="px-0">
         <div className="mb-4">
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
-            <span className="separator mx-2"></span>
-            <Link to="/certificates">Certificates</Link>
-            <span className="separator mx-2"></span>
+            <span className="separator mx-2">&gt;</span>
+            {/* <Link to="/certificates">Certificates</Link> */}
+            <span>Certificates</span>
+            <span className="separator mx-2">&gt;</span>
             <span>Study Certificate</span>
           </nav>
         </div>
@@ -258,9 +236,6 @@ const StudyCertificate = () => {
                   >
                     Download PDF
                   </Button>
-                  <Button style={{ backgroundColor: "#17A2B8" }} onClick={downloadXLSX} disabled={loading}>
-                    Download XLSX
-                  </Button>
                 </div>
               </>
             )}
@@ -341,4 +316,3 @@ const StudyCertificate = () => {
 }
 
 export default StudyCertificate
-
