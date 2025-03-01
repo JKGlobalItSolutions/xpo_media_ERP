@@ -1,11 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
-import "bootstrap/dist/css/bootstrap.min.css"
-import "./Styles/BillingWindow.css"
-import MainContentPage from "../../components/MainContent/MainContentPage"
+import { useNavigate, Link } from "react-router-dom"
+import { Form, Button, Row, Col, Container, Table, InputGroup } from "react-bootstrap"
 import { db, auth } from "../../Firebase/config"
 import {
   doc,
@@ -13,54 +10,95 @@ import {
   collection,
   getDocs,
   query,
-  where,
   limit,
+  where,
   addDoc,
+  updateDoc,
   serverTimestamp,
-  runTransaction,
 } from "firebase/firestore"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import { FaChevronDown, FaCalendarAlt, FaCreditCard, FaMoneyBillWave } from "react-icons/fa"
+import MainContentPage from "../../components/MainContent/MainContentPage"
 
-const BillingEntry = () => {
-  const [formData, setFormData] = useState({
+const BillEntry = () => {
+  const navigate = useNavigate()
+
+  // State for administration and transport IDs
+  const [administrationId, setAdministrationId] = useState(null)
+  const [transportId, setTransportId] = useState(null)
+
+  // Bill data state
+  const [billData, setBillData] = useState({
     billNumber: "",
     admissionNumber: "",
+    barCodeNumber: "",
     studentName: "",
     fatherName: "",
     course: "",
     section: "",
+    pickupPoint: "",
     date: new Date().toISOString().split("T")[0],
-    totalBalance: "0",
-    totalPaidAmount: "0",
-    paymentMode: "Online",
-    number: "",
-    operatorName: "XPO admin",
-    transactionNarrat: "",
+    balance: "0",
+    paidAmount: "0",
+    balanceAmount: "0",
+    paymentMode: "Cash",
+    paymentNumber: "",
+    operatorName: "XPO ADMIN",
+    transactionNarrative: "",
+    transactionDate: new Date().toISOString().split("T")[0],
   })
 
-  const [administrationId, setAdministrationId] = useState(null)
-  const [admissionNumbers, setAdmissionNumbers] = useState([])
-  const [filteredAdmissionNumbers, setFilteredAdmissionNumbers] = useState([])
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [studentFeeDetails, setStudentFeeDetails] = useState([])
-  const [previousPayments, setPreviousPayments] = useState([])
-  const [selectedFeeHeadings, setSelectedFeeHeadings] = useState([])
-  const [totalPaidAmount, setTotalPaidAmount] = useState(0)
-  const [errors, setErrors] = useState({})
-  const [currentStudentId, setCurrentStudentId] = useState(null)
-  const [billCounter, setBillCounter] = useState(1)
-  const [academicYear, setAcademicYear] = useState("")
-  const [feeTypes, setFeeTypes] = useState([])
-  const [selectedFeeType, setSelectedFeeType] = useState("")
-  const [feeHeadsByType, setFeeHeadsByType] = useState([])
-  const [splitPayments, setSplitPayments] = useState({})
-  const [selectedFeeHeads, setSelectedFeeHeads] = useState([])
-  const [paymentAllocation, setPaymentAllocation] = useState({})
-  const [totalFeesByType, setTotalFeesByType] = useState({})
-  const [overallFeeBalance, setOverallFeeBalance] = useState(0)
+  const [feeDetails, setFeeDetails] = useState([])
+  const [feeHeads, setFeeHeads] = useState([])
+  const [studentData, setStudentData] = useState(null)
+  const [feeTableData, setFeeTableData] = useState([])
+  const [totalBalance, setTotalBalance] = useState(0)
 
+  // Loading state
+  const [isLoading, setIsLoading] = useState(false)
+  const [studentLoaded, setStudentLoaded] = useState(false)
+
+  // Generate bill number
+  useEffect(() => {
+    const generateBillNumber = async () => {
+      if (!administrationId) return
+
+      try {
+        const billsRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Transactions",
+          administrationId,
+          "BillEntries",
+        )
+        const querySnapshot = await getDocs(billsRef)
+
+        const existingNumbers = querySnapshot.docs
+          .map((doc) => doc.data().billNumber)
+          .filter((num) => num && num.includes("/"))
+          .map((num) => Number.parseInt(num.split("/")[0], 10))
+          .sort((a, b) => a - b)
+
+        let nextNumber = 1
+        if (existingNumbers.length > 0) {
+          nextNumber = existingNumbers[existingNumbers.length - 1] + 1
+        }
+
+        const currentDate = new Date()
+        const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
+        const newBillNumber = `${nextNumber}/${financialYear}`
+        setBillData((prev) => ({ ...prev, billNumber: newBillNumber }))
+      } catch (error) {
+        console.error("Error generating bill number:", error)
+        toast.error("Failed to generate bill number")
+      }
+    }
+
+    generateBillNumber()
+  }, [administrationId])
+
+  // Fetch administration and transport IDs
   useEffect(() => {
     const fetchAdministrationId = async () => {
       try {
@@ -80,452 +118,328 @@ const BillingEntry = () => {
       }
     }
 
+    const fetchTransportId = async () => {
+      try {
+        const transportRef = collection(db, "Schools", auth.currentUser.uid, "Transport")
+        const q = query(transportRef, limit(1))
+        const querySnapshot = await getDocs(q)
+
+        if (querySnapshot.empty) {
+          const newTransportRef = await addDoc(transportRef, { createdAt: new Date() })
+          setTransportId(newTransportRef.id)
+        } else {
+          setTransportId(querySnapshot.docs[0].id)
+        }
+      } catch (error) {
+        console.error("Error fetching/creating Transport ID:", error)
+        toast.error("Failed to initialize transport. Please try again.")
+      }
+    }
+
     fetchAdministrationId()
-    generateAcademicYear()
+    fetchTransportId()
   }, [])
 
+  // Fetch fee heads
   useEffect(() => {
-    if (administrationId) {
-      fetchAdmissionNumbers()
-      fetchFeeTypes()
-      fetchLastBillNumber()
-    }
-  }, [administrationId])
+    if (!administrationId) return
 
-  const generateAcademicYear = () => {
-    const currentDate = new Date()
-    const currentYear = currentDate.getFullYear()
-    const month = currentDate.getMonth()
-
-    let academicYearStart, academicYearEnd
-
-    if (month < 5) {
-      academicYearStart = currentYear - 1
-      academicYearEnd = currentYear
-    } else {
-      academicYearStart = currentYear
-      academicYearEnd = currentYear + 1
-    }
-
-    const academicYearString = `${academicYearStart}-${academicYearEnd.toString().slice(-2)}`
-    setAcademicYear(academicYearString)
-  }
-
-  const fetchLastBillNumber = async () => {
-    try {
-      const billsRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
-
-      const querySnapshot = await getDocs(billsRef)
-      let highestCounter = 0
-
-      querySnapshot.docs.forEach((doc) => {
-        const billNumber = doc.data().billNumber
-        if (billNumber && billNumber.includes("/")) {
-          const counter = Number.parseInt(billNumber.split("/")[0])
-          if (!isNaN(counter) && counter > highestCounter) {
-            highestCounter = counter
-          }
-        }
-      })
-
-      setBillCounter(highestCounter + 1)
-      const newBillNumber = `${highestCounter + 1}/${academicYear}`
-      setFormData((prev) => ({
-        ...prev,
-        billNumber: newBillNumber,
-      }))
-    } catch (error) {
-      console.error("Error fetching last bill number:", error)
-      const defaultBillNumber = `1/${academicYear}`
-      setFormData((prev) => ({
-        ...prev,
-        billNumber: defaultBillNumber,
-      }))
-    }
-  }
-
-  const fetchAdmissionNumbers = async () => {
-    try {
-      const admissionsRef = collection(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "AdmissionMaster",
-        administrationId,
-        "AdmissionSetup",
-      )
-      const snapshot = await getDocs(admissionsRef)
-      const numbers = snapshot.docs.map((doc) => doc.data().admissionNumber).filter(Boolean)
-      setAdmissionNumbers(numbers)
-      setFilteredAdmissionNumbers(numbers)
-    } catch (error) {
-      console.error("Error fetching admission numbers:", error)
-      toast.error("Failed to fetch admission numbers.")
-    }
-  }
-
-  const fetchFeeTypes = async () => {
-    try {
-      const feeTypesRef = collection(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "Administration",
-        administrationId,
-        "FeeTypes",
-      )
-      const snapshot = await getDocs(feeTypesRef)
-      const types = snapshot.docs.map((doc) => ({ id: doc.id, name: doc.data().name }))
-      setFeeTypes(types)
-    } catch (error) {
-      console.error("Error fetching fee types:", error)
-      toast.error("Failed to fetch fee types.")
-    }
-  }
-
-  const fetchStudentData = async (admissionNumber) => {
-    try {
-      const admissionsRef = collection(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "AdmissionMaster",
-        administrationId,
-        "AdmissionSetup",
-      )
-      const q = query(admissionsRef, where("admissionNumber", "==", admissionNumber))
-      const querySnapshot = await getDocs(q)
-
-      if (!querySnapshot.empty) {
-        const studentData = querySnapshot.docs[0].data()
-        const studentId = querySnapshot.docs[0].id
-        setCurrentStudentId(studentId)
-
-        setFormData((prev) => ({
-          ...prev,
-          admissionNumber: studentData.admissionNumber,
-          studentName: studentData.studentName,
-          fatherName: studentData.fatherName,
-          course: studentData.standard,
-          section: studentData.section,
-        }))
-
-        // Fetch student fee details
-        const studentFeeRef = doc(
+    const fetchFeeHeads = async () => {
+      try {
+        const feeHeadRef = collection(
           db,
           "Schools",
           auth.currentUser.uid,
-          "AdmissionMaster",
+          "Administration",
           administrationId,
-          "StudentFeeDetails",
-          studentId,
+          "FeeHeadSetup",
         )
-        const feeSnapshot = await getDoc(studentFeeRef)
-
-        if (feeSnapshot.exists()) {
-          const feeData = feeSnapshot.data()
-          const feeDetails = feeData.feeDetails || []
-
-          // Ensure all fee details have proper numeric values for balance and amount
-          const processedFeeDetails = feeDetails.map((fee) => ({
-            ...fee,
-            balance: fee.balance ? Number.parseFloat(fee.balance).toString() : "0",
-            amount: fee.amount ? Number.parseFloat(fee.amount).toString() : "0",
-          }))
-
-          setStudentFeeDetails(processedFeeDetails)
-
-          // Calculate totals by fee type
-          const totals = processedFeeDetails.reduce((acc, fee) => {
-            const type = fee.type || "Other"
-            acc[type] = (acc[type] || 0) + Number.parseFloat(fee.balance || 0)
-            return acc
-          }, {})
-
-          setTotalFeesByType(totals)
-
-          // Calculate total balance
-          const totalBalance = Object.values(totals).reduce((sum, val) => sum + val, 0)
-
-          setFormData((prev) => ({
-            ...prev,
-            totalBalance: totalBalance.toFixed(2),
-          }))
-
-          setOverallFeeBalance(totalBalance)
-        }
-
-        // Fetch previous payments
-        const paymentsRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
-        const paymentsQuery = query(paymentsRef, where("admissionNumber", "==", admissionNumber))
-        const paymentsSnapshot = await getDocs(paymentsQuery)
-
-        const payments = paymentsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-
-        setPreviousPayments(payments)
-
-        const totalPaid = payments.reduce((sum, payment) => sum + (Number.parseFloat(payment.totalPaidAmount) || 0), 0)
-        setTotalPaidAmount(totalPaid)
-
-        toast.success("Student data fetched successfully!")
-      } else {
-        toast.error("No student found with the given admission number.")
+        const snapshot = await getDocs(feeHeadRef)
+        const feeHeadData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        setFeeHeads(feeHeadData)
+      } catch (error) {
+        console.error("Error fetching fee heads:", error)
+        toast.error("Failed to fetch fee heads")
       }
-    } catch (error) {
-      console.error("Error fetching student data:", error)
-      toast.error("Failed to fetch student data.")
     }
-  }
 
+    fetchFeeHeads()
+  }, [administrationId])
+
+  // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({
+    setBillData((prev) => ({
       ...prev,
       [name]: value,
     }))
-    setErrors((prev) => ({ ...prev, [name]: "" }))
+  }
 
-    if (name === "admissionNumber") {
-      const filtered = admissionNumbers.filter((num) => num.toLowerCase().includes(value.toLowerCase()))
-      setFilteredAdmissionNumbers(filtered)
-      setShowDropdown(filtered.length > 0 && value.length > 0)
+  // Fetch student data by admission number
+  const fetchStudentData = async () => {
+    if (!billData.admissionNumber || !administrationId) return
 
-      if (admissionNumbers.includes(value)) {
-        fetchStudentData(value)
+    setIsLoading(true)
+    try {
+      // Query for student in AdmissionSetup
+      const admissionRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "AdmissionSetup",
+      )
+      const q = query(admissionRef, where("admissionNumber", "==", billData.admissionNumber))
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        toast.error("No student found with this admission number")
+        setIsLoading(false)
+        return
       }
+
+      const studentDoc = querySnapshot.docs[0]
+      const student = studentDoc.data()
+
+      // Fetch student fee details
+      const studentFeeRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "StudentFeeDetails",
+        studentDoc.id,
+      )
+      const feeSnapshot = await getDoc(studentFeeRef)
+
+      if (!feeSnapshot.exists()) {
+        toast.error("No fee details found for this student")
+        setIsLoading(false)
+        return
+      }
+
+      const feeData = feeSnapshot.data()
+      const feeDetails = feeData.feeDetails || []
+
+      // Calculate total balance
+      let totalBalance = 0
+      feeDetails.forEach((fee) => {
+        totalBalance += Number.parseFloat(fee.amount) || 0
+      })
+
+      // Update states with fetched data
+      setStudentData({
+        id: studentDoc.id,
+        ...student,
+      })
+
+      setFeeDetails(feeDetails)
+      setFeeTableData(
+        feeDetails.map((fee) => ({
+          ...fee,
+          paidAmount: "0",
+          remainingBalance: fee.amount,
+        })),
+      )
+      setTotalBalance(totalBalance)
+
+      setBillData((prev) => ({
+        ...prev,
+        studentName: student.studentName || "",
+        fatherName: student.fatherName || "",
+        course: student.standard || "",
+        section: student.section || "",
+        pickupPoint: student.boardingPoint || "",
+        balance: totalBalance.toFixed(2),
+        balanceAmount: totalBalance.toFixed(2),
+      }))
+
+      setStudentLoaded(true)
+      toast.success("Student data loaded successfully")
+    } catch (error) {
+      console.error("Error fetching student data:", error)
+      toast.error("Failed to fetch student data")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handlePaymentAllocation = (headId, value) => {
-    // Allow empty string for better user experience while typing
-    if (value === "") {
-      setPaymentAllocation((prev) => ({
-        ...prev,
-        [headId]: {
-          ...prev[headId],
-          amount: "",
-        },
-      }))
+  // Handle fee amount change
+  const handleFeeAmountChange = (index, value) => {
+    const updatedFeeTableData = [...feeTableData]
+    const feeItem = updatedFeeTableData[index]
+    const paidAmount = Number.parseFloat(value) || 0
+    const originalAmount = Number.parseFloat(feeItem.amount) || 0
 
-      // Recalculate total without this empty value
-      const totalPaid = Object.entries(paymentAllocation)
-        .filter(([id, _]) => id !== headId)
-        .reduce((sum, [_, data]) => sum + (Number.parseFloat(data.amount) || 0), 0)
-
-      setFormData((prev) => ({
-        ...prev,
-        totalPaidAmount: totalPaid.toFixed(2),
-      }))
-
+    if (paidAmount > originalAmount) {
+      toast.error("Paid amount cannot exceed the original fee amount")
       return
     }
 
-    // Parse input value and validate
-    const amount = Number.parseFloat(value) || 0
-    const feeHead = studentFeeDetails.find((fee) => fee.id === headId)
+    feeItem.paidAmount = value
+    feeItem.remainingBalance = (originalAmount - paidAmount).toFixed(2)
+    setFeeTableData(updatedFeeTableData)
 
-    // Ensure maxAmount is a valid number
-    const maxAmount = Number.parseFloat(feeHead?.balance) || 0
+    // Update total paid amount and balance
+    const totalPaid = updatedFeeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
+    const newBalance = totalBalance - totalPaid
 
-    if (amount > maxAmount) {
-      // Only show error if the balance is actually greater than 0
-      if (maxAmount > 0) {
-        toast.error(`Payment amount cannot exceed balance of ${maxAmount}`)
-      } else {
-        toast.error(`Cannot make payment for a fee with zero balance`)
-      }
-      return
-    }
-
-    setPaymentAllocation((prev) => ({
+    setBillData((prev) => ({
       ...prev,
-      [headId]: {
-        ...prev[headId],
-        amount: amount.toString(),
-      },
+      paidAmount: totalPaid.toFixed(2),
+      balanceAmount: newBalance.toFixed(2),
     }))
-
-    // Calculate total paid amount from all allocations
-    const totalPaid = Object.entries({
-      ...paymentAllocation,
-      [headId]: { amount: amount.toString() },
-    }).reduce((sum, [_, data]) => sum + (Number.parseFloat(data.amount) || 0), 0)
-
-    setFormData((prev) => ({
-      ...prev,
-      totalPaidAmount: totalPaid.toFixed(2),
-    }))
-
-    // Update the overall fee balance
-    setOverallFeeBalance((prev) => prev - amount)
-
-    // Update the balance for the specific fee head
-    setStudentFeeDetails((prev) =>
-      prev.map((fee) =>
-        fee.id === headId ? { ...fee, balance: (Number.parseFloat(fee.balance) - amount).toFixed(2) } : fee,
-      ),
-    )
   }
 
-  const validateForm = () => {
-    const newErrors = {}
-    const requiredFields = ["admissionNumber", "studentName", "paymentMode", "operatorName"]
-
-    requiredFields.forEach((field) => {
-      if (!formData[field]) {
-        newErrors[field] = `${
-          field.charAt(0).toUpperCase() +
-          field
-            .slice(1)
-            .replace(/([A-Z])/g, " $1")
-            .trim()
-        } is required`
-      }
-    })
-
-    const totalPaid = Number.parseFloat(formData.totalPaidAmount) || 0
-    if (totalPaid <= 0) {
-      newErrors.totalPaidAmount = "Total paid amount must be greater than zero"
-      return false
-    }
-
-    // Validate each payment allocation
-    let isValid = true
-    studentFeeDetails.forEach((fee) => {
-      const allocation = paymentAllocation[fee.id]
-      if (allocation) {
-        const paidAmount = Number.parseFloat(allocation.amount) || 0
-        const feeBalance = Number.parseFloat(fee.balance) || 0
-
-        if (paidAmount <= 0) {
-          newErrors[`payment_${fee.id}`] = "Payment amount must be greater than zero"
-          isValid = false
-        } else if (paidAmount > feeBalance) {
-          newErrors[`payment_${fee.id}`] = "Payment cannot exceed balance"
-          isValid = false
-        }
-      }
-    })
-
-    setErrors(newErrors)
-    return isValid && Object.keys(newErrors).length === 0
-  }
-
+  // Handle payment submission
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (validateForm()) {
-      try {
-        await runTransaction(db, async (transaction) => {
-          // Create payment data
-          const paymentData = {
-            ...formData,
-            createdAt: serverTimestamp(),
-            studentId: currentStudentId,
-            paymentAllocation,
-            feeHeadPayments: Object.entries(paymentAllocation).map(([headId, allocation]) => {
-              const feeHead = studentFeeDetails.find((fee) => fee.id === headId)
-              const paidAmount = Number.parseFloat(allocation.amount)
-              return {
-                headId,
-                heading: feeHead.heading,
-                type: feeHead.type,
-                paidAmount,
-                balanceBefore: feeHead.balance,
-                balanceAfter: (Number.parseFloat(feeHead.balance) - paidAmount).toFixed(2),
-              }
-            }),
-          }
 
-          // Add to FeeLog collection
-          const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
+    if (!administrationId) {
+      toast.error("Administration ID is not available. Please try again.")
+      return
+    }
 
-          await addDoc(feeLogRef, paymentData)
+    if (!studentData || !billData.admissionNumber) {
+      toast.error("Please select a student first")
+      return
+    }
 
-          // Update StudentFeeDetails
-          if (currentStudentId) {
-            const studentFeeRef = doc(
-              db,
-              "Schools",
-              auth.currentUser.uid,
-              "AdmissionMaster",
-              administrationId,
-              "StudentFeeDetails",
-              currentStudentId,
-            )
+    const totalPaidAmount = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
+    if (totalPaidAmount <= 0) {
+      toast.error("Total paid amount must be greater than zero")
+      return
+    }
 
-            const updatedFeeDetails = studentFeeDetails.map((fee) => {
-              const paidAmount = Number.parseFloat(paymentAllocation[fee.id]?.amount || "0")
-              return {
-                ...fee,
-                balance: (Number.parseFloat(fee.balance) - paidAmount).toFixed(2),
-              }
-            })
+    try {
+      const now = new Date()
 
-            transaction.update(studentFeeRef, {
-              feeDetails: updatedFeeDetails,
-            })
-          }
-        })
+      // Create fee log entries for each paid fee
+      const feeLogEntries = feeTableData
+        .filter((fee) => Number.parseFloat(fee.paidAmount) > 0)
+        .map((fee) => ({
+          billNumber: billData.billNumber,
+          admissionNumber: billData.admissionNumber,
+          studentName: billData.studentName,
+          fatherName: billData.fatherName,
+          standard: billData.course,
+          section: billData.section,
+          feeHead: fee.heading,
+          feeAmount: fee.amount,
+          paidAmount: fee.paidAmount,
+          paymentMode: billData.paymentMode,
+          paymentNumber: billData.paymentNumber,
+          operatorName: billData.operatorName,
+          transactionDate: billData.date,
+          transactionNarrative: billData.transactionNarrative,
+          boardingPoint: billData.pickupPoint,
+          routeNumber: studentData.busRouteNumber || "",
+          timestamp: now.toISOString(), // Use ISO string instead of serverTimestamp
+        }))
 
-        toast.success("Payment recorded successfully!")
-
-        // Reset form
-        setBillCounter((prev) => prev + 1)
-        const newBillNumber = `${billCounter + 1}/${academicYear}`
-
-        setFormData({
-          billNumber: newBillNumber,
-          admissionNumber: "",
-          studentName: "",
-          fatherName: "",
-          course: "",
-          section: "",
-          date: new Date().toISOString().split("T")[0],
-          totalBalance: "0",
-          totalPaidAmount: "0",
-          paymentMode: "Online",
-          number: "",
-          operatorName: "XPO admin",
-          transactionNarrat: "",
-        })
-
-        setPaymentAllocation({})
-        setStudentFeeDetails([])
-        setPreviousPayments([])
-        setCurrentStudentId(null)
-        setTotalFeesByType({})
-        setOverallFeeBalance(0)
-      } catch (error) {
-        console.error("Error submitting payment:", error)
-        toast.error("Failed to submit payment.")
+      if (feeLogEntries.length === 0) {
+        toast.error("No fees have been paid")
+        return
       }
-    } else {
-      toast.error("Please fill in all required fields correctly.")
+
+      // Add to FeeLog collection
+      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
+
+      for (const entry of feeLogEntries) {
+        await addDoc(feeLogRef, entry)
+      }
+
+      // Add to BillEntries collection
+      const billEntryRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Transactions",
+        administrationId,
+        "BillEntries",
+      )
+      await addDoc(billEntryRef, {
+        ...billData,
+        feeDetails: feeLogEntries,
+        timestamp: serverTimestamp(), // Use serverTimestamp for the main document
+      })
+
+      // Update student fee details
+      const updatedFeeDetails = feeDetails.map((fee) => {
+        const paidFee = feeTableData.find((f) => f.heading === fee.heading)
+        if (paidFee) {
+          const originalAmount = Number.parseFloat(fee.amount) || 0
+          const paidAmount = Number.parseFloat(paidFee.paidAmount) || 0
+          const newAmount = Math.max(0, originalAmount - paidAmount).toFixed(2)
+
+          return {
+            ...fee,
+            amount: newAmount,
+          }
+        }
+        return fee
+      })
+
+      // Update StudentFeeDetails document
+      const studentFeeRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "StudentFeeDetails",
+        studentData.id,
+      )
+
+      await updateDoc(studentFeeRef, {
+        feeDetails: updatedFeeDetails,
+      })
+
+      toast.success("Payment processed successfully!")
+
+      // Reset form for next entry
+      resetForm()
+    } catch (error) {
+      console.error("Error processing payment:", error)
+      toast.error(`Failed to process payment: ${error.message}`)
     }
   }
 
-  const handleAdmissionSelect = (admissionNumber) => {
-    setFormData((prev) => ({
-      ...prev,
-      admissionNumber: admissionNumber,
-    }))
-    fetchStudentData(admissionNumber)
-    setShowDropdown(false)
-  }
+  // Reset form after submission
+  const resetForm = () => {
+    // Generate new bill number
+    const currentBillNumber = billData.billNumber
+    const [currentNumber, currentYear] = currentBillNumber.split("/")
+    const nextNumber = Number.parseInt(currentNumber, 10) + 1
+    const newBillNumber = `${nextNumber}/${currentYear}`
 
-  const styles = {
-    headerBg: {
-      backgroundColor: "#0B3D7B",
-      color: "white",
-    },
-    customBtn: {
-      background: "linear-gradient(180deg, #1470E1 0%, #0B3D7B 100%)",
-      border: "none",
-      color: "white",
-    },
+    setBillData({
+      billNumber: newBillNumber,
+      admissionNumber: "",
+      barCodeNumber: "",
+      studentName: "",
+      fatherName: "",
+      course: "",
+      section: "",
+      pickupPoint: "",
+      date: new Date().toISOString().split("T")[0],
+      balance: "0",
+      paidAmount: "0",
+      balanceAmount: "0",
+      paymentMode: "Cash",
+      paymentNumber: "",
+      operatorName: "XPO ADMIN",
+      transactionNarrative: "",
+      transactionDate: new Date().toISOString().split("T")[0],
+    })
+
+    setFeeDetails([])
+    setFeeTableData([])
+    setTotalBalance(0)
+    setStudentData(null)
+    setStudentLoaded(false)
   }
 
   return (
@@ -534,377 +448,321 @@ const BillingEntry = () => {
         <div className="mb-4">
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
-            <span className="separator mx-2">&gt;</span>
-            <div>Transaction</div>
-            <span className="separator mx-2">&gt;</span>
-            <span>Billing Entry</span>
+            <span className="separator mx-2"></span>
+            <Link to="/transactions">Transactions</Link>
+            <span className="separator mx-2"></span>
+            <span>Bill Entry</span>
           </nav>
         </div>
 
-        <div className="billing-container d-flex flex-column">
-          <div className="card flex-grow-1 shadow-sm">
-            <div className="card-header py-3" style={styles.headerBg}>
-              <h5 className="mb-0 fw-bold">Billing Entry</h5>
-            </div>
-            <div className="card-body p-4">
-              <Form className="d-flex flex-column h-100" onSubmit={handleSubmit}>
-                <Row className="g-4">
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="form-label fw-bold mb-2">Bill Number</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control py-2"
-                        name="billNumber"
-                        value={formData.billNumber}
-                        readOnly
-                      />
-                    </Form.Group>
-
-                    <Form.Group className="mt-3 position-relative">
-                      <Form.Label className="form-label fw-bold mb-2">Admin Number</Form.Label>
-                      <div className="input-group">
-                        <Form.Control
-                          type="text"
-                          className="form-control py-2"
-                          name="admissionNumber"
-                          value={formData.admissionNumber}
-                          onChange={handleInputChange}
-                          isInvalid={!!errors.admissionNumber}
-                        />
-                        <Button variant="outline-secondary" onClick={() => setShowDropdown(!showDropdown)}>
-                          <FaChevronDown />
-                        </Button>
-                      </div>
-                      <Form.Control.Feedback type="invalid">{errors.admissionNumber}</Form.Control.Feedback>
-
-                      {showDropdown && (
-                        <div className="admission-dropdown">
-                          {filteredAdmissionNumbers.slice(0, 5).map((num, index) => (
-                            <div
-                              key={index}
-                              className="admission-dropdown-item"
-                              onClick={() => handleAdmissionSelect(num)}
-                            >
-                              {num}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </Form.Group>
-
-                    <Form.Group className="mt-3">
-                      <Form.Label className="form-label fw-bold mb-2">Student Name</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control py-2"
-                        name="studentName"
-                        value={formData.studentName}
-                        readOnly
-                        isInvalid={!!errors.studentName}
-                      />
-                      <Form.Control.Feedback type="invalid">{errors.studentName}</Form.Control.Feedback>
-                    </Form.Group>
-                  </Col>
-
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="form-label fw-bold mb-2">Father Name</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control py-2"
-                        name="fatherName"
-                        value={formData.fatherName}
-                        readOnly
-                      />
-                    </Form.Group>
-
-                    <Form.Group className="mt-3">
-                      <Form.Label className="form-label fw-bold mb-2">Course</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control py-2"
-                        name="course"
-                        value={formData.course}
-                        readOnly
-                      />
-                    </Form.Group>
-
-                    <Form.Group className="mt-3">
-                      <Form.Label className="form-label fw-bold mb-2">Section</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control py-2"
-                        name="section"
-                        value={formData.section}
-                        readOnly
-                      />
-                    </Form.Group>
-                  </Col>
-
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="form-label fw-bold mb-2">Date</Form.Label>
-                      <div className="input-group">
-                        <Form.Control
-                          type="date"
-                          className="form-control py-2"
-                          name="date"
-                          value={formData.date}
-                          onChange={handleInputChange}
-                        />
-                        <Button variant="outline-secondary">
-                          <FaCalendarAlt />
-                        </Button>
-                      </div>
-                    </Form.Group>
-
-                    <Form.Group className="mt-3">
-                      <Form.Label className="form-label fw-bold mb-2">Payment Mode</Form.Label>
-                      <div>
-                        {["Online", "D.D.", "Cash"].map((mode, index) => (
-                          <Form.Check
-                            key={index}
-                            inline
-                            type="radio"
-                            id={`payment-mode-${index}`}
-                            label={mode}
-                            name="paymentMode"
-                            value={mode}
-                            checked={formData.paymentMode === mode}
-                            onChange={handleInputChange}
-                            className="form-check-inline"
-                          />
-                        ))}
-                      </div>
-                      {errors.paymentMode && <div className="text-danger small">{errors.paymentMode}</div>}
-                    </Form.Group>
-
-                    <Form.Group className="mt-3">
-                      <Form.Label className="form-label fw-bold mb-2">Transaction Number</Form.Label>
-                      <div className="input-group">
-                        <Form.Control
-                          type="text"
-                          className="form-control py-2"
-                          name="number"
-                          value={formData.number}
-                          onChange={handleInputChange}
-                          disabled={formData.paymentMode === "Cash"}
-                        />
-                        <Button variant="outline-secondary">
-                          {formData.paymentMode === "Online" ? <FaCreditCard /> : <FaMoneyBillWave />}
-                        </Button>
-                      </div>
-                    </Form.Group>
-                  </Col>
-                </Row>
-
-                <Row className="mt-4">
-                  <Col md={6}>
-                    <Form.Group>
-                      <Form.Label className="form-label fw-bold mb-2">Operator Name</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control py-2"
-                        name="operatorName"
-                        value={formData.operatorName}
-                        onChange={handleInputChange}
-                        isInvalid={!!errors.operatorName}
-                      />
-                      <Form.Control.Feedback type="invalid">{errors.operatorName}</Form.Control.Feedback>
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group>
-                      <Form.Label className="form-label fw-bold mb-2">Overall Fee Balance</Form.Label>
-                      <Form.Control
-                        type="text"
-                        className="form-control py-2"
-                        value={overallFeeBalance.toFixed(2)}
-                        readOnly
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-
-                <Row className="mt-4">
-                  <Col md={12}>
-                    <div className="table-responsive">
-                      <Table className="table table-bordered table-hover mb-0">
-                        <thead>
-                          <tr style={styles.headerBg}>
-                            <th>Fee Type</th>
-                            <th>Fee Head</th>
-                            <th>Total Amount</th>
-                            <th>Paid Amount</th>
-                            <th>Balance</th>
-                            <th>Payment Amount</th>
-                            <th>Balance After Payment</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {studentFeeDetails.map((fee, index) => {
-                            const balance = Number.parseFloat(fee.balance) || 0
-                            const paymentAmount = Number.parseFloat(paymentAllocation[fee.id]?.amount || 0)
-                            const balanceAfterPayment = balance - paymentAmount
-                            return (
-                              <tr key={index}>
-                                <td>{fee.type}</td>
-                                <td>{fee.heading}</td>
-                                <td>{Number.parseFloat(fee.amount || 0).toFixed(2)}</td>
-                                <td>{(Number.parseFloat(fee.amount || 0) - balance).toFixed(2)}</td>
-                                <td>{balance.toFixed(2)}</td>
-                                <td>
-                                  <Form.Control
-                                    type="text"
-                                    size="sm"
-                                    value={paymentAllocation[fee.id]?.amount || ""}
-                                    onChange={(e) => handlePaymentAllocation(fee.id, e.target.value)}
-                                    inputMode="decimal"
-                                    placeholder="0.00"
-                                    isInvalid={!!errors[`payment_${fee.id}`]}
-                                    disabled={balance <= 0}
-                                  />
-                                  {errors[`payment_${fee.id}`] && (
-                                    <Form.Control.Feedback type="invalid">
-                                      {errors[`payment_${fee.id}`]}
-                                    </Form.Control.Feedback>
-                                  )}
-                                </td>
-                                <td>{balanceAfterPayment.toFixed(2)}</td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                        <tfoot>
-                          <tr>
-                            <td colSpan="4" className="text-end fw-bold">
-                              Total:
-                            </td>
-                            <td className="fw-bold">{Number.parseFloat(formData.totalBalance).toFixed(2)}</td>
-                            <td className="fw-bold">{Number.parseFloat(formData.totalPaidAmount).toFixed(2)}</td>
-                            <td className="fw-bold">{overallFeeBalance.toFixed(2)}</td>
-                          </tr>
-                        </tfoot>
-                      </Table>
-                    </div>
-                  </Col>
-                </Row>
-
-                <Row className="mt-4">
-                  <Col md={12}>
-                    <div className="table-responsive">
-                      <Table className="table table-bordered table-hover mb-0">
-                        <thead>
-                          <tr style={styles.headerBg}>
-                            <th>Date</th>
-                            <th>Bill Number</th>
-                            <th>Fee Head</th>
-                            <th>Paid Amount</th>
-                            <th>Balance After Payment</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {previousPayments.length > 0 ? (
-                            previousPayments.map((payment, index) =>
-                              payment.feeHeadPayments?.map((feeHead, subIndex) => (
-                                <tr key={`${index}-${subIndex}`}>
-                                  <td>{payment.date}</td>
-                                  <td>{payment.billNumber}</td>
-                                  <td>{feeHead.heading}</td>
-                                  <td>{feeHead.paidAmount}</td>
-                                  <td>{feeHead.balanceAfter}</td>
-                                </tr>
-                              )),
-                            )
-                          ) : (
-                            <tr>
-                              <td colSpan="5" className="text-center">
-                                No previous payments
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                        <tfoot>
-                          <tr>
-                            <td colSpan="5" style={styles.headerBg}>
-                              <small>Total Previous Paid Amount: Rs. {totalPaidAmount.toFixed(2)}/-</small>
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </Table>
-                    </div>
-                  </Col>
-                </Row>
-
-                <div className="d-flex justify-content-end mt-4">
-                  <Button
-                    type="submit"
-                    className="btn btn-lg"
-                    style={{
-                      ...styles.customBtn,
-                      padding: "0.75rem 2.5rem",
-                      fontSize: "1.1rem",
-                      fontWeight: "600",
-                      borderRadius: "0.5rem",
-                      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                    }}
-                    disabled={Number.parseFloat(formData.totalPaidAmount) <= 0}
-                  >
-                    Confirm Bill Entry
-                  </Button>
-                </div>
-              </Form>
-            </div>
+        <div
+          style={{ backgroundColor: "#0B3D7B" }}
+          className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
+        >
+          <div className="d-flex align-items-center">
+            <h2 className="mb-0">Billing Window</h2>
           </div>
+          <div style={{ width: "20px" }}></div>
+        </div>
+
+        <div className="bg-white p-4 rounded-bottom shadow">
+          <Form onSubmit={handleSubmit} className="billing-form">
+            <Row>
+              {/* Left Column */}
+              <Col md={6} className="left-column">
+                <Row className="mb-3">
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label>Bill No.</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="billNumber"
+                        value={billData.billNumber}
+                        onChange={handleInputChange}
+                        disabled
+                        className="form-control-orange"
+                      />
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={8}>
+                    <Form.Group>
+                      <Form.Label>Admin. No.</Form.Label>
+                      <InputGroup>
+                        <Form.Control
+                          type="text"
+                          name="admissionNumber"
+                          value={billData.admissionNumber}
+                          onChange={handleInputChange}
+                          className="form-control-orange"
+                        />
+                        <Button variant="outline-secondary" onClick={fetchStudentData} disabled={isLoading}>
+                          {isLoading ? "Loading..." : "Fetch"}
+                        </Button>
+                      </InputGroup>
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Bar Code No.</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="barCodeNumber"
+                    value={billData.barCodeNumber}
+                    onChange={handleInputChange}
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Student Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="studentName"
+                    value={billData.studentName}
+                    onChange={handleInputChange}
+                    disabled
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Father Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="fatherName"
+                    value={billData.fatherName}
+                    onChange={handleInputChange}
+                    disabled
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Course</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="course"
+                    value={billData.course}
+                    onChange={handleInputChange}
+                    disabled
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Section</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="section"
+                    value={billData.section}
+                    onChange={handleInputChange}
+                    disabled
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Pickup Point</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="pickupPoint"
+                    value={billData.pickupPoint}
+                    onChange={handleInputChange}
+                    disabled
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <div className="fee-table-container mb-3">
+                  <Table bordered hover size="sm" className="fee-table">
+                    <thead className="table-header">
+                      <tr>
+                        <th>Description</th>
+                        <th>Balance</th>
+                        <th>Pay Amount</th>
+                        <th>Remaining</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {feeTableData.length > 0 ? (
+                        feeTableData.map((fee, index) => (
+                          <tr key={index}>
+                            <td>{fee.heading}</td>
+                            <td>{fee.amount}</td>
+                            <td>
+                              <Form.Control
+                                type="number"
+                                value={fee.paidAmount}
+                                onChange={(e) => handleFeeAmountChange(index, e.target.value)}
+                                className="form-control-orange"
+                              />
+                            </td>
+                            <td>{fee.remainingBalance}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="text-center">
+                            No fee details available
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+              </Col>
+
+              {/* Right Column */}
+              <Col md={6} className="right-column">
+                <Row className="mb-3">
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label>Date</Form.Label>
+                      <Form.Control
+                        type="date"
+                        name="date"
+                        value={billData.date}
+                        onChange={handleInputChange}
+                        className="form-control-orange"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Balance</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="balance"
+                    value={billData.balance}
+                    disabled
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Paid amount</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="paidAmount"
+                    value={billData.paidAmount}
+                    disabled
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Balance amount</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="balanceAmount"
+                    value={billData.balanceAmount}
+                    disabled
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Pay Mode</Form.Label>
+                  <div className="d-flex">
+                    <Form.Check
+                      type="radio"
+                      id="online"
+                      label="Online"
+                      name="paymentMode"
+                      value="Online"
+                      checked={billData.paymentMode === "Online"}
+                      onChange={handleInputChange}
+                      className="me-3"
+                    />
+                    <Form.Check
+                      type="radio"
+                      id="dd"
+                      label="D.D."
+                      name="paymentMode"
+                      value="D.D."
+                      checked={billData.paymentMode === "D.D."}
+                      onChange={handleInputChange}
+                      className="me-3"
+                    />
+                    <Form.Check
+                      type="radio"
+                      id="cash"
+                      label="Cash"
+                      name="paymentMode"
+                      value="Cash"
+                      checked={billData.paymentMode === "Cash"}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>No.</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="paymentNumber"
+                    value={billData.paymentNumber}
+                    onChange={handleInputChange}
+                    disabled={billData.paymentMode === "Cash"}
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Select Operator Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="operatorName"
+                    value={billData.operatorName}
+                    disabled
+                    className="form-control-orange"
+                  />
+                </Form.Group>
+
+                <Button variant="primary" type="submit" className="w-100 mb-3">
+                  Submit Bill Entry
+                </Button>
+
+                <Row className="mb-3">
+                  <Col md={8}>
+                    <Form.Group>
+                      <Form.Label>Transaction/Narrat:</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="transactionNarrative"
+                        value={billData.transactionNarrative}
+                        onChange={handleInputChange}
+                        className="form-control-orange"
+                      />
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label>Date:</Form.Label>
+                      <Form.Control
+                        type="date"
+                        name="transactionDate"
+                        value={billData.transactionDate}
+                        onChange={handleInputChange}
+                        className="form-control-orange"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Col>
+            </Row>
+          </Form>
         </div>
       </Container>
 
       <style>
         {`
-          .form-control:disabled {
-            background-color: #f8f9fa;
-            cursor: not-allowed;
-          }
-
-          .btn:disabled {
-            opacity: 0.65;
-            cursor: not-allowed;
-          }
-
-          .table td {
-            vertical-align: middle;
-          }
-
-          .form-control {
-            font-size: 0.9rem;
-          }
-
-          .invalid-feedback {
-            display: block;
-            margin-top: 0.25rem;
-          }
-
-          .btn-outline-primary:hover,
-          .btn-outline-danger:hover {
-            color: white;
-          }
-
-          .table tfoot tr td {
-            background-color: #f8f9fa;
-          }
-
-          @media (max-width: 768px) {
-            .btn {
-              padding: 0.375rem 1rem !important;
-              font-size: 0.875rem !important;
-            }
-          }
-
           .custom-breadcrumb {
             padding: 0.5rem 1rem;
-            background-color: #f8f9fa;
-            border-radius: 0.25rem;
           }
 
           .custom-breadcrumb a {
@@ -917,154 +775,45 @@ const BillingEntry = () => {
             color: #6c757d;
           }
 
-          .form-label {
-            font-weight: 600;
-            color: #2D3748;
+          .billing-form {
+            max-width: 1200px;
+            margin: 0 auto;
           }
 
-          .admission-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: white;
-            border: 1px solid #ced4da;
-            border-radius: 0.25rem;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-          }
-
-          .admission-dropdown-item {
+          .form-control-orange {
+            background-color: #FFF8E1 !important;
+            border: 1px solid #FFB74D;
+            border-radius: 4px;
             padding: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
           }
 
-          .admission-dropdown-item:hover {
-            background-color: #f8f9fa;
+          .form-control-orange:focus {
+            border-color: #FF9800;
+            box-shadow: 0 0 0 0.2rem rgba(255, 152, 0, 0.25);
           }
 
-          .billing-container {
-            min-height: calc(100vh - 150px);
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-          }
-
-          .billing-container .card {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-          }
-
-          .billing-container .card-body {
-            flex: 1;
+          .fee-table-container {
+            max-height: 300px;
             overflow-y: auto;
-            padding: 1.5rem;
+            border: 1px solid #ddd;
           }
 
-          @media (max-width: 768px) {
-            .card-body {
-              padding: 1rem;
-            }
-            
-            .form-control, .form-select {
-              font-size: 0.9rem;
-            }
+          .fee-table {
+            margin-bottom: 0;
           }
 
-          .table-responsive {
-            max-height: 400px;
-            overflow-y: auto;
-          }
-
-          /* For Firefox */
-          .table-responsive {
-            scrollbar-width: thin;
-            scrollbar-color: #0B3D7B #f1f1f1;
-          }
-
-          /* For Chrome, Edge, and Safari */
-          .table-responsive::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-          }
-
-          .table-responsive::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-          }
-
-          .table-responsive::-webkit-scrollbar-thumb {
-            background: #0B3D7B;
-            border-radius: 4px;
-          }
-
-          .table-responsive::-webkit-scrollbar-thumb:hover {
-            background: #1470E1;
-          }
-
-          /* Card body scrolling */
-          .card-body::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-          }
-
-          .card-body::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-          }
-
-          .card-body::-webkit-scrollbar-thumb {
-            background: #0B3D7B;
-            border-radius: 4px;
-          }
-
-          .card-body::-webkit-scrollbar-thumb:hover {
-            background: #1470E1;
-          }
-
-          /* For Firefox */
-          .card-body {
-            scrollbar-width: thin;
-            scrollbar-color: #0B3D7B #f1f1f1;
-          }
-
-          /* Fix table header */
-          .table-responsive thead tr th {
+          .table-header {
+            background-color: #E3F2FD;
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #0B3D7B;
           }
 
-          .card {
-            border: none;
-            transition: box-shadow 0.3s ease;
-          }
-
-          .card:hover {
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-          }
-
-          .form-control:focus,
-          .form-select:focus {
-            border-color: #1470E1;
-            box-shadow: 0 0 0 0.2rem rgba(20, 112, 225, 0.25);
-          }
-
-          .btn-outline-secondary {
-            color: #6c757d;
-            border-color: #6c757d;
-          }
-
-          .btn-outline-secondary:hover {
-            color: #fff;
-            background-color: #6c757d;
-            border-color: #6c757d;
+          @media print {
+            .custom-breadcrumb,
+            button[type="submit"] {
+              display: none;
+            }
           }
         `}
       </style>
@@ -1073,5 +822,5 @@ const BillingEntry = () => {
   )
 }
 
-export default BillingEntry
+export default BillEntry
 
