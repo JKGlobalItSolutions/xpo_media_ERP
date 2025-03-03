@@ -241,6 +241,7 @@ const BillEntry = () => {
           ...fee,
           paidAmount: "0",
           remainingBalance: fee.amount,
+          status: "Pending",
         })),
       )
       setTotalBalance(totalBalance)
@@ -280,6 +281,7 @@ const BillEntry = () => {
 
     feeItem.paidAmount = value
     feeItem.remainingBalance = (originalAmount - paidAmount).toFixed(2)
+    feeItem.status = Number(feeItem.remainingBalance) === 0 ? "Settled" : "Pending"
     setFeeTableData(updatedFeeTableData)
 
     // Update total paid amount and balance
@@ -316,40 +318,40 @@ const BillEntry = () => {
     try {
       const now = new Date()
 
-      // Create fee log entries for each paid fee
-      const feeLogEntries = feeTableData
-        .filter((fee) => Number.parseFloat(fee.paidAmount) > 0)
-        .map((fee) => ({
-          billNumber: billData.billNumber,
-          admissionNumber: billData.admissionNumber,
-          studentName: billData.studentName,
-          fatherName: billData.fatherName,
-          standard: billData.course,
-          section: billData.section,
-          feeHead: fee.heading,
-          feeAmount: fee.amount,
-          paidAmount: fee.paidAmount,
-          paymentMode: billData.paymentMode,
-          paymentNumber: billData.paymentNumber,
-          operatorName: billData.operatorName,
-          transactionDate: billData.date,
-          transactionNarrative: billData.transactionNarrative,
-          boardingPoint: billData.pickupPoint,
-          routeNumber: studentData.busRouteNumber || "",
-          timestamp: now.toISOString(), // Use ISO string instead of serverTimestamp
-        }))
+      // Create a single fee log entry for all paid fees
+      const feeLogEntry = {
+        billNumber: billData.billNumber,
+        admissionNumber: billData.admissionNumber,
+        studentName: billData.studentName,
+        fatherName: billData.fatherName,
+        standard: billData.course,
+        section: billData.section,
+        paymentMode: billData.paymentMode,
+        paymentNumber: billData.paymentNumber,
+        operatorName: billData.operatorName,
+        transactionDate: billData.date,
+        transactionNarrative: billData.transactionNarrative,
+        boardingPoint: billData.pickupPoint,
+        routeNumber: studentData.busRouteNumber || "",
+        totalPaidAmount: totalPaidAmount.toFixed(2),
+        timestamp: now.toISOString(),
+        feePayments: feeTableData
+          .filter((fee) => Number.parseFloat(fee.paidAmount) > 0)
+          .map((fee) => ({
+            feeHead: fee.heading,
+            feeAmount: fee.amount,
+            paidAmount: fee.paidAmount,
+          })),
+      }
 
-      if (feeLogEntries.length === 0) {
+      if (feeLogEntry.feePayments.length === 0) {
         toast.error("No fees have been paid")
         return
       }
 
       // Add to FeeLog collection
       const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
-
-      for (const entry of feeLogEntries) {
-        await addDoc(feeLogRef, entry)
-      }
+      await addDoc(feeLogRef, feeLogEntry)
 
       // Add to BillEntries collection
       const billEntryRef = collection(
@@ -362,8 +364,9 @@ const BillEntry = () => {
       )
       await addDoc(billEntryRef, {
         ...billData,
-        feeDetails: feeLogEntries,
-        timestamp: serverTimestamp(), // Use serverTimestamp for the main document
+        feeDetails: feeLogEntry.feePayments,
+        totalPaidAmount: feeLogEntry.totalPaidAmount,
+        timestamp: serverTimestamp(),
       })
 
       // Update student fee details
@@ -377,6 +380,7 @@ const BillEntry = () => {
           return {
             ...fee,
             amount: newAmount,
+            status: newAmount === "0.00" ? "Settled" : "Pending",
           }
         }
         return fee
@@ -480,7 +484,7 @@ const BillEntry = () => {
                         value={billData.billNumber}
                         onChange={handleInputChange}
                         disabled
-                        className="form-control-orange"
+                        className="form-control-light"
                       />
                     </Form.Group>
                   </Col>
@@ -494,7 +498,7 @@ const BillEntry = () => {
                           name="admissionNumber"
                           value={billData.admissionNumber}
                           onChange={handleInputChange}
-                          className="form-control-orange"
+                          className="form-control-light"
                         />
                         <Button variant="outline-secondary" onClick={fetchStudentData} disabled={isLoading}>
                           {isLoading ? "Loading..." : "Fetch"}
@@ -511,7 +515,7 @@ const BillEntry = () => {
                     name="barCodeNumber"
                     value={billData.barCodeNumber}
                     onChange={handleInputChange}
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -523,7 +527,7 @@ const BillEntry = () => {
                     value={billData.studentName}
                     onChange={handleInputChange}
                     disabled
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -535,7 +539,7 @@ const BillEntry = () => {
                     value={billData.fatherName}
                     onChange={handleInputChange}
                     disabled
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -547,7 +551,7 @@ const BillEntry = () => {
                     value={billData.course}
                     onChange={handleInputChange}
                     disabled
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -559,7 +563,7 @@ const BillEntry = () => {
                     value={billData.section}
                     onChange={handleInputChange}
                     disabled
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -571,7 +575,7 @@ const BillEntry = () => {
                     value={billData.pickupPoint}
                     onChange={handleInputChange}
                     disabled
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -580,9 +584,10 @@ const BillEntry = () => {
                     <thead className="table-header">
                       <tr>
                         <th>Description</th>
-                        <th>Balance</th>
+                        <th>Amount</th>
                         <th>Pay Amount</th>
                         <th>Remaining</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -596,20 +601,31 @@ const BillEntry = () => {
                                 type="number"
                                 value={fee.paidAmount}
                                 onChange={(e) => handleFeeAmountChange(index, e.target.value)}
-                                className="form-control-orange"
+                                className="form-control-light"
                               />
                             </td>
                             <td>{fee.remainingBalance}</td>
+                            <td>{Number(fee.remainingBalance) === 0 ? "Settled" : "Pending"}</td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="4" className="text-center">
+                          <td colSpan="5" className="text-center">
                             No fee details available
                           </td>
                         </tr>
                       )}
                     </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan="2" className="text-end fw-bold">
+                          Overall Total:
+                        </td>
+                        <td className="fw-bold">{billData.paidAmount}</td>
+                        <td className="fw-bold">{billData.balanceAmount}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
                   </Table>
                 </div>
               </Col>
@@ -625,7 +641,7 @@ const BillEntry = () => {
                         name="date"
                         value={billData.date}
                         onChange={handleInputChange}
-                        className="form-control-orange"
+                        className="form-control-light"
                       />
                     </Form.Group>
                   </Col>
@@ -638,7 +654,7 @@ const BillEntry = () => {
                     name="balance"
                     value={billData.balance}
                     disabled
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -649,7 +665,7 @@ const BillEntry = () => {
                     name="paidAmount"
                     value={billData.paidAmount}
                     disabled
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -660,7 +676,7 @@ const BillEntry = () => {
                     name="balanceAmount"
                     value={billData.balanceAmount}
                     disabled
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -707,7 +723,7 @@ const BillEntry = () => {
                     value={billData.paymentNumber}
                     onChange={handleInputChange}
                     disabled={billData.paymentMode === "Cash"}
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -718,7 +734,7 @@ const BillEntry = () => {
                     name="operatorName"
                     value={billData.operatorName}
                     disabled
-                    className="form-control-orange"
+                    className="form-control-light"
                   />
                 </Form.Group>
 
@@ -735,7 +751,7 @@ const BillEntry = () => {
                         name="transactionNarrative"
                         value={billData.transactionNarrative}
                         onChange={handleInputChange}
-                        className="form-control-orange"
+                        className="form-control-light"
                       />
                     </Form.Group>
                   </Col>
@@ -748,7 +764,7 @@ const BillEntry = () => {
                         name="transactionDate"
                         value={billData.transactionDate}
                         onChange={handleInputChange}
-                        className="form-control-orange"
+                        className="form-control-light"
                       />
                     </Form.Group>
                   </Col>
@@ -780,20 +796,21 @@ const BillEntry = () => {
             margin: 0 auto;
           }
 
-          .form-control-orange {
-            background-color: #FFF8E1 !important;
-            border: 1px solid #FFB74D;
+          .form-control-light {
+            background-color: #F8F9FA !important;
+            border: 1px solid #CED4DA;
             border-radius: 4px;
             padding: 0.5rem;
           }
 
-          .form-control-orange:focus {
-            border-color: #FF9800;
-            box-shadow: 0 0 0 0.2rem rgba(255, 152, 0, 0.25);
+          .form-control-light:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
           }
 
           .fee-table-container {
-            max-height: 300px;
+            height: calc(100vh - 500px);
+            min-height: 300px;
             overflow-y: auto;
             border: 1px solid #ddd;
           }

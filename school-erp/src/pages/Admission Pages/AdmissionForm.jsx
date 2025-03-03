@@ -100,6 +100,144 @@ const AdmissionForm = () => {
   const [hostelFeeDetails, setHostelFeeDetails] = useState([])
   const [isSetupDataLoaded, setIsSetupDataLoaded] = useState(false)
   const [hostelFeeHeads, setHostelFeeHeads] = useState([])
+  const [isHostelRequired, setIsHostelRequired] = useState(false)
+  const [isBusRequired, setIsBusRequired] = useState(false)
+
+  const fetchBusFee = useCallback(async () => {
+    if (formData.boardingPoint && formData.busRouteNumber && transportId) {
+      try {
+        const busFeeRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "BusFeeSetup")
+        const q = query(
+          busFeeRef,
+          where("boardingPoint", "==", formData.boardingPoint),
+          where("routeNumber", "==", formData.busRouteNumber),
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          let totalBusFee = 0
+          const details = querySnapshot.docs.map((doc) => {
+            const feeData = doc.data()
+            totalBusFee += Number.parseFloat(feeData.fee) || 0
+            return { type: "Bus Fee", heading: feeData.feeHeading, amount: feeData.fee, status: "pending" }
+          })
+          setBusFee(totalBusFee.toFixed(2))
+          setBusFeeDetails(details)
+          setFormData((prev) => ({ ...prev, busFee: totalBusFee.toFixed(2) }))
+        } else {
+          setBusFee("")
+          setBusFeeDetails([])
+          setFormData((prev) => ({ ...prev, busFee: "" }))
+        }
+      } catch (error) {
+        console.error("Error fetching bus fee:", error)
+        toast.error("Failed to fetch bus fee. Please try again.")
+      }
+    } else {
+      setBusFee("")
+      setBusFeeDetails([])
+      setFormData((prev) => ({ ...prev, busFee: "" }))
+    }
+  }, [formData.boardingPoint, formData.busRouteNumber, transportId])
+
+  const fetchHostelFee = useCallback(async () => {
+    if (formData.studentCategory && formData.standard && administrationId && formData.lunchRefresh) {
+      try {
+        const hostelFeeRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Administration",
+          administrationId,
+          "HostelFeeSetup",
+        )
+        const q = query(
+          hostelFeeRef,
+          where("studentCategoryId", "==", formData.studentCategory),
+          where("standardId", "==", formData.standard),
+          where("feeHeading", "==", formData.lunchRefresh),
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          let totalHostelFee = 0
+          const details = querySnapshot.docs.map((doc) => {
+            const fee = doc.data()
+            totalHostelFee += Number.parseFloat(fee.feeAmount) || 0
+            return {
+              type: "Hostel Fee",
+              heading: fee.feeHeading || "Hostel Fee",
+              amount: fee.feeAmount,
+              status: "pending",
+            }
+          })
+          setHostelFee(totalHostelFee.toFixed(2))
+          setHostelFeeDetails(details)
+          setFormData((prev) => ({ ...prev, hostelFee: totalHostelFee.toFixed(2) }))
+        } else {
+          setHostelFee("")
+          setHostelFeeDetails([])
+          setFormData((prev) => ({ ...prev, hostelFee: "" }))
+        }
+      } catch (error) {
+        console.error("Error fetching hostel fee:", error)
+        toast.error("Failed to fetch hostel fee. Please try again.")
+      }
+    } else {
+      setHostelFee("")
+      setHostelFeeDetails([])
+      setFormData((prev) => ({ ...prev, hostelFee: "" }))
+    }
+  }, [administrationId, formData.studentCategory, formData.standard, formData.lunchRefresh])
+
+  const fetchTuitionFee = useCallback(async () => {
+    if (formData.studentCategory && formData.standard && administrationId) {
+      try {
+        const tuitionFeeRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Administration",
+          administrationId,
+          "FeeSetup",
+        )
+        const q = query(
+          tuitionFeeRef,
+          where("studentCategoryId", "==", formData.studentCategory),
+          where("standardId", "==", formData.standard),
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          let totalTuitionFee = 0
+          const details = querySnapshot.docs.map((doc) => {
+            const feeData = doc.data()
+            totalTuitionFee += Number.parseFloat(feeData.feeAmount) || 0
+            return {
+              type: "Tuition Fee",
+              heading: feeData.feeHeading || "Tuition Fee",
+              amount: feeData.feeAmount,
+              status: "pending",
+            }
+          })
+          setTuitionFee(totalTuitionFee.toFixed(2))
+          setTuitionFeeDetails(details)
+          setFormData((prev) => ({ ...prev, tutionFees: totalTuitionFee.toFixed(2) }))
+        } else {
+          setTuitionFee("")
+          setTuitionFeeDetails([])
+          setFormData((prev) => ({ ...prev, tutionFees: "" }))
+        }
+      } catch (error) {
+        console.error("Error fetching tuition fee:", error)
+        toast.error("Failed to fetch tuition fee. Please try again.")
+      }
+    } else {
+      setTuitionFee("")
+      setTuitionFeeDetails([])
+      setFormData((prev) => ({ ...prev, tutionFees: "" }))
+    }
+  }, [administrationId, formData.studentCategory, formData.standard])
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -176,15 +314,15 @@ const AdmissionForm = () => {
 
   useEffect(() => {
     fetchBusFee()
-  }, [formData.boardingPoint, formData.busRouteNumber, transportId])
+  }, [fetchBusFee])
 
   useEffect(() => {
     fetchHostelFee()
-  }, [formData.studentCategory, formData.standard, formData.lunchRefresh, administrationId])
+  }, [fetchHostelFee])
 
   useEffect(() => {
     fetchTuitionFee()
-  }, [formData.studentCategory, formData.standard, administrationId])
+  }, [fetchTuitionFee])
 
   const fetchSetupData = async () => {
     try {
@@ -355,6 +493,8 @@ const AdmissionForm = () => {
         }
 
         await Promise.all([fetchBusFee(), fetchHostelFee(), fetchTuitionFee()])
+        setIsHostelRequired(admissionData.isHostelRequired || false)
+        setIsBusRequired(admissionData.isBusRequired || false)
       }
     } catch (error) {
       console.error("Error fetching admission data:", error)
@@ -442,132 +582,6 @@ const AdmissionForm = () => {
       toast.error("Failed to fetch enquiry data. Please try again.")
     }
   }
-
-  const fetchBusFee = useCallback(async () => {
-    if (formData.boardingPoint && formData.busRouteNumber && transportId) {
-      try {
-        const busFeeRef = collection(db, "Schools", auth.currentUser.uid, "Transport", transportId, "BusFeeSetup")
-        const q = query(
-          busFeeRef,
-          where("boardingPoint", "==", formData.boardingPoint),
-          where("routeNumber", "==", formData.busRouteNumber),
-        )
-        const querySnapshot = await getDocs(q)
-
-        if (!querySnapshot.empty) {
-          let totalBusFee = 0
-          const details = querySnapshot.docs.map((doc) => {
-            const feeData = doc.data()
-            totalBusFee += Number.parseFloat(feeData.fee) || 0
-            return { type: "Bus Fee", heading: feeData.feeHeading, amount: feeData.fee }
-          })
-          setBusFee(totalBusFee.toFixed(2))
-          setBusFeeDetails(details)
-          setFormData((prev) => ({ ...prev, busFee: totalBusFee.toFixed(2) }))
-        } else {
-          setBusFee("")
-          setBusFeeDetails([])
-          setFormData((prev) => ({ ...prev, busFee: "" }))
-        }
-      } catch (error) {
-        console.error("Error fetching bus fee:", error)
-        toast.error("Failed to fetch bus fee. Please try again.")
-      }
-    } else {
-      setBusFee("")
-      setBusFeeDetails([])
-      setFormData((prev) => ({ ...prev, busFee: "" }))
-    }
-  }, [formData.boardingPoint, formData.busRouteNumber, transportId])
-
-  const fetchHostelFee = useCallback(async () => {
-    if (formData.studentCategory && formData.standard && administrationId && formData.lunchRefresh) {
-      try {
-        const hostelFeeRef = collection(
-          db,
-          "Schools",
-          auth.currentUser.uid,
-          "Administration",
-          administrationId,
-          "HostelFeeSetup",
-        )
-        const q = query(
-          hostelFeeRef,
-          where("studentCategoryId", "==", formData.studentCategory),
-          where("standardId", "==", formData.standard),
-          where("feeHeading", "==", formData.lunchRefresh),
-        )
-        const querySnapshot = await getDocs(q)
-
-        if (!querySnapshot.empty) {
-          let totalHostelFee = 0
-          const details = querySnapshot.docs.map((doc) => {
-            const fee = doc.data()
-            totalHostelFee += Number.parseFloat(fee.feeAmount) || 0
-            return { type: "Hostel Fee", heading: fee.feeHeading || "Hostel Fee", amount: fee.feeAmount }
-          })
-          setHostelFee(totalHostelFee.toFixed(2))
-          setHostelFeeDetails(details)
-          setFormData((prev) => ({ ...prev, hostelFee: totalHostelFee.toFixed(2) }))
-        } else {
-          setHostelFee("")
-          setHostelFeeDetails([])
-          setFormData((prev) => ({ ...prev, hostelFee: "" }))
-        }
-      } catch (error) {
-        console.error("Error fetching hostel fee:", error)
-        toast.error("Failed to fetch hostel fee. Please try again.")
-      }
-    } else {
-      setHostelFee("")
-      setHostelFeeDetails([])
-      setFormData((prev) => ({ ...prev, hostelFee: "" }))
-    }
-  }, [administrationId, formData.studentCategory, formData.standard, formData.lunchRefresh])
-
-  const fetchTuitionFee = useCallback(async () => {
-    if (formData.studentCategory && formData.standard && administrationId) {
-      try {
-        const tuitionFeeRef = collection(
-          db,
-          "Schools",
-          auth.currentUser.uid,
-          "Administration",
-          administrationId,
-          "FeeSetup",
-        )
-        const q = query(
-          tuitionFeeRef,
-          where("studentCategoryId", "==", formData.studentCategory),
-          where("standardId", "==", formData.standard),
-        )
-        const querySnapshot = await getDocs(q)
-
-        if (!querySnapshot.empty) {
-          let totalTuitionFee = 0
-          const details = querySnapshot.docs.map((doc) => {
-            const feeData = doc.data()
-            totalTuitionFee += Number.parseFloat(feeData.feeAmount) || 0
-            return { type: "Tuition Fee", heading: feeData.feeHeading || "Tuition Fee", amount: feeData.feeAmount }
-          })
-          setTuitionFee(totalTuitionFee.toFixed(2))
-          setTuitionFeeDetails(details)
-          setFormData((prev) => ({ ...prev, tutionFees: totalTuitionFee.toFixed(2) }))
-        } else {
-          setTuitionFee("")
-          setTuitionFeeDetails([])
-          setFormData((prev) => ({ ...prev, tutionFees: "" }))
-        }
-      } catch (error) {
-        console.error("Error fetching tuition fee:", error)
-        toast.error("Failed to fetch tuition fee. Please try again.")
-      }
-    } else {
-      setTuitionFee("")
-      setTuitionFeeDetails([])
-      setFormData((prev) => ({ ...prev, tutionFees: "" }))
-    }
-  }, [administrationId, formData.studentCategory, formData.standard])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -714,6 +728,33 @@ const AdmissionForm = () => {
     return Object.keys(newErrors).length === 0
   }
 
+  const handleHostelToggle = (e) => {
+    setIsHostelRequired(e.target.checked)
+    if (!e.target.checked) {
+      setFormData((prev) => ({
+        ...prev,
+        lunchRefresh: "",
+        hostelFee: "",
+      }))
+      setHostelFee("")
+      setHostelFeeDetails([])
+    }
+  }
+
+  const handleBusToggle = (e) => {
+    setIsBusRequired(e.target.checked)
+    if (!e.target.checked) {
+      setFormData((prev) => ({
+        ...prev,
+        boardingPoint: "",
+        busRouteNumber: "",
+        busFee: "",
+      }))
+      setBusFee("")
+      setBusFeeDetails([])
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (validateForm()) {
@@ -751,6 +792,8 @@ const AdmissionForm = () => {
           busFee: busFee || "",
           hostelFee: hostelFee || "",
           tutionFees: tuitionFee || "",
+          isHostelRequired: isHostelRequired,
+          isBusRequired: isBusRequired,
         }
 
         const admissionRef = collection(
@@ -831,7 +874,7 @@ const AdmissionForm = () => {
     if (!allFees.length) {
       return (
         <tr>
-          <td colSpan="3" className="text-center">
+          <td colSpan="4" className="text-center">
             No fee details available
           </td>
         </tr>
@@ -850,6 +893,7 @@ const AdmissionForm = () => {
             </td>
             <td>{detail.heading}</td>
             <td>{detail.amount}</td>
+            <td>{detail.status || "pending"}</td>
           </tr>,
         )
         currentType = detail.type
@@ -858,6 +902,7 @@ const AdmissionForm = () => {
           <tr key={`${detail.type}-${index}`}>
             <td>{detail.heading}</td>
             <td>{detail.amount}</td>
+            <td>{detail.status || "pending"}</td>
           </tr>,
         )
       }
@@ -1407,59 +1452,85 @@ const AdmissionForm = () => {
 
                 <h3 className="section-title mt-4">Bus Transport Details</h3>
                 <Form.Group className="mb-3">
-                  <Form.Label>Boarding Point</Form.Label>
-                  <Form.Select
-                    name="boardingPoint"
-                    value={formData.boardingPoint || ""}
-                    onChange={handleInputChange}
+                  <Form.Check
+                    type="switch"
+                    id="bus-toggle"
+                    label="Bus Transport Required"
+                    checked={isBusRequired}
+                    onChange={handleBusToggle}
                     disabled={isViewMode}
-                    className="form-control-blue"
-                  >
-                    <option value="">Select Boarding Point</option>
-                    {setupData.boardingPoints.map((point) => (
-                      <option key={point.id} value={point.placeName}>
-                        {point.placeName}
-                      </option>
-                    ))}
-                  </Form.Select>
+                  />
                 </Form.Group>
+                {isBusRequired && (
+                  <>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Boarding Point</Form.Label>
+                      <Form.Select
+                        name="boardingPoint"
+                        value={formData.boardingPoint || ""}
+                        onChange={handleInputChange}
+                        disabled={isViewMode}
+                        className="form-control-blue"
+                      >
+                        <option value="">Select Boarding Point</option>
+                        {setupData.boardingPoints.map((point) => (
+                          <option key={point.id} value={point.placeName}>
+                            {point.placeName}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Bus Route Number</Form.Label>
-                  <Form.Select
-                    name="busRouteNumber"
-                    value={formData.busRouteNumber || ""}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                  >
-                    <option value="">Select Bus Route</option>
-                    {setupData.busRoutes.map((route) => (
-                      <option key={route.id} value={route.route}>
-                        {route.route}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Bus Route Number</Form.Label>
+                      <Form.Select
+                        name="busRouteNumber"
+                        value={formData.busRouteNumber || ""}
+                        onChange={handleInputChange}
+                        disabled={isViewMode}
+                        className="form-control-blue"
+                      >
+                        <option value="">Select Bus Route</option>
+                        {setupData.busRoutes.map((route) => (
+                          <option key={route.id} value={route.route}>
+                            {route.route}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </>
+                )}
 
                 <h3 className="section-title mt-4">Hostel Details</h3>
                 <Form.Group className="mb-3">
-                  <Form.Label>Hostel Fee Head</Form.Label>
-                  <Form.Select
-                    name="lunchRefresh"
-                    value={formData.lunchRefresh || ""}
-                    onChange={handleInputChange}
+                  <Form.Check
+                    type="switch"
+                    id="hostel-toggle"
+                    label="Hostel Required"
+                    checked={isHostelRequired}
+                    onChange={handleHostelToggle}
                     disabled={isViewMode}
-                    className="form-control-blue"
-                  >
-                    <option value="">Select Hostel Fee Head</option>
-                    {hostelFeeHeads.map((feeHead) => (
-                      <option key={feeHead.id} value={feeHead.feeHead}>
-                        {feeHead.feeHead}
-                      </option>
-                    ))}
-                  </Form.Select>
+                  />
                 </Form.Group>
+                {isHostelRequired && (
+                  <Form.Group className="mb-3">
+                    <Form.Label>Hostel Fee Head</Form.Label>
+                    <Form.Select
+                      name="lunchRefresh"
+                      value={formData.lunchRefresh || ""}
+                      onChange={handleInputChange}
+                      disabled={isViewMode}
+                      className="form-control-blue"
+                    >
+                      <option value="">Select Hostel Fee Head</option>
+                      {hostelFeeHeads.map((feeHead) => (
+                        <option key={feeHead.id} value={feeHead.feeHead}>
+                          {feeHead.feeHead}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                )}
 
                 <h3 className="section-title mt-4">Previous Studied Details</h3>
                 <Form.Group className="mb-3">
@@ -1568,12 +1639,13 @@ const AdmissionForm = () => {
                         <th>Fee Type</th>
                         <th>Fee Heading</th>
                         <th>Amount</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>{renderFeeTableRows()}</tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan="2" className="text-end fw-bold">
+                        <td colSpan="3" className="text-end fw-bold">
                           Overall Total:
                         </td>
                         <td className="fw-bold">{calculateOverallTotal()}</td>
@@ -1711,6 +1783,52 @@ const AdmissionForm = () => {
               font-size: 0.9rem;
             }
           }
+
+          .form-check-input {
+            width: 3em;
+            height: 1.5em;
+            margin-top: 0.25em;
+            vertical-align: top;
+            background-color: #fff;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            border: 1px solid rgba(0, 0, 0, 0.25);
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+            transition: background-color 0.15s ease-in-out, background-position 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+          }
+
+          .form-check-input:checked {
+            background-color: #0B3D7B;
+            border-color: #0B3D7B;
+          }
+
+          .form-check-input:focus {
+            border-color: #0B3D7B;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(11, 61, 123, 0.25);
+          }
+
+          .form-switch .form-check-input {
+            width: 2.5em;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%280, 0, 0, 0.25%29'/%3e%3c/svg%3e");
+            background-position: left center;
+            border-radius: 2em;
+            transition: background-position 0.15s ease-in-out;
+          }
+
+          .form-switch .form-check-input:checked {
+            background-position: right center;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+          }
+
+          .form-switch .form-check-label {
+            padding-left: 0.5rem;
+          }
         `}
       </style>
       <ToastContainer />
@@ -1719,3 +1837,4 @@ const AdmissionForm = () => {
 }
 
 export default AdmissionForm
+
