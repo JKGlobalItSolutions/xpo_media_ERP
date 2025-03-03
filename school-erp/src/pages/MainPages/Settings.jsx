@@ -1,103 +1,117 @@
-import React, { useState, useEffect } from "react"
-import { Container, Row, Col, Card, Form, Button, Image } from "react-bootstrap"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
-import { db, auth, storage } from "../../Firebase/config"
-import MainContentPage from "../../components/MainContent/MainContentPage"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { Link } from "react-router-dom"
-
+import React, { useState, useEffect } from "react";
+import { Container, Row, Col, Card, Form, Button, Image } from "react-bootstrap";
+import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { db, auth, storage } from "../../Firebase/config";
+import MainContentPage from "../../components/MainContent/MainContentPage";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Link } from "react-router-dom";
+import { Person } from "react-bootstrap-icons"; // Use Person instead of User
 
 const Profile = () => {
   const [schoolData, setSchoolData] = useState({
     SchoolName: "",
     SchoolAddres: "",
     email: "",
-    profileImage: "", // URL for the profile image
-  })
-  const [isEditing, setIsEditing] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [imageFile, setImageFile] = useState(null) // State for the uploaded image file
+    profileImage: "",
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [imageFile, setImageFile] = useState(null);
+  const [schoolDocId, setSchoolDocId] = useState(null);
 
   useEffect(() => {
     const fetchSchoolData = async () => {
       try {
-        const schoolDoc = doc(db, "Schools", auth.currentUser.uid)
-        const schoolSnapshot = await getDoc(schoolDoc)
-        if (schoolSnapshot.exists()) {
-          const data = schoolSnapshot.data()
+        if (!auth.currentUser) {
+          toast.error("No user logged in");
+          setLoading(false);
+          return;
+        }
+
+        const schoolsCollection = collection(db, "Schools");
+        const q = query(schoolsCollection, where("email", "==", auth.currentUser.email));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const schoolDoc = querySnapshot.docs[0];
+          const data = schoolDoc.data();
+          setSchoolDocId(schoolDoc.id);
           setSchoolData({
             SchoolName: data.SchoolName || "",
             SchoolAddres: data.SchoolAddres || "",
             email: data.email || "",
-            profileImage: data.profileImage || "", // Fetch the profile image URL
-          })
+            profileImage: data.profileImage || "",
+          });
         } else {
-          toast.error("No school profile found")
+          toast.error("No school profile found for this email");
         }
       } catch (error) {
-        console.error("Error fetching school data:", error)
-        toast.error("Failed to fetch school profile")
+        console.error("Error fetching school data:", error);
+        toast.error("Failed to fetch school profile");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchSchoolData()
-  }, [])
+    fetchSchoolData();
+  }, []);
 
   const handleEditToggle = () => {
-    setIsEditing(!isEditing)
-  }
+    setIsEditing(!isEditing);
+  };
 
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setSchoolData((prevData) => ({
       ...prevData,
       [name]: value,
-    }))
-  }
+    }));
+  };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files[0];
     if (file) {
-      setImageFile(file)
+      setImageFile(file);
     }
-  }
+  };
 
   const handleSave = async () => {
     try {
-      const schoolDoc = doc(db, "Schools", auth.currentUser.uid)
-
-      let profileImageUrl = schoolData.profileImage
-      if (imageFile) {
-        // Upload the new image to Firebase Storage
-        const storageRef = ref(storage, `profile/${auth.currentUser.uid}/profileImage`)
-        await uploadBytes(storageRef, imageFile)
-        profileImageUrl = await getDownloadURL(storageRef)
+      if (!schoolDocId) {
+        toast.error("No school document found to update");
+        return;
       }
 
-      // Update Firebase Firestore with school data and profile image URL
+      const schoolDoc = doc(db, "Schools", schoolDocId);
+
+      let profileImageUrl = schoolData.profileImage;
+      if (imageFile) {
+        const storageRef = ref(storage, `profile/${auth.currentUser.email}/profileImage`);
+        await uploadBytes(storageRef, imageFile);
+        profileImageUrl = await getDownloadURL(storageRef);
+      }
+
       await updateDoc(schoolDoc, {
         SchoolName: schoolData.SchoolName,
         SchoolAddres: schoolData.SchoolAddres,
         email: schoolData.email,
         profileImage: profileImageUrl,
-      })
+      });
 
       setSchoolData((prevData) => ({
         ...prevData,
         profileImage: profileImageUrl,
-      }))
-      setImageFile(null)
-      toast.success("Profile updated successfully")
-      setIsEditing(false)
+      }));
+      setImageFile(null);
+      toast.success("Profile updated successfully");
+      setIsEditing(false);
     } catch (error) {
-      console.error("Error saving profile:", error)
-      toast.error("Failed to update profile")
+      console.error("Error saving profile:", error);
+      toast.error("Failed to update profile");
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -106,22 +120,20 @@ const Profile = () => {
           <div className="text-center py-4">Loading...</div>
         </Container>
       </MainContentPage>
-    )
+    );
   }
 
   return (
     <MainContentPage>
       <Container fluid className="px-0">
-        {/* Breadcrumb Navigation */}
         <div className="mb-4">
           <nav className="custom-breadcrumb py-1 py-lg-3">
-          <Link to="/home">Home</Link>
-            <span className="separator mx-2 text-muted">&gt;</span>
+            <Link to="/home">Home</Link>
+            <span className="separator mx-2 text-muted"></span>
             <span className="text-dark">Profile</span>
           </nav>
         </div>
 
-        {/* Profile Header */}
         <div
           style={{ backgroundColor: "#0B3D7B" }}
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
@@ -134,7 +146,6 @@ const Profile = () => {
           )}
         </div>
 
-        {/* Profile Content */}
         <div className="bg-white p-4 rounded-bottom">
           <Row className="justify-content-center">
             <Col md={8} lg={6}>
@@ -149,8 +160,8 @@ const Profile = () => {
                         height={100}
                         className="mb-3"
                         onError={(e) => {
-                          e.target.src = "" // Fallback if image fails to load
-                          e.target.style.display = "none"
+                          e.target.src = "";
+                          e.target.style.display = "none";
                         }}
                       />
                       <Form.Control
@@ -167,7 +178,7 @@ const Profile = () => {
                           className="position-absolute top-50 start-50 translate-middle text-muted"
                           style={{ cursor: "pointer" }}
                         >
-                          <User size={100} />
+                          <Person size={100} /> {/* Replace User with Person */}
                         </label>
                       )}
                     </div>
@@ -236,13 +247,13 @@ const Profile = () => {
                         height={100}
                         className="mb-3"
                         onError={(e) => {
-                          e.target.src = "" // Fallback if image fails to load
-                          e.target.style.display = "none"
-                          e.target.nextSibling.style.display = "block" // Show User icon if image fails
+                          e.target.src = "";
+                          e.target.style.display = "none";
+                          e.target.nextSibling.style.display = "block";
                         }}
                       />
                       {!schoolData.profileImage && (
-                        <User size={100} className="text-muted position-absolute top-50 start-50 translate-middle" />
+                        <Person size={100} className="text-muted position-absolute top-50 start-50 translate-middle" /> 
                       )}
                     </div>
                     <div className="text-center">
@@ -346,7 +357,7 @@ const Profile = () => {
       </style>
       <ToastContainer />
     </MainContentPage>
-  )
-}
+  );
+};
 
-export default Profile
+export default Profile;

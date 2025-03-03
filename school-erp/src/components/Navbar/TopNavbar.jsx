@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { auth, db, storage } from "../../Firebase/config"
-import { signOut } from "firebase/auth"
-import { doc, getDoc } from "firebase/firestore"
-import { useNavigate } from "react-router-dom"
-import { ref, getDownloadURL } from "firebase/storage"
-import { Container, Image } from "react-bootstrap"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
-import { User } from "lucide-react"
+import { useState, useEffect } from "react";
+import { auth, db, storage } from "../../Firebase/config";
+import { signOut } from "firebase/auth";
+import { collection, query, where, getDocs } from "firebase/firestore"; // Updated imports
+import { useNavigate } from "react-router-dom";
+import { ref, getDownloadURL } from "firebase/storage";
+import { Container, Image } from "react-bootstrap";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { User } from "lucide-react";
 
 function LogoutModal({ isOpen, onClose, onConfirm }) {
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="modal-overlay">
@@ -29,69 +29,86 @@ function LogoutModal({ isOpen, onClose, onConfirm }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function TopNavbar({ toggleSidebar, isMobile }) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [schoolName, setSchoolName] = useState("")
-  const [profileImage, setProfileImage] = useState("")
-  const [showLogoutModal, setShowLogoutModal] = useState(false)
-  const navigate = useNavigate()
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [schoolName, setSchoolName] = useState("");
+  const [profileImage, setProfileImage] = useState("");
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchSchoolData = async () => {
-      const user = auth.currentUser
+      const user = auth.currentUser;
       if (user) {
-        const schoolDoc = doc(db, "Schools", user.uid)
-        const schoolSnapshot = await getDoc(schoolDoc)
-        if (schoolSnapshot.exists()) {
-          const data = schoolSnapshot.data()
-          setSchoolName(data.SchoolName || "")
-          if (data.profileImage) {
-            try {
-              const storageRef = ref(storage, `profile/${user.uid}/profileImage`)
-              const url = await getDownloadURL(storageRef)
-              setProfileImage(url)
-            } catch (error) {
-              console.error("Error fetching profile image:", error)
-              setProfileImage("")
+        try {
+          // Query the "Schools" collection by email instead of UID
+          const schoolsCollection = collection(db, "Schools");
+          const q = query(schoolsCollection, where("email", "==", user.email));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            const schoolDoc = querySnapshot.docs[0]; // Assuming email is unique
+            const data = schoolDoc.data();
+            setSchoolName(data.SchoolName || "");
+
+            if (data.profileImage) {
+              try {
+                // Use email in the storage path for consistency
+                const storageRef = ref(storage, `profile/${user.email}/profileImage`);
+                const url = await getDownloadURL(storageRef);
+                setProfileImage(url);
+              } catch (error) {
+                console.error("Error fetching profile image:", error);
+                setProfileImage(""); // Fallback to empty string if image fetch fails
+              }
+            } else {
+              setProfileImage("");
             }
           } else {
-            setProfileImage("")
+            console.warn("No school profile found for this email");
+            setSchoolName("");
+            setProfileImage("");
           }
+        } catch (error) {
+          console.error("Error fetching school data:", error);
+          toast.error("Failed to load school data");
         }
       }
-    }
-    fetchSchoolData()
-  }, [])
+    };
+
+    fetchSchoolData();
+  }, []); // Runs once on mount, updates with auth state changes
 
   const toggleDropdown = () => {
-    setIsDropdownOpen(!isDropdownOpen)
-  }
+    setIsDropdownOpen(!isDropdownOpen);
+  };
 
   const handleLogout = () => {
-    setShowLogoutModal(true)
-  }
+    setShowLogoutModal(true);
+  };
 
   const confirmLogout = async () => {
     try {
-      await signOut(auth)
-      navigate("/")
+      await signOut(auth);
+      navigate("/");
     } catch (error) {
-      console.error("Logout error:", error)
+      console.error("Logout error:", error);
+      toast.error("Failed to logout");
     }
-    setShowLogoutModal(false)
-  }
+    setShowLogoutModal(false);
+  };
 
   const cancelLogout = () => {
-    setShowLogoutModal(false)
-  }
+    setShowLogoutModal(false);
+  };
 
   const handleSettingsClick = () => {
-    navigate("/settings")
-    setIsDropdownOpen(false)
-  }
+    navigate("/settings");
+    setIsDropdownOpen(false);
+  };
 
   return (
     <nav
@@ -124,7 +141,7 @@ function TopNavbar({ toggleSidebar, isMobile }) {
       <div style={{ flex: 1 }} />
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
         <span style={{ fontSize: "18px", fontWeight: "500" }}>{schoolName || "School Name"}</span>
-        
+
         <div
           style={{
             position: "relative",
@@ -144,7 +161,7 @@ function TopNavbar({ toggleSidebar, isMobile }) {
               width={32}
               height={32}
               onError={(e) => {
-                e.target.style.display = "none"
+                e.target.style.display = "none"; // Hide broken image
               }}
             />
           ) : (
@@ -209,6 +226,7 @@ function TopNavbar({ toggleSidebar, isMobile }) {
         )}
       </div>
       <LogoutModal isOpen={showLogoutModal} onClose={cancelLogout} onConfirm={confirmLogout} />
+      <ToastContainer />
       <style jsx>{`
         .modal-overlay {
           position: fixed;
@@ -273,7 +291,7 @@ function TopNavbar({ toggleSidebar, isMobile }) {
         }
       `}</style>
     </nav>
-  )
+  );
 }
 
-export default TopNavbar
+export default TopNavbar;
