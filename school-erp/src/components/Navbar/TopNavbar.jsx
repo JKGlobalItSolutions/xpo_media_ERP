@@ -1,18 +1,14 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { auth, db, storage } from "../../Firebase/config";
-import { signOut } from "firebase/auth";
-import { collection, query, where, getDocs } from "firebase/firestore"; // Updated imports
-import { useNavigate } from "react-router-dom";
-import { ref, getDownloadURL } from "firebase/storage";
-import { Container, Image } from "react-bootstrap";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { User } from "lucide-react";
+import { useState, useEffect } from "react"
+import { auth, db } from "../../Firebase/config"
+import { signOut } from "firebase/auth"
+import { doc, getDoc } from "firebase/firestore"
+import { useNavigate } from "react-router-dom"
 
+// Logout Confirmation Modal Component
 function LogoutModal({ isOpen, onClose, onConfirm }) {
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="modal-overlay">
@@ -29,86 +25,54 @@ function LogoutModal({ isOpen, onClose, onConfirm }) {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function TopNavbar({ toggleSidebar, isMobile }) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [schoolName, setSchoolName] = useState("");
-  const [profileImage, setProfileImage] = useState("");
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const navigate = useNavigate();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [schoolName, setSchoolName] = useState("")
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
-    const fetchSchoolData = async () => {
-      const user = auth.currentUser;
+    const fetchSchoolName = async () => {
+      const user = auth.currentUser
       if (user) {
-        try {
-          // Query the "Schools" collection by email instead of UID
-          const schoolsCollection = collection(db, "Schools");
-          const q = query(schoolsCollection, where("email", "==", user.email));
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-            const schoolDoc = querySnapshot.docs[0]; // Assuming email is unique
-            const data = schoolDoc.data();
-            setSchoolName(data.SchoolName || "");
-
-            if (data.profileImage) {
-              try {
-                // Use email in the storage path for consistency
-                const storageRef = ref(storage, `profile/${user.email}/profileImage`);
-                const url = await getDownloadURL(storageRef);
-                setProfileImage(url);
-              } catch (error) {
-                console.error("Error fetching profile image:", error);
-                setProfileImage(""); // Fallback to empty string if image fetch fails
-              }
-            } else {
-              setProfileImage("");
-            }
-          } else {
-            console.warn("No school profile found for this email");
-            setSchoolName("");
-            setProfileImage("");
-          }
-        } catch (error) {
-          console.error("Error fetching school data:", error);
-          toast.error("Failed to load school data");
+        const schoolDoc = await getDoc(doc(db, "Schools", user.uid))
+        if (schoolDoc.exists()) {
+          setSchoolName(schoolDoc.data().SchoolName || "")
         }
       }
-    };
-
-    fetchSchoolData();
-  }, []); // Runs once on mount, updates with auth state changes
+    }
+    fetchSchoolName()
+  }, [])
 
   const toggleDropdown = () => {
-    setIsDropdownOpen(!isDropdownOpen);
-  };
+    setIsDropdownOpen(!isDropdownOpen)
+  }
 
   const handleLogout = () => {
-    setShowLogoutModal(true);
-  };
+    setShowLogoutModal(true)
+  }
 
   const confirmLogout = async () => {
     try {
-      await signOut(auth);
-      navigate("/");
+      await signOut(auth)
+      navigate("/")
     } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Failed to logout");
+      console.error("Logout error:", error)
     }
-    setShowLogoutModal(false);
-  };
+    setShowLogoutModal(false)
+  }
 
   const cancelLogout = () => {
-    setShowLogoutModal(false);
-  };
+    setShowLogoutModal(false)
+  }
 
   const handleSettingsClick = () => {
-    navigate("/settings");
-    setIsDropdownOpen(false);
-  };
+    navigate("/settings")
+    setIsDropdownOpen(false)
+  }
 
   return (
     <nav
@@ -140,6 +104,33 @@ function TopNavbar({ toggleSidebar, isMobile }) {
       )}
       <div style={{ flex: 1 }} />
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* Add any additional elements here */}
+        </div>
+        <button
+          style={{
+            borderRadius: "50%",
+            padding: "4px",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            color: "white",
+          }}
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+          </svg>
+        </button>
         <span style={{ fontSize: "18px", fontWeight: "500" }}>{schoolName || "School Name"}</span>
 
         <div
@@ -150,36 +141,25 @@ function TopNavbar({ toggleSidebar, isMobile }) {
             width: "32px",
             alignItems: "center",
             justifyContent: "center",
+            backgroundColor: "white",
+            borderRadius: "50%",
             cursor: "pointer",
           }}
           onClick={toggleDropdown}
         >
-          {profileImage ? (
-            <Image
-              src={profileImage}
-              roundedCircle
-              width={32}
-              height={32}
-              onError={(e) => {
-                e.target.style.display = "none"; // Hide broken image
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                width: "32px",
-                height: "32px",
-                backgroundColor: "white",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-              }}
-            >
-              <User size={20} color="#0B3D7B" />
-            </div>
-          )}
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#0B3D7B"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
         </div>
 
         {isDropdownOpen && (
@@ -226,7 +206,6 @@ function TopNavbar({ toggleSidebar, isMobile }) {
         )}
       </div>
       <LogoutModal isOpen={showLogoutModal} onClose={cancelLogout} onConfirm={confirmLogout} />
-      <ToastContainer />
       <style jsx>{`
         .modal-overlay {
           position: fixed;
@@ -291,7 +270,8 @@ function TopNavbar({ toggleSidebar, isMobile }) {
         }
       `}</style>
     </nav>
-  );
+  )
 }
 
-export default TopNavbar;
+export default TopNavbar
+
