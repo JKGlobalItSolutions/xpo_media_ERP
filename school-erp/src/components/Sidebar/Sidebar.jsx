@@ -199,6 +199,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "3-3", title: "• Transfer Certificate", path: "/admission/Transfer-Certificate" },
         { id: "3-3", title: "• Demand Report", path: "/admission/Demand-Report" },
         { id: "3-3", title: "• Section Replace", path: "/admission/Section-Replace" },
+        { id: "3-3", title: "• Phone Number Replace", path: "/admission/phone-number-replace" },
         { id: "3-3", title: "• Arrear / Fee Updating", path: "/admission/Arrear-FeeUpdating" },
         { id: "3-3", title: "• Bill Cancel", path: "/admission/Bill-Cancel" },
       ],
