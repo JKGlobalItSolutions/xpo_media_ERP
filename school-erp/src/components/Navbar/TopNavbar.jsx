@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { auth, db } from "../../Firebase/config"
 import { signOut } from "firebase/auth"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, onSnapshot } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 
 // Logout Confirmation Modal Component
@@ -101,21 +101,24 @@ function LogoutModal({ isOpen, onClose, onConfirm }) {
 
 function TopNavbar({ toggleSidebar, isMobile }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [schoolName, setSchoolName] = useState("")
+  const [schoolData, setSchoolData] = useState({ SchoolName: "", profileImage: "" })
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const fetchSchoolName = async () => {
-      const user = auth.currentUser
-      if (user) {
-        const schoolDoc = await getDoc(doc(db, "Schools", user.uid))
-        if (schoolDoc.exists()) {
-          setSchoolName(schoolDoc.data().SchoolName || "")
+    const user = auth.currentUser
+    if (user) {
+      const unsubscribe = onSnapshot(doc(db, "Schools", user.uid), (doc) => {
+        if (doc.exists()) {
+          setSchoolData({
+            SchoolName: doc.data().SchoolName || "",
+            profileImage: doc.data().profileImage || "",
+          })
         }
-      }
+      })
+
+      return () => unsubscribe()
     }
-    fetchSchoolName()
   }, [])
 
   const toggleDropdown = () => {
@@ -203,7 +206,7 @@ function TopNavbar({ toggleSidebar, isMobile }) {
             <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
           </svg>
         </button>
-        <span style={{ fontSize: "18px", fontWeight: "500" }}>{schoolName || "School Name"}</span>
+        <span style={{ fontSize: "18px", fontWeight: "500" }}>{schoolData.SchoolName || "School Name"}</span>
 
         <div
           style={{
@@ -216,22 +219,35 @@ function TopNavbar({ toggleSidebar, isMobile }) {
             backgroundColor: "white",
             borderRadius: "50%",
             cursor: "pointer",
+            overflow: "hidden",
           }}
           onClick={toggleDropdown}
         >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#0B3D7B"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
+          {schoolData.profileImage ? (
+            <img
+              src={schoolData.profileImage || "/placeholder.svg"}
+              alt="Profile"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          ) : (
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#0B3D7B"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          )}
         </div>
 
         {isDropdownOpen && (
