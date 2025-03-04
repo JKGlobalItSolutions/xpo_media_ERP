@@ -201,7 +201,6 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "3-3", title: "• Section Replace", path: "/admission/Section-Replace" },
         { id: "3-3", title: "• Phone Number Replace", path: "/admission/phone-number-replace" },
         { id: "3-3", title: "• Arrear / Fee Updating", path: "/admission/Arrear-FeeUpdating" },
-        { id: "3-3", title: "• Bill Cancel", path: "/admission/Bill-Cancel" },
       ],
     },
     {
@@ -234,6 +233,8 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "5-8", title: "• Student Phone Replace", path: "/transaction/student-phone-replace" },
         { id: "5-9", title: "• Attendance Entry", path: "/transaction/attendance-entry" },
         { id: "5-10", title: "• SMS Send", path: "/transaction/sms-send" },
+        { id: "3-3", title: "• Bill Cancel", path: "/transaction/Bill-Cancel-Transaction" },
+
       ],
     },
     {

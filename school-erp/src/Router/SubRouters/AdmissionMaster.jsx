@@ -9,7 +9,6 @@ import TransferCertificate from '../../pages/Admission Pages/TransferCertificate
 import DemandReport from '../../pages/Admission Pages/DemandReport';
 import SectionReplace from '../../pages/Admission Pages/SectionReplace';
 import ArrearFeeUpdating from '../../pages/Admission Pages/ArrearFeeUpdating';
-import BillCancel from '../../pages/Admission Pages/BillCancel';
 import BarcodeDesign from '../../pages/Admission Pages/BarcodeDesign';
 import EnquiryForm from '../../pages/Admission Pages/EnquiryForm';
 import StudentRegisterReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/StudentRegisterReport';
@@ -45,7 +44,6 @@ function AdmissionMaster() {
       <Route path="Demand-Report" element={<DemandReport />} />
       <Route path="Section-Replace" element={<SectionReplace />} />
       <Route path="Arrear-FeeUpdating" element={<ArrearFeeUpdating />} />
-      <Route path="Bill-Cancel" element={<BillCancel />} />
       <Route path="/enquiry-form/:id" element={<EnquiryForm />} />
       <Route path="/enquiry-form/" element={<EnquiryForm />} />
       <Route path="Student-Details-Report/student-register-report" element={<StudentRegisterReport />} />

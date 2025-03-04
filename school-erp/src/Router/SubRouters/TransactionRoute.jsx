@@ -13,6 +13,7 @@ import SmsSend from '../../pages/Transaction Pages/SmsSend';
 import EnquirySMS from '../../pages/Transaction Pages/SMSPages/EnquirySMS';
 import GeneralCircularSMS from '../../pages/Transaction Pages/SMSPages/GeneralCircularSMS';
 import AbsentListSMS from '../../pages/Transaction Pages/SMSPages/AbsentListSMS';
+import BillCancel from '../../pages/Transaction Pages/BillCancel';
 
 
 
@@ -33,6 +34,7 @@ function TransactionRoute() {
       <Route path="enquiry-sms" element={< EnquirySMS/>} />  
       <Route path="general-circular-sms" element={< GeneralCircularSMS/>} />  
       <Route path="absent-list-sms" element={< AbsentListSMS/>} />  
+      <Route path="Bill-Cancel-Transaction" element={<BillCancel />} />
       
     </Routes>
   );
