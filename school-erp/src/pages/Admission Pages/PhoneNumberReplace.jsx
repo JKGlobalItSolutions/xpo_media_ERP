@@ -9,15 +9,14 @@ import { db, auth } from "../../Firebase/config"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
-const SectionReplace = () => {
+const PhoneNumberReplace = () => {
   const [administrationId, setAdministrationId] = useState(null)
   const [formData, setFormData] = useState({
     admissionNumber: "",
     studentName: "",
-    currentSection: "",
-    newSection: "",
+    currentPhoneNumber: "",
+    newPhoneNumber: "",
   })
-  const [sections, setSections] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [admissionNumbers, setAdmissionNumbers] = useState([])
   const [filteredAdmissionNumbers, setFilteredAdmissionNumbers] = useState([])
@@ -47,7 +46,6 @@ const SectionReplace = () => {
 
   useEffect(() => {
     if (administrationId) {
-      fetchSections()
       fetchAdmissionNumbers()
     }
   }, [administrationId])
@@ -69,25 +67,6 @@ const SectionReplace = () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [])
-
-  const fetchSections = async () => {
-    try {
-      const sectionsRef = collection(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "Administration",
-        administrationId,
-        "SectionSetup",
-      )
-      const snapshot = await getDocs(sectionsRef)
-      const sectionsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      setSections(sectionsData)
-    } catch (error) {
-      console.error("Error fetching sections:", error)
-      toast.error("Failed to fetch sections")
-    }
-  }
 
   const fetchAdmissionNumbers = async () => {
     try {
@@ -122,8 +101,8 @@ const SectionReplace = () => {
       setShowDropdown(true)
     }
 
-    if (name === "newSection" && value === formData.currentSection) {
-      toast.warn("Please select a different section than the current one.")
+    if (name === "newPhoneNumber" && value === formData.currentPhoneNumber) {
+      toast.warn("Please enter a different phone number than the current one.")
     }
   }
 
@@ -159,8 +138,8 @@ const SectionReplace = () => {
         setFormData((prev) => ({
           ...prev,
           studentName: studentData.studentName,
-          currentSection: studentData.section,
-          newSection: "", // Reset new section when fetching new student details
+          currentPhoneNumber: studentData.phoneNumber,
+          newPhoneNumber: "", // Reset new phone number when fetching new student details
         }))
         toast.success("Student details fetched successfully")
       } else {
@@ -168,8 +147,8 @@ const SectionReplace = () => {
         setFormData((prev) => ({
           ...prev,
           studentName: "",
-          currentSection: "",
-          newSection: "",
+          currentPhoneNumber: "",
+          newPhoneNumber: "",
         }))
       }
     } catch (error) {
@@ -182,13 +161,13 @@ const SectionReplace = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!formData.admissionNumber || !formData.newSection) {
+    if (!formData.admissionNumber || !formData.newPhoneNumber) {
       toast.error("Please fill in all required fields")
       return
     }
 
-    if (formData.newSection === formData.currentSection) {
-      toast.warn("Please select a different section than the current one.")
+    if (formData.newPhoneNumber === formData.currentPhoneNumber) {
+      toast.warn("Please enter a different phone number than the current one.")
       return
     }
 
@@ -208,21 +187,21 @@ const SectionReplace = () => {
       if (!querySnapshot.empty) {
         const studentDoc = querySnapshot.docs[0]
         await updateDoc(doc(studentsRef, studentDoc.id), {
-          section: formData.newSection,
+          phoneNumber: formData.newPhoneNumber,
         })
-        toast.success("Section updated successfully")
+        toast.success("Phone number updated successfully")
         setFormData({
           admissionNumber: "",
           studentName: "",
-          currentSection: "",
-          newSection: "",
+          currentPhoneNumber: "",
+          newPhoneNumber: "",
         })
       } else {
         toast.error("No student found with this admission number")
       }
     } catch (error) {
-      console.error("Error updating section:", error)
-      toast.error("Failed to update section")
+      console.error("Error updating phone number:", error)
+      toast.error("Failed to update phone number")
     } finally {
       setIsLoading(false)
     }
@@ -233,20 +212,20 @@ const SectionReplace = () => {
       <Container fluid className="px-0">
         {/* Header and Breadcrumb */}
         <div className="mb-4">
-          <h2 className="mb-2">Section Replace</h2>
+          <h2 className="mb-2">Phone Number Replace</h2>
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
             <span>Admission Master</span>
             <span className="separator mx-2">&gt;</span>
-            <span>Section Replace</span>
+            <span>Phone Number Replace</span>
           </nav>
         </div>
 
-        {/* Section Replacement Card */}
+        {/* Phone Number Replacement Card */}
         <Card className="mb-4">
           <Card.Header className="p-3 custom-btn-clr">
-            <h5 className="m-0">Section Replacement</h5>
+            <h5 className="m-0">Phone Number Replacement</h5>
           </Card.Header>
           <Card.Body className="p-4">
             <Form onSubmit={handleSubmit}>
@@ -297,32 +276,36 @@ const SectionReplace = () => {
 
               <div className="row mb-3">
                 <div className="col-md-3">
-                  <Form.Label>Present Section</Form.Label>
+                  <Form.Label>Current Phone Number</Form.Label>
                 </div>
                 <div className="col-md-9">
-                  <Form.Control type="text" value={formData.currentSection} readOnly placeholder="Current Section" />
+                  <Form.Control
+                    type="text"
+                    value={formData.currentPhoneNumber}
+                    readOnly
+                    placeholder="Current Phone Number"
+                  />
                 </div>
               </div>
 
               <div className="row mb-3">
                 <div className="col-md-3">
-                  <Form.Label>New Section</Form.Label>
+                  <Form.Label>New Phone Number</Form.Label>
                 </div>
                 <div className="col-md-9">
-                  <Form.Select name="newSection" value={formData.newSection} onChange={handleInputChange}>
-                    <option value="">Select New Section</option>
-                    {sections.map((section) => (
-                      <option key={section.id} value={section.name}>
-                        {section.name}
-                      </option>
-                    ))}
-                  </Form.Select>
+                  <Form.Control
+                    type="tel"
+                    name="newPhoneNumber"
+                    value={formData.newPhoneNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter New Phone Number"
+                  />
                 </div>
               </div>
 
               <div className="d-flex justify-content-center gap-2 mt-4">
                 <Button type="submit" className="custom-btn-clr" disabled={isLoading}>
-                  {isLoading ? "Replacing..." : "Replace"}
+                  {isLoading ? "Updating..." : "Update Phone Number"}
                 </Button>
                 <Button
                   variant="secondary"
@@ -330,8 +313,8 @@ const SectionReplace = () => {
                     setFormData({
                       admissionNumber: "",
                       studentName: "",
-                      currentSection: "",
-                      newSection: "",
+                      currentPhoneNumber: "",
+                      newPhoneNumber: "",
                     })
                   }
                 >
@@ -380,5 +363,5 @@ const SectionReplace = () => {
   )
 }
 
-export default SectionReplace
+export default PhoneNumberReplace
 

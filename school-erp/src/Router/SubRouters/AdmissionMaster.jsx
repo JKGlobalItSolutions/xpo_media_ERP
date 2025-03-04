@@ -27,6 +27,8 @@ import ServiceCertificate from '../../pages/Admission Pages/StudentDetaisReport.
 import StrengthReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/StrengthReport';
 import FullViewReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/FullViewReport';
 import HostelStatusReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/HostelStatusReport';
+import StudentRegisterGrade from '../../pages/Admission Pages/StudentDetaisReport.jsx/StudentRegisterGrade';
+import PhoneNumberReplace from '../../pages/Admission Pages/PhoneNumberReplace';
 
 
 function AdmissionMaster() {
@@ -61,6 +63,8 @@ function AdmissionMaster() {
       <Route path="Student-Details-Report/strength-report" element={<StrengthReport />} />
       <Route path="Student-Details-Report/full-view-report" element={<FullViewReport />} />
       <Route path="Student-Details-Report/hostel-status-report" element={<HostelStatusReport />} />
+      <Route path="Student-Details-Report/student-register-grade" element={<StudentRegisterGrade />} />
+      <Route path="phone-number-replace" element={<PhoneNumberReplace />} />
     </Routes>
   );
 }
