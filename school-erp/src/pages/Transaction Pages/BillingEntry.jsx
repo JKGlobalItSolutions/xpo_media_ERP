@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Form, Button, Row, Col, Container, Table, InputGroup } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { db, auth } from "../../Firebase/config"
 import {
   doc,
@@ -19,6 +19,7 @@ import {
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import MainContentPage from "../../components/MainContent/MainContentPage"
+import PaymentHistoryModal from "./PaymentHistoryModal"
 
 const BillEntry = () => {
   const navigate = useNavigate()
@@ -31,7 +32,6 @@ const BillEntry = () => {
   const [billData, setBillData] = useState({
     billNumber: "",
     admissionNumber: "",
-    barCodeNumber: "",
     studentName: "",
     fatherName: "",
     course: "",
@@ -57,6 +57,10 @@ const BillEntry = () => {
   // Loading state
   const [isLoading, setIsLoading] = useState(false)
   const [studentLoaded, setStudentLoaded] = useState(false)
+
+  // State for history modal
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [paymentHistory, setPaymentHistory] = useState([])
 
   // Generate bill number
   useEffect(() => {
@@ -411,6 +415,36 @@ const BillEntry = () => {
     }
   }
 
+  // Fetch payment history for a student
+  const fetchPaymentHistory = async () => {
+    if (!administrationId || !billData.admissionNumber) {
+      toast.error("Please select a student first")
+      return
+    }
+
+    try {
+      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
+      const q = query(feeLogRef, where("admissionNumber", "==", billData.admissionNumber))
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        toast.info("No payment history found for this student")
+        return
+      }
+
+      const history = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+
+      setPaymentHistory(history)
+      setShowHistoryModal(true)
+    } catch (error) {
+      console.error("Error fetching payment history:", error)
+      toast.error("Failed to fetch payment history")
+    }
+  }
+
   // Reset form after submission
   const resetForm = () => {
     // Generate new bill number
@@ -422,7 +456,6 @@ const BillEntry = () => {
     setBillData({
       billNumber: newBillNumber,
       admissionNumber: "",
-      barCodeNumber: "",
       studentName: "",
       fatherName: "",
       course: "",
@@ -492,7 +525,7 @@ const BillEntry = () => {
                   <Col md={8}>
                     <Form.Group>
                       <Form.Label>Admin. No.</Form.Label>
-                      <InputGroup>
+                      <div className="d-flex">
                         <Form.Control
                           type="text"
                           name="admissionNumber"
@@ -500,24 +533,26 @@ const BillEntry = () => {
                           onChange={handleInputChange}
                           className="form-control-light"
                         />
-                        <Button variant="outline-secondary" onClick={fetchStudentData} disabled={isLoading}>
+                        <Button
+                          variant="outline-secondary"
+                          onClick={fetchStudentData}
+                          disabled={isLoading}
+                          className="ms-2"
+                        >
                           {isLoading ? "Loading..." : "Fetch"}
                         </Button>
-                      </InputGroup>
+                        <Button
+                          variant="outline-primary"
+                          onClick={fetchPaymentHistory}
+                          disabled={!studentLoaded}
+                          className="ms-2"
+                        >
+                          History
+                        </Button>
+                      </div>
                     </Form.Group>
                   </Col>
                 </Row>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Bar Code No.</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="barCodeNumber"
-                    value={billData.barCodeNumber}
-                    onChange={handleInputChange}
-                    className="form-control-light"
-                  />
-                </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label>Student Name</Form.Label>
@@ -775,6 +810,12 @@ const BillEntry = () => {
         </div>
       </Container>
 
+      <PaymentHistoryModal
+        show={showHistoryModal}
+        onHide={() => setShowHistoryModal(false)}
+        paymentHistory={paymentHistory}
+      />
+
       <style>
         {`
           .custom-breadcrumb {
@@ -809,8 +850,7 @@ const BillEntry = () => {
           }
 
           .fee-table-container {
-            height: calc(100vh - 500px);
-            min-height: 300px;
+            max-height: auto;
             overflow-y: auto;
             border: 1px solid #ddd;
           }

@@ -11,15 +11,86 @@ function LogoutModal({ isOpen, onClose, onConfirm }) {
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2 className="modal-title">Confirm Logout</h2>
-        <p className="modal-message">Are you sure you want to logout?</p>
-        <div className="modal-buttons">
-          <button className="modal-button confirm" onClick={onConfirm}>
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 1100,
+      }}
+    >
+      <div
+        style={{
+          background: "white",
+          padding: "2rem",
+          borderRadius: "8px",
+          width: "90%",
+          maxWidth: "400px",
+          textAlign: "center",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: "1.5rem",
+            marginBottom: "1rem",
+            color: "#333",
+          }}
+        >
+          Confirm Logout
+        </h2>
+        <p
+          style={{
+            marginBottom: "1.5rem",
+            color: "#666",
+          }}
+        >
+          Are you sure you want to logout?
+        </p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "1rem",
+          }}
+        >
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: "0.5rem 2rem",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontWeight: "500",
+              backgroundColor: "#0B3D7B",
+              color: "white",
+              transition: "opacity 0.2s",
+            }}
+            onMouseOver={(e) => (e.target.style.opacity = "0.9")}
+            onMouseOut={(e) => (e.target.style.opacity = "1")}
+          >
             Yes
           </button>
-          <button className="modal-button cancel" onClick={onClose}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "0.5rem 2rem",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontWeight: "500",
+              backgroundColor: "#6c757d",
+              color: "white",
+              transition: "opacity 0.2s",
+            }}
+            onMouseOver={(e) => (e.target.style.opacity = "0.9")}
+            onMouseOut={(e) => (e.target.style.opacity = "1")}
+          >
             No
           </button>
         </div>
@@ -53,6 +124,7 @@ function TopNavbar({ toggleSidebar, isMobile }) {
 
   const handleLogout = () => {
     setShowLogoutModal(true)
+    setIsDropdownOpen(false)
   }
 
   const confirmLogout = async () => {
@@ -206,69 +278,6 @@ function TopNavbar({ toggleSidebar, isMobile }) {
         )}
       </div>
       <LogoutModal isOpen={showLogoutModal} onClose={cancelLogout} onConfirm={confirmLogout} />
-      <style jsx>{`
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: rgba(0, 0, 0, 0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1100;
-        }
-
-        .modal-content {
-          background: white;
-          padding: 2rem;
-          border-radius: 8px;
-          width: 90%;
-          max-width: 400px;
-          text-align: center;
-        }
-
-        .modal-title {
-          font-size: 1.5rem;
-          margin-bottom: 1rem;
-          color: #333;
-        }
-
-        .modal-message {
-          margin-bottom: 1.5rem;
-          color: #666;
-        }
-
-        .modal-buttons {
-          display: flex;
-          justify-content: center;
-          gap: 1rem;
-        }
-
-        .modal-button {
-          padding: 0.5rem 2rem;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: opacity 0.2s;
-        }
-
-        .modal-button:hover {
-          opacity: 0.9;
-        }
-
-        .modal-button.confirm {
-          background-color: #0B3D7B;
-          color: white;
-        }
-
-        .modal-button.cancel {
-          background-color: #6c757d;
-          color: white;
-        }
-      `}</style>
     </nav>
   )
 }
