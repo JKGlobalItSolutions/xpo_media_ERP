@@ -696,7 +696,6 @@ const AdmissionForm = () => {
       "gender",
       "dateOfBirth",
       "emis",
-      "lunchRefresh",
       "bloodGroup",
       "dateOfAdmission",
       "motherTongue",
@@ -1456,7 +1455,7 @@ const AdmissionForm = () => {
                     type="switch"
                     id="bus-toggle"
                     label="Bus Transport Required"
-                    checked={isBusRequired}
+                    // checked={isBusRequired}
                     onChange={handleBusToggle}
                     disabled={isViewMode}
                   />
@@ -1507,7 +1506,7 @@ const AdmissionForm = () => {
                     type="switch"
                     id="hostel-toggle"
                     label="Hostel Required"
-                    checked={isHostelRequired}
+                    // checked={isHostelRequired}
                     onChange={handleHostelToggle}
                     disabled={isViewMode}
                   />
