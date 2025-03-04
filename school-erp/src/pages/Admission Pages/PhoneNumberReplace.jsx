@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
-import { Form, Button, Card, Container, Dropdown } from "react-bootstrap"
+import { Form, Button, Card, Container, Dropdown, Modal } from "react-bootstrap"
 import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore"
 import { db, auth } from "../../Firebase/config"
 import { toast, ToastContainer } from "react-toastify"
@@ -21,6 +21,7 @@ const PhoneNumberReplace = () => {
   const [admissionNumbers, setAdmissionNumbers] = useState([])
   const [filteredAdmissionNumbers, setFilteredAdmissionNumbers] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
   const dropdownRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -159,7 +160,7 @@ const PhoneNumberReplace = () => {
     }
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     if (!formData.admissionNumber || !formData.newPhoneNumber) {
       toast.error("Please fill in all required fields")
@@ -171,6 +172,11 @@ const PhoneNumberReplace = () => {
       return
     }
 
+    setShowConfirmModal(true)
+  }
+
+  const handleConfirmUpdate = async () => {
+    setShowConfirmModal(false)
     setIsLoading(true)
     try {
       const studentsRef = collection(
@@ -324,6 +330,25 @@ const PhoneNumberReplace = () => {
             </Form>
           </Card.Body>
         </Card>
+
+        {/* Confirmation Modal */}
+        <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title>Confirm Phone Number Update</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            Are you sure you want to update the phone number for {formData.studentName} from{" "}
+            {formData.currentPhoneNumber} to {formData.newPhoneNumber}?
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleConfirmUpdate}>
+              Confirm Update
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </Container>
 
       <style>
