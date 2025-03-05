@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import "bootstrap/dist/css/bootstrap.min.css"
 import { auth } from "../../Firebase/config"
@@ -112,7 +112,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
   const [activeItem, setActiveItem] = useState(location.pathname)
   const [expandedItem, setExpandedItem] = useState(null)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
-  //const [sidebarOpen, setSidebarOpen] = useState(!isMobile) // Removed -  Now using isOpen prop
+  const navRef = useRef(null) // Added ref for scrolling
 
   useEffect(() => {
     const activeParent = menuItems.find(
@@ -122,12 +122,6 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       setExpandedItem(activeParent.id)
     }
   }, [location.pathname])
-
-  //useEffect(() => {
-  //  if (!isMobile) {
-  //    setSidebarOpen(true)
-  //  }
-  //}, [isMobile]) // Removed - Now using isOpen prop
 
   const handleLogoutClick = () => {
     setShowLogoutModal(true)
@@ -174,15 +168,12 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "2-10", title: "• Mother Tongue", path: "/admin/Mother-Tongue-Setup" },
         { id: "2-11", title: "• Blood Group", path: "/admin/blood-group-Setup" },
         { id: "2-12", title: "• State And District Management", path: "/admin/State-And-District-Management" },
-        // { id: "2-13", title: "• Subject Head", path: "/admin/Subject-Head" },
         { id: "2-14", title: "• Payment Setup", path: "/admin/payment-setup" },
         { id: "2-15", title: "• Receipt Setup", path: "/admin/receipt-setup" },
         { id: "2-16", title: "• Staff Designation and Category", path: "/admin/Staff-Designation-and-Category" },
         { id: "2-17", title: "• Staff Master", path: "/admin/staff-master" },
-        // { id: "2-16", title: "• Flash Screen", path: "/admin/Flash-Screen" },
         { id: "2-18", title: "• Certificate Preparation", path: "/admin/certificate" },
         { id: "2-19", title: "• Password Setup", path: "/admin/password-setup" },
-        
       ],
     },
     {
@@ -234,7 +225,6 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "5-9", title: "• Attendance Entry", path: "/transaction/attendance-entry" },
         { id: "5-10", title: "• SMS Send", path: "/transaction/sms-send" },
         { id: "3-3", title: "• Bill Cancel", path: "/transaction/Bill-Cancel-Transaction" },
-
       ],
     },
     {
@@ -398,12 +388,17 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
     padding: "5px",
   }
 
-  const handleNavigation = (path, itemId) => {
+  const handleNavigation = (path, itemId, event) => {
     setActiveItem(path)
     if (expandedItem === itemId) {
       setExpandedItem(null)
     } else {
       setExpandedItem(itemId)
+      // Scroll to the clicked item when expanding
+      const menuItemElement = event.currentTarget
+      setTimeout(() => {
+        menuItemElement.scrollIntoView({ behavior: "smooth", block: "nearest" })
+      }, 100) // Small delay to allow submenu to render
     }
     const menuItem = menuItems.find((item) => item.id === itemId)
     if (menuItem && menuItem.onClick) {
@@ -426,7 +421,15 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
 
   const toggleSubmenu = (itemId, event) => {
     event.stopPropagation()
-    setExpandedItem(expandedItem === itemId ? null : itemId)
+    const newExpandedItem = expandedItem === itemId ? null : itemId
+    setExpandedItem(newExpandedItem)
+    if (newExpandedItem) {
+      // Scroll to the clicked item when expanding
+      const menuItemElement = event.currentTarget.parentElement
+      setTimeout(() => {
+        menuItemElement.scrollIntoView({ behavior: "smooth", block: "nearest" })
+      }, 100) // Small delay to allow submenu to render
+    }
   }
 
   const isItemActive = (item) => {
@@ -449,11 +452,11 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
           <span className="text-white fs-4 fw-semibold">XPO Media</span>
         </div>
 
-        <nav className="mt-3">
+        <nav ref={navRef} className="mt-3">
           {menuItems.map((item) => (
             <div key={item.id} className="sidebar-item">
               <button
-                onClick={() => handleNavigation(item.path, item.id)}
+                onClick={(e) => handleNavigation(item.path, item.id, e)}
                 style={isItemActive(item) ? activeMenuItemStyle : menuItemStyle}
                 className="menu-item"
               >
@@ -546,4 +549,3 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
 }
 
 export default Sidebar
-
