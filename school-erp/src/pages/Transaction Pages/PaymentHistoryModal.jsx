@@ -3,8 +3,20 @@ import { Modal, Button, Table } from "react-bootstrap"
 const PaymentHistoryModal = ({ show, onHide, paymentHistory }) => {
   // Sort payment history by transaction date (newest first)
   const sortedPaymentHistory = [...paymentHistory].sort((a, b) => {
-    return new Date(b.transactionDate) - new Date(a.transactionDate)
+    return new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
   })
+
+  // Function to format date
+  const formatDate = (date) => {
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      return "Invalid Date"
+    }
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
+  }
 
   return (
     <Modal show={show} onHide={onHide} centered dialogClassName="payment-history-modal" size="lg">
@@ -12,7 +24,7 @@ const PaymentHistoryModal = ({ show, onHide, paymentHistory }) => {
         <Modal.Title className="text-center w-100">Payment History</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {paymentHistory.length > 0 ? (
+        {sortedPaymentHistory.length > 0 ? (
           <div className="table-container">
             <Table bordered hover className="payment-history-table">
               <thead>
@@ -27,7 +39,7 @@ const PaymentHistoryModal = ({ show, onHide, paymentHistory }) => {
                 {sortedPaymentHistory.map((payment) => (
                   <tr key={payment.id}>
                     <td>{payment.billNumber}</td>
-                    <td>{new Date(payment.transactionDate).toLocaleDateString()}</td>
+                    <td>{formatDate(payment.transactionDate)}</td>
                     <td>₹{payment.totalPaidAmount}</td>
                     <td>{payment.paymentMode}</td>
                   </tr>

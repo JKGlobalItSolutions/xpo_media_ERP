@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { Form, Button, Row, Col, Container, Table, ListGroup, Modal } from "react-bootstrap"
+import { useNavigate } from "react-router-dom"
+import { Form, Button, Row, Col, Container, Table, ListGroup, Modal, Card } from "react-bootstrap"
+import DatePicker from "react-datepicker"
+import "react-datepicker/dist/react-datepicker.css"
 import { db, auth } from "../../Firebase/config"
 import {
   doc,
@@ -39,7 +41,7 @@ const BillEntry = () => {
     course: "",
     section: "",
     pickupPoint: "",
-    date: new Date().toISOString().split("T")[0],
+    date: new Date(),
     balance: "0",
     paidAmount: "0",
     balanceAmount: "0",
@@ -47,7 +49,7 @@ const BillEntry = () => {
     paymentNumber: "",
     operatorName: "XPO ADMIN",
     transactionNarrative: "",
-    transactionDate: new Date().toISOString().split("T")[0],
+    transactionDate: new Date(),
   })
 
   const [feeDetails, setFeeDetails] = useState([])
@@ -71,6 +73,16 @@ const BillEntry = () => {
 
   // State for confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+
+  // Helper function to format date as YYYY-MM-DD
+  const formatDateForFirestore = (date) => {
+    return date.toISOString().split("T")[0]
+  }
+
+  // Helper function to parse date string from Firestore
+  const parseDateFromFirestore = (dateString) => {
+    return new Date(dateString)
+  }
 
   // Generate bill number
   useEffect(() => {
@@ -236,6 +248,14 @@ const BillEntry = () => {
     }
   }
 
+  // Handle date changes
+  const handleDateChange = (date, name) => {
+    setBillData((prev) => ({
+      ...prev,
+      [name]: date,
+    }))
+  }
+
   // Search students by admission number
   const searchStudents = async (searchTerm) => {
     if (!administrationId || searchTerm.trim() === "") return
@@ -361,6 +381,7 @@ const BillEntry = () => {
         feeDetails.map((fee) => ({
           ...fee,
           paidAmount: "0",
+          concessionAmount: "0", // Initialize concession amount
           remainingBalance: fee.amount,
           status: "Pending",
         })),
@@ -394,20 +415,54 @@ const BillEntry = () => {
     const feeItem = updatedFeeTableData[index]
     const paidAmount = Number.parseFloat(value) || 0
     const originalAmount = Number.parseFloat(feeItem.amount) || 0
+    const concessionAmount = Number.parseFloat(feeItem.concessionAmount) || 0
 
-    if (paidAmount > originalAmount) {
-      toast.error("Paid amount cannot exceed the original fee amount")
+    if (paidAmount > originalAmount - concessionAmount) {
+      toast.error("Paid amount cannot exceed the original fee amount minus concession")
       return
     }
 
     feeItem.paidAmount = value
-    feeItem.remainingBalance = (originalAmount - paidAmount).toFixed(2)
+    feeItem.remainingBalance = (originalAmount - paidAmount - concessionAmount).toFixed(2)
     feeItem.status = Number(feeItem.remainingBalance) === 0 ? "Settled" : "Pending"
     setFeeTableData(updatedFeeTableData)
 
     // Update total paid amount and balance
-    const totalPaid = updatedFeeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
-    const newBalance = totalBalance - totalPaid
+    updateTotals(updatedFeeTableData)
+  }
+
+  // Handle concession amount change
+  const handleConcessionChange = (index, value) => {
+    const updatedFeeTableData = [...feeTableData]
+    const feeItem = updatedFeeTableData[index]
+    const concessionAmount = Number.parseFloat(value) || 0
+    const originalAmount = Number.parseFloat(feeItem.amount) || 0
+    const paidAmount = Number.parseFloat(feeItem.paidAmount) || 0
+
+    if (concessionAmount > originalAmount) {
+      toast.error("Concession amount cannot exceed the original fee amount")
+      return
+    }
+
+    if (concessionAmount + paidAmount > originalAmount) {
+      toast.error("Sum of concession and paid amount cannot exceed the original fee amount")
+      return
+    }
+
+    feeItem.concessionAmount = value
+    feeItem.remainingBalance = (originalAmount - paidAmount - concessionAmount).toFixed(2)
+    feeItem.status = Number(feeItem.remainingBalance) === 0 ? "Settled" : "Pending"
+    setFeeTableData(updatedFeeTableData)
+
+    // Update total paid amount and balance
+    updateTotals(updatedFeeTableData)
+  }
+
+  // Update totals based on fee table data
+  const updateTotals = (feeTableData) => {
+    const totalPaid = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
+    const totalConcession = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.concessionAmount || 0), 0)
+    const newBalance = totalBalance - totalPaid - totalConcession
 
     setBillData((prev) => ({
       ...prev,
@@ -431,8 +486,13 @@ const BillEntry = () => {
     }
 
     const totalPaidAmount = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
-    if (totalPaidAmount <= 0) {
-      toast.error("Total paid amount must be greater than zero")
+    const totalConcessionAmount = feeTableData.reduce(
+      (sum, fee) => sum + Number.parseFloat(fee.concessionAmount || 0),
+      0,
+    )
+
+    if (totalPaidAmount <= 0 && totalConcessionAmount <= 0) {
+      toast.error("Total paid amount or concession amount must be greater than zero")
       return
     }
 
@@ -446,6 +506,10 @@ const BillEntry = () => {
       setShowConfirmModal(false)
       const now = new Date()
       const totalPaidAmount = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
+      const totalConcessionAmount = feeTableData.reduce(
+        (sum, fee) => sum + Number.parseFloat(fee.concessionAmount || 0),
+        0,
+      )
 
       // Create a single fee log entry for all paid fees
       const feeLogEntry = {
@@ -458,23 +522,25 @@ const BillEntry = () => {
         paymentMode: billData.paymentMode,
         paymentNumber: billData.paymentNumber,
         operatorName: billData.operatorName,
-        transactionDate: billData.date,
+        transactionDate: formatDateForFirestore(billData.date), // Store as YYYY-MM-DD
         transactionNarrative: billData.transactionNarrative,
         boardingPoint: billData.pickupPoint,
         routeNumber: studentData.busRouteNumber || "",
         totalPaidAmount: totalPaidAmount.toFixed(2),
-        timestamp: now.toISOString(),
+        totalConcessionAmount: totalConcessionAmount.toFixed(2),
+        timestamp: formatDateForFirestore(now), // Store as YYYY-MM-DD
         feePayments: feeTableData
-          .filter((fee) => Number.parseFloat(fee.paidAmount) > 0)
+          .filter((fee) => Number.parseFloat(fee.paidAmount) > 0 || Number.parseFloat(fee.concessionAmount) > 0)
           .map((fee) => ({
             feeHead: fee.heading,
             feeAmount: fee.amount,
             paidAmount: fee.paidAmount,
+            concessionAmount: fee.concessionAmount || "0",
           })),
       }
 
       if (feeLogEntry.feePayments.length === 0) {
-        toast.error("No fees have been paid")
+        toast.error("No fees have been paid or concessions applied")
         return
       }
 
@@ -495,6 +561,7 @@ const BillEntry = () => {
         ...billData,
         feeDetails: feeLogEntry.feePayments,
         totalPaidAmount: feeLogEntry.totalPaidAmount,
+        totalConcessionAmount: feeLogEntry.totalConcessionAmount,
         timestamp: serverTimestamp(),
       })
 
@@ -504,7 +571,8 @@ const BillEntry = () => {
         if (paidFee) {
           const originalAmount = Number.parseFloat(fee.amount) || 0
           const paidAmount = Number.parseFloat(paidFee.paidAmount) || 0
-          const newAmount = Math.max(0, originalAmount - paidAmount).toFixed(2)
+          const concessionAmount = Number.parseFloat(paidFee.concessionAmount) || 0
+          const newAmount = Math.max(0, originalAmount - paidAmount - concessionAmount).toFixed(2)
 
           return {
             ...fee,
@@ -547,6 +615,7 @@ const BillEntry = () => {
       return
     }
 
+    setIsLoading(true)
     try {
       const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
       const q = query(feeLogRef, where("admissionNumber", "==", billData.admissionNumber))
@@ -554,19 +623,25 @@ const BillEntry = () => {
 
       if (querySnapshot.empty) {
         toast.info("No payment history found for this student")
-        return
+        setPaymentHistory([])
+      } else {
+        const history = querySnapshot.docs.map((doc) => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            ...data,
+            transactionDate: parseDateFromFirestore(data.transactionDate),
+            timestamp: parseDateFromFirestore(data.timestamp),
+          }
+        })
+        setPaymentHistory(history)
       }
-
-      const history = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
-
-      setPaymentHistory(history)
       setShowHistoryModal(true)
     } catch (error) {
       console.error("Error fetching payment history:", error)
       toast.error("Failed to fetch payment history")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -586,7 +661,7 @@ const BillEntry = () => {
       course: "",
       section: "",
       pickupPoint: "",
-      date: new Date().toISOString().split("T")[0],
+      date: new Date(),
       balance: "0",
       paidAmount: "0",
       balanceAmount: "0",
@@ -594,7 +669,7 @@ const BillEntry = () => {
       paymentNumber: "",
       operatorName: "XPO ADMIN",
       transactionNarrative: "",
-      transactionDate: new Date().toISOString().split("T")[0],
+      transactionDate: new Date(),
     })
 
     setFeeDetails([])
@@ -607,332 +682,332 @@ const BillEntry = () => {
   return (
     <MainContentPage>
       <Container fluid className="px-0">
-        <div className="mb-4">
-          <nav className="custom-breadcrumb py-1 py-lg-3">
-            <Link to="/home">Home</Link>
-            <span className="separator mx-2"></span>
-            <Link to="/transactions">Transactions</Link>
-            <span className="separator mx-2"></span>
-            <span>Bill Entry</span>
-          </nav>
-        </div>
+        <Card className="shadow-sm">
+          <Card.Header
+            style={{ backgroundColor: "#0B3D7B" }}
+            className="text-white py-3 d-flex justify-content-between align-items-center"
+          >
+            <h2 className="mb-0 h4">Billing Dashboard</h2>
+          </Card.Header>
+          <Card.Body className="p-4">
+            <Form onSubmit={handleSubmit} className="billing-form">
+              <Row className="mb-4">
+                {/* First Column */}
+                <Col md={4}>
+                  <Form.Group className="my-1">
+                    <Form.Label>Bill No.</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="billNumber"
+                      value={billData.billNumber}
+                      onChange={handleInputChange}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
 
-        <div
-          style={{ backgroundColor: "#0B3D7B" }}
-          className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
-        >
-          <div className="d-flex align-items-center">
-            <h2 className="mb-0">Billing Window</h2>
-          </div>
-          <div style={{ width: "20px" }}></div>
-        </div>
-
-        <div className="bg-white p-4 rounded-bottom shadow">
-          <Form onSubmit={handleSubmit} className="billing-form">
-            <Row>
-              {/* Left Column */}
-              <Col md={6} className="left-column">
-                <Row className="mb-3">
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label>Bill No.</Form.Label>
+                  <Form.Group className="my-1">
+                    <Form.Label>Admin. No.</Form.Label>
+                    <div className="d-flex position-relative" ref={dropdownRef}>
                       <Form.Control
                         type="text"
-                        name="billNumber"
-                        value={billData.billNumber}
+                        name="admissionNumber"
+                        value={billData.admissionNumber}
                         onChange={handleInputChange}
-                        disabled
                         className="form-control-light"
+                        autoComplete="off"
                       />
-                    </Form.Group>
-                  </Col>
-
-                  <Col md={8}>
-                    <Form.Group>
-                      <Form.Label>Admin. No.</Form.Label>
-                      <div className="d-flex position-relative" ref={dropdownRef}>
-                        <Form.Control
-                          type="text"
-                          name="admissionNumber"
-                          value={billData.admissionNumber}
-                          onChange={handleInputChange}
-                          className="form-control-light"
-                          autoComplete="off"
-                        />
-                        <Button
-                          variant="outline-primary"
-                          onClick={fetchPaymentHistory}
-                          disabled={!studentLoaded}
-                          className="ms-2"
+                      <Button
+                        variant="outline-primary"
+                        onClick={fetchPaymentHistory}
+                        disabled={!studentLoaded}
+                        className="ms-2"
+                      >
+                        History
+                      </Button>
+                      {showDropdown && studentsList.length > 0 && (
+                        <ListGroup
+                          className="position-absolute dropdown-menu show w-100"
+                          style={{ top: "100%", zIndex: 1000 }}
                         >
-                          History
-                        </Button>
-                        {showDropdown && studentsList.length > 0 && (
-                          <ListGroup
-                            className="position-absolute dropdown-menu show w-100"
-                            style={{ top: "100%", zIndex: 1000 }}
-                          >
-                            {studentsList.map((student) => (
-                              <ListGroup.Item
-                                key={student.id}
-                                action
-                                onClick={() => handleStudentSelect(student.admissionNumber)}
-                                className="dropdown-item"
-                              >
-                                {student.admissionNumber} - {student.studentName}
-                              </ListGroup.Item>
-                            ))}
-                          </ListGroup>
-                        )}
-                      </div>
-                    </Form.Group>
-                  </Col>
-                </Row>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Student Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="studentName"
-                    value={billData.studentName}
-                    onChange={handleInputChange}
-                    disabled
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Father Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="fatherName"
-                    value={billData.fatherName}
-                    onChange={handleInputChange}
-                    disabled
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Course</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="course"
-                    value={billData.course}
-                    onChange={handleInputChange}
-                    disabled
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Section</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="section"
-                    value={billData.section}
-                    onChange={handleInputChange}
-                    disabled
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Pickup Point</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="pickupPoint"
-                    value={billData.pickupPoint}
-                    onChange={handleInputChange}
-                    disabled
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <div className="fee-table-container mb-3">
-                  <Table bordered hover size="sm" className="fee-table">
-                    <thead className="table-header">
-                      <tr>
-                        <th>Description</th>
-                        <th>Amount</th>
-                        <th>Pay Amount</th>
-                        <th>Remaining</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {feeTableData.length > 0 ? (
-                        feeTableData.map((fee, index) => (
-                          <tr key={index}>
-                            <td>{fee.heading}</td>
-                            <td>{fee.amount}</td>
-                            <td>
-                              <Form.Control
-                                type="number"
-                                value={fee.paidAmount}
-                                onChange={(e) => handleFeeAmountChange(index, e.target.value)}
-                                className="form-control-light"
-                              />
-                            </td>
-                            <td>{fee.remainingBalance}</td>
-                            <td>{Number(fee.remainingBalance) === 0 ? "Settled" : "Pending"}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="5" className="text-center">
-                            No fee details available
-                          </td>
-                        </tr>
+                          {studentsList.map((student) => (
+                            <ListGroup.Item
+                              key={student.id}
+                              action
+                              onClick={() => handleStudentSelect(student.admissionNumber)}
+                              className="dropdown-item"
+                            >
+                              {student.admissionNumber} - {student.studentName}
+                            </ListGroup.Item>
+                          ))}
+                        </ListGroup>
                       )}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan="2" className="text-end fw-bold">
-                          Overall Total:
-                        </td>
-                        <td className="fw-bold">{billData.paidAmount}</td>
-                        <td className="fw-bold">{billData.balanceAmount}</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </Table>
-                </div>
-              </Col>
+                    </div>
+                  </Form.Group>
 
-              {/* Right Column */}
-              <Col md={6} className="right-column">
-                <Row className="mb-3">
-                  <Col md={6}>
-                    <Form.Group>
-                      <Form.Label>Date</Form.Label>
-                      <Form.Control
-                        type="date"
-                        name="date"
-                        value={billData.date}
+                  <Form.Group className="my-1">
+                    <Form.Label>Student Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="studentName"
+                      value={billData.studentName}
+                      onChange={handleInputChange}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="my-1">
+                    <Form.Label>Father Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="fatherName"
+                      value={billData.fatherName}
+                      onChange={handleInputChange}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+                </Col>
+
+                {/* Second Column */}
+                <Col md={4}>
+                  <Form.Group className="my-1">
+                    <Form.Label>Course</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="course"
+                      value={billData.course}
+                      onChange={handleInputChange}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="my-1">
+                    <Form.Label>Section</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="section"
+                      value={billData.section}
+                      onChange={handleInputChange}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="my-1">
+                    <Form.Label>Pickup Point</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="pickupPoint"
+                      value={billData.pickupPoint}
+                      onChange={handleInputChange}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="my-1">
+                    <Form.Label>Date</Form.Label>
+                    <br />
+                    <DatePicker
+                      selected={billData.date}
+                      onChange={(date) => handleDateChange(date, "date")}
+                      dateFormat="dd/MM/yyyy"
+                      className="form-control"
+                      customInput={<Form.Control type="text" name="date" className="form-control-light" />}
+                    />
+                  </Form.Group>
+                </Col>
+
+                {/* Third Column */}
+                <Col md={4}>
+                  <Form.Group className="my-1">
+                    <Form.Label>Balance</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="balance"
+                      value={billData.balance}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="my-1">
+                    <Form.Label>Paid amount</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="paidAmount"
+                      value={billData.paidAmount}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="my-1">
+                    <Form.Label>Balance amount</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="balanceAmount"
+                      value={billData.balanceAmount}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="my-1">
+                    <Form.Label>Pay Mode</Form.Label>
+                    <div className="d-flex">
+                      <Form.Check
+                        type="radio"
+                        id="online"
+                        label="Online"
+                        name="paymentMode"
+                        value="Online"
+                        checked={billData.paymentMode === "Online"}
                         onChange={handleInputChange}
-                        className="form-control-light"
+                        className="me-3"
                       />
-                    </Form.Group>
-                  </Col>
-                </Row>
+                      <Form.Check
+                        type="radio"
+                        id="cash"
+                        label="Cash"
+                        name="paymentMode"
+                        value="Cash"
+                        checked={billData.paymentMode === "Cash"}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </Form.Group>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Balance</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="balance"
-                    value={billData.balance}
-                    disabled
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Paid amount</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="paidAmount"
-                    value={billData.paidAmount}
-                    disabled
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Balance amount</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="balanceAmount"
-                    value={billData.balanceAmount}
-                    disabled
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Pay Mode</Form.Label>
-                  <div className="d-flex">
-                    <Form.Check
-                      type="radio"
-                      id="online"
-                      label="Online"
-                      name="paymentMode"
-                      value="Online"
-                      checked={billData.paymentMode === "Online"}
-                      onChange={handleInputChange}
-                      className="me-3"
-                    />
-                    <Form.Check
-                      type="radio"
-                      id="cash"
-                      label="Cash"
-                      name="paymentMode"
-                      value="Cash"
-                      checked={billData.paymentMode === "Cash"}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>No.</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="paymentNumber"
-                    value={billData.paymentNumber}
-                    onChange={handleInputChange}
-                    disabled={billData.paymentMode === "Cash"}
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Select Operator Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="operatorName"
-                    value={billData.operatorName}
-                    disabled
-                    className="form-control-light"
-                  />
-                </Form.Group>
-
-                <Button variant="primary" type="submit" className="w-100 mb-3">
-                  Submit Bill Entry
-                </Button>
-
-                <Row className="mb-3">
-                  <Col md={8}>
-                    <Form.Group>
-                      <Form.Label>Transaction/Narrat:</Form.Label>
+                  {billData.paymentMode === "Online" && (
+                    <Form.Group className="my-1">
+                      <Form.Label>No.</Form.Label>
                       <Form.Control
                         type="text"
-                        name="transactionNarrative"
-                        value={billData.transactionNarrative}
+                        name="paymentNumber"
+                        value={billData.paymentNumber}
                         onChange={handleInputChange}
                         className="form-control-light"
                       />
                     </Form.Group>
-                  </Col>
+                  )}
+                </Col>
+              </Row>
 
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label>Date:</Form.Label>
-                      <Form.Control
-                        type="date"
-                        name="transactionDate"
-                        value={billData.transactionDate}
-                        onChange={handleInputChange}
-                        className="form-control-light"
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-              </Col>
-            </Row>
-          </Form>
-        </div>
+              {/* Fee Table Row */}
+              <Row className="mb-4">
+                <Col>
+                  <div className="fee-table-container">
+                    <Table bordered hover size="sm" className="fee-table">
+                      <thead className="table-header">
+                        <tr>
+                          <th>Description</th>
+                          <th>Amount</th>
+                          <th>Concession</th>
+                          <th>Pay Amount</th>
+                          <th>Remaining</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {feeTableData.length > 0 ? (
+                          feeTableData.map((fee, index) => (
+                            <tr key={index}>
+                              <td>{fee.heading}</td>
+                              <td>{fee.amount}</td>
+                              <td>
+                                <Form.Control
+                                  type="number"
+                                  value={fee.concessionAmount}
+                                  onChange={(e) => handleConcessionChange(index, e.target.value)}
+                                  className="form-control-light"
+                                />
+                              </td>
+                              <td>
+                                <Form.Control
+                                  type="number"
+                                  value={fee.paidAmount}
+                                  onChange={(e) => handleFeeAmountChange(index, e.target.value)}
+                                  className="form-control-light"
+                                />
+                              </td>
+                              <td>{fee.remainingBalance}</td>
+                              <td>{Number(fee.remainingBalance) === 0 ? "Settled" : "Pending"}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="text-center">
+                              No fee details available
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan="3" className="text-end fw-bold">
+                            Overall Total:
+                          </td>
+                          <td className="fw-bold">{billData.paidAmount}</td>
+                          <td className="fw-bold">{billData.balanceAmount}</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </Table>
+                  </div>
+                </Col>
+              </Row>
+
+              {/* Transaction/Narrat and Transaction Date fields */}
+              <Row className="mb-4 align-items-center">
+                <Col md={4}>
+                  <Form.Group className="my-1">
+                    <Form.Label>Transaction/Narrat:</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="transactionNarrative"
+                      value={billData.transactionNarrative}
+                      onChange={handleInputChange}
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="my-1">
+                    <Form.Label>Transaction Date:</Form.Label>
+                    <br />
+                    <DatePicker
+                      selected={billData.transactionDate}
+                      onChange={(date) => handleDateChange(date, "transactionDate")}
+                      dateFormat="dd/MM/yyyy"
+                      className="form-control"
+                      customInput={<Form.Control type="text" name="transactionDate" className="form-control-light" />}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="my-1">
+                    <Form.Label>Select Operator Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="operatorName"
+                      value={billData.operatorName}
+                      disabled
+                      className="form-control-light"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={12} className="d-flex align-items-end justify-content-end">
+                  <Button variant="primary" type="submit" className="px-4 my-4">
+                    Submit Bill Entry
+                  </Button>
+                </Col>
+              </Row>
+            </Form>
+          </Card.Body>
+        </Card>
       </Container>
 
       {/* Payment History Modal */}
@@ -943,15 +1018,15 @@ const BillEntry = () => {
       />
 
       {/* Confirmation Modal */}
-      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered size="sm">
+      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered size="md">
         <Modal.Header className="border-0 pb-0">
           <Modal.Title className="w-100 text-center">Confirm Bill</Modal.Title>
         </Modal.Header>
-        <Modal.Body className="text-center pb-0">
+        <Modal.Body className="text-center py-4">
           <p>Are you sure you want to confirm this bill?</p>
         </Modal.Body>
-        <Modal.Footer className="border-0 justify-content-center">
-          <Button variant="secondary" onClick={() => setShowConfirmModal(false)} style={{ width: "80px" }}>
+        <Modal.Footer className="border-0 justify-content-center pt-0">
+          <Button variant="secondary" onClick={() => setShowConfirmModal(false)} style={{ width: "120px" }}>
             No
           </Button>
           <Button
@@ -960,7 +1035,7 @@ const BillEntry = () => {
             ref={confirmYesButtonRef}
             autoFocus
             style={{
-              width: "80px",
+              width: "120px",
               backgroundColor: "#0B3D7B",
             }}
           >
@@ -969,115 +1044,100 @@ const BillEntry = () => {
         </Modal.Footer>
       </Modal>
 
-      <style>
-        {`
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
+      <style jsx>{`
+        .billing-form {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
 
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
+        .form-control-light {
+          background-color: #F8F9FA !important;
+          border: 1px solid #CED4DA;
+          border-radius: 4px;
+          padding: 0.375rem 0.75rem;
+        }
 
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
+        .form-control-light:focus {
+          border-color: #80bdff;
+          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
 
-          .billing-form {
-            max-width: 1200px;
-            margin: 0 auto;
-          }
+        .fee-table-container {
+          max-height: auto;
+          overflow-y: auto;
+          border: 1px solid #ddd;
+        }
 
-          .form-control-light {
-            background-color: #F8F9FA !important;
-            border: 1px solid #CED4DA;
-            border-radius: 4px;
-            padding: 0.5rem;
-          }
+        .fee-table {
+          margin-bottom: 0;
+        }
 
-          .form-control-light:focus {
-            border-color: #80bdff;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-          }
+        .table-header {
+          background-color: #E3F2FD;
+          position: sticky;
+          top: 0;
+          z-index: 1;
+        }
 
-          .fee-table-container {
-            max-height: auto;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-          }
+        .dropdown-menu {
+          max-height: 200px;
+          overflow-y: auto;
+          border: 1px solid #ced4da;
+          border-radius: 4px;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
 
-          .fee-table {
-            margin-bottom: 0;
-          }
+        .dropdown-item {
+          padding: 8px 12px;
+          cursor: pointer;
+        }
 
-          .table-header {
-            background-color: #E3F2FD;
-            position: sticky;
-            top: 0;
-            z-index: 1;
-          }
+        .dropdown-item:hover {
+          background-color: #f8f9fa;
+        }
 
-          .dropdown-menu {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        @media print {
+          button[type="submit"] {
+            display: none;
           }
+        }
 
-          .dropdown-item {
-            padding: 8px 12px;
-            cursor: pointer;
-          }
+        .modal-content {
+          border-radius: 8px;
+          border: none;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
 
-          .dropdown-item:hover {
-            background-color: #f8f9fa;
-          }
+        .modal-title {
+          font-size: 1.5rem;
+          font-weight: 500;
+        }
 
-          @media print {
-            .custom-breadcrumb,
-            button[type="submit"] {
-              display: none;
-            }
-          }
+        .modal-body p {
+          font-size: 1.1rem;
+          margin-bottom: 0;
+          color: #333;
+        }
 
-          .modal-content {
-            border-radius: 8px;
-            border: none;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-          }
+        .modal-footer .btn {
+          padding: 0.5rem 1.5rem;
+          border-radius: 4px;
+          font-size: 1rem;
+        }
 
-          .modal-title {
-            font-size: 1.25rem;
-            font-weight: 500;
-          }
+        .modal-footer .btn-secondary {
+          background-color: #6c757d;
+          border: none;
+        }
 
-          .modal-body p {
-            margin-bottom: 0;
-            color: #666;
-          }
+        .modal-footer .btn-secondary:hover {
+          background-color: #5a6268;
+        }
 
-          .modal-footer .btn {
-            padding: 0.375rem 1rem;
-            border-radius: 4px;
-          }
-
-          .modal-footer .btn-secondary {
-            background-color: #6c757d;
-            border: none;
-          }
-
-          .modal-footer .btn-secondary:hover {
-            background-color: #5a6268;
-          }
-
-          .modal-footer .btn-primary:hover {
-            background-color: #092c5a;
-          }
-        `}
-      </style>
+        .modal-footer .btn-primary:hover {
+          background-color: #092c5a;
+        }
+      `}</style>
       <ToastContainer />
     </MainContentPage>
   )
