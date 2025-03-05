@@ -1,15 +1,15 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import MainContentPage from "../../components/MainContent/MainContentPage"
-import { Form, Button, Row, Col, Container } from "react-bootstrap"
+import { Form, Button, Container, Spinner } from "react-bootstrap"
 import { Link } from "react-router-dom"
 import { db, auth } from "../../Firebase/config"
 import { collection, getDocs, query, where, limit } from "firebase/firestore"
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
-import { toast, ToastContainer } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
+import { toast, ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 
 const TransferCertificate = () => {
   const [formData, setFormData] = useState({
@@ -51,10 +51,11 @@ const TransferCertificate = () => {
     denotifiedCommunities: "Independent",
     otherCaste: "-",
     qualifiedForPromotion: "Yes. Promoted to higher studies",
-    feesPaid: "Yes"
+    feesPaid: "Yes",
   })
 
   const [loading, setLoading] = useState(false)
+  const [processing, setProcessing] = useState(false)
   const [error, setError] = useState("")
   const [administrationId, setAdministrationId] = useState(null)
   const [admissionData, setAdmissionData] = useState([])
@@ -95,8 +96,12 @@ const TransferCertificate = () => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
-          inputRef.current && !inputRef.current.contains(event.target)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target)
+      ) {
         setShowDropdown(false)
       }
     }
@@ -174,7 +179,7 @@ const TransferCertificate = () => {
           dateOfRelieve: data.dateOfRelieve || "",
           status: data.status || (data.studentType === "New" ? "active" : "inactive"),
         })
-        
+
         return true
       } else {
         setError("No student found with this admission number")
@@ -229,9 +234,10 @@ const TransferCertificate = () => {
     }))
 
     if (name === "admissionNumber") {
-      const filtered = admissionData.filter((item) => 
-        item.admissionNumber.toLowerCase().includes(value.toLowerCase()) ||
-        item.studentName.toLowerCase().includes(value.toLowerCase())
+      const filtered = admissionData.filter(
+        (item) =>
+          item.admissionNumber.toLowerCase().includes(value.toLowerCase()) ||
+          item.studentName.toLowerCase().includes(value.toLowerCase()),
       )
       setFilteredAdmissionData(filtered)
       setShowDropdown(true)
@@ -240,7 +246,7 @@ const TransferCertificate = () => {
 
   const handleEditableInputChange = (e) => {
     const { name, value } = e.target
-    setEditableData(prevData => ({ ...prevData, [name]: value }))
+    setEditableData((prevData) => ({ ...prevData, [name]: value }))
   }
 
   const handleAdmissionSelect = (admissionNum) => {
@@ -257,33 +263,115 @@ const TransferCertificate = () => {
     toast.success("Changes saved successfully!")
   }
 
-  const handlePrintCertificate = () => {
+  const handlePrintCertificate = async () => {
     setIsEditing(false)
-    setTimeout(() => {
-      window.print()
+    setProcessing(true)
+
+    setTimeout(async () => {
+      const input = componentRef.current
+
+      try {
+        const canvas = await html2canvas(input, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        })
+
+        const printFrame = document.createElement("iframe")
+        printFrame.style.position = "fixed"
+        printFrame.style.right = "0"
+        printFrame.style.bottom = "0"
+        printFrame.style.width = "0"
+        printFrame.style.height = "0"
+        printFrame.style.border = "0"
+        document.body.appendChild(printFrame)
+
+        const frameDoc = printFrame.contentWindow.document
+        frameDoc.open()
+        frameDoc.write(`
+          <html>
+            <head>
+              <title>Transfer Certificate</title>
+              <style>
+                @media print {
+                  body {
+                    margin: 0;
+                    padding: 0;
+                  }
+                  img {
+                    width: 100%;
+                    height: auto;
+                  }
+                  @page {
+                    size: A4;
+                    margin: 0;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              <img src="${canvas.toDataURL("image/png")}" />
+            </body>
+          </html>
+        `)
+        frameDoc.close()
+
+        printFrame.onload = () => {
+          setTimeout(() => {
+            printFrame.contentWindow.focus()
+            printFrame.contentWindow.print()
+
+            setTimeout(() => {
+              document.body.removeChild(printFrame)
+              setProcessing(false)
+            }, 1000)
+          }, 500)
+        }
+
+        const img = frameDoc.body.querySelector("img")
+        if (img.complete) {
+          printFrame.onload()
+        } else {
+          img.onload = printFrame.onload
+        }
+      } catch (error) {
+        console.error("Error during print preparation:", error)
+        toast.error("Failed to prepare document for printing")
+        window.print()
+        setProcessing(false)
+      }
     }, 100)
   }
 
   const handleDownloadPDF = async () => {
     setIsEditing(false)
+    setProcessing(true)
+
     setTimeout(async () => {
-      const input = componentRef.current
-      const canvas = await html2canvas(input, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      })
-      const imgData = canvas.toDataURL("image/png")
-      const pdf = new jsPDF("p", "mm", "a4")
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = pdf.internal.pageSize.getHeight()
-      const imgWidth = canvas.width
-      const imgHeight = canvas.height
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-      const imgX = (pdfWidth - imgWidth * ratio) / 2
-      const imgY = 0
-      pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio)
-      pdf.save("transfer_certificate.pdf")
+      try {
+        const input = componentRef.current
+        const canvas = await html2canvas(input, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        })
+        const imgData = canvas.toDataURL("image/png")
+        const pdf = new jsPDF("p", "mm", "a4")
+        const pdfWidth = pdf.internal.pageSize.getWidth()
+        const pdfHeight = pdf.internal.pageSize.getHeight()
+        const imgWidth = canvas.width
+        const imgHeight = canvas.height
+        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
+        const imgX = (pdfWidth - imgWidth * ratio) / 2
+        const imgY = 0
+        pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio)
+        pdf.save("transfer_certificate.pdf")
+      } catch (error) {
+        console.error("Error generating PDF:", error)
+        toast.error("Failed to generate PDF")
+      } finally {
+        setProcessing(false)
+      }
     }, 100)
   }
 
@@ -359,9 +447,9 @@ const TransferCertificate = () => {
               {showDropdown && (
                 <div className="admission-dropdown" ref={dropdownRef}>
                   {filteredAdmissionData.map((item, index) => (
-                    <div 
-                      key={index} 
-                      className="admission-dropdown-item" 
+                    <div
+                      key={index}
+                      className="admission-dropdown-item"
                       onClick={() => handleAdmissionSelect(item.admissionNumber)}
                     >
                       {`${item.admissionNumber}-${item.studentName}`}
@@ -386,14 +474,52 @@ const TransferCertificate = () => {
                     Edit
                   </Button>
                 )}
-                <Button variant="primary" onClick={handlePrintCertificate} className="me-2">
-                  Print
+                <Button variant="primary" onClick={handlePrintCertificate} className="me-2" disabled={processing}>
+                  {processing ? (
+                    <>
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                        className="me-2"
+                      />
+                      Processing...
+                    </>
+                  ) : (
+                    "Print"
+                  )}
                 </Button>
-                <Button variant="success" onClick={handleDownloadPDF} className="me-2">
-                  Download PDF
+                <Button variant="success" onClick={handleDownloadPDF} className="me-2" disabled={processing}>
+                  {processing ? (
+                    <>
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                        className="me-2"
+                      />
+                      Processing...
+                    </>
+                  ) : (
+                    "Download PDF"
+                  )}
                 </Button>
               </div>
             </div>
+
+            {/* Processing Overlay */}
+            {processing && (
+              <div className="processing-overlay">
+                <div className="processing-content">
+                  <Spinner animation="border" role="status" variant="primary" />
+                  <p className="mt-2">Processing document...</p>
+                </div>
+              </div>
+            )}
 
             <div className="certificate-container" ref={componentRef}>
               <div className="certificate-content">
@@ -441,7 +567,10 @@ const TransferCertificate = () => {
 
                   <div className="detail-row">
                     <div className="label">4. Nationality - Religion & Caste</div>
-                    <div className="value">: {`${formData.nationality || "Indian"} - ${formData.religion || "Hindu"} - ${formData.caste || "Vaniyar"}`}</div>
+                    <div className="value">
+                      :{" "}
+                      {`${formData.nationality || "Indian"} - ${formData.religion || "Hindu"} - ${formData.caste || "Vaniyar"}`}
+                    </div>
                   </div>
 
                   <div className="detail-row">
@@ -515,7 +644,9 @@ const TransferCertificate = () => {
 
                   <div className="detail-row">
                     <div className="label">10. Whether Qualified for Promotion</div>
-                    <div className="value">: {renderField("qualifiedForPromotion", "Yes. Promoted to higher studies")}</div>
+                    <div className="value">
+                      : {renderField("qualifiedForPromotion", "Yes. Promoted to higher studies")}
+                    </div>
                   </div>
 
                   <div className="detail-row">
@@ -666,6 +797,27 @@ const TransferCertificate = () => {
           font-style: italic;
         }
 
+        /* Processing overlay styles */
+        .processing-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 9999;
+        }
+
+        .processing-content {
+          background-color: white;
+          padding: 30px;
+          border-radius: 10px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          text-align: center;
+        }
+
         @media (max-width: 768px) {
           .certificate-container {
             width: 100%;
@@ -695,3 +847,4 @@ const TransferCertificate = () => {
 }
 
 export default TransferCertificate
+
