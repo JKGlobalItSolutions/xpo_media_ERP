@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import MainContentPage from "../../components/MainContent/MainContentPage"
-import { Form, Button, Container } from "react-bootstrap"
+import { Form, Button, Row, Col, Container } from "react-bootstrap"
 import { Link } from "react-router-dom"
 import { db, auth } from "../../Firebase/config"
 import { collection, getDocs, query, where, limit } from "firebase/firestore"
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const TransferCertificate = () => {
   const [formData, setFormData] = useState({
@@ -51,7 +51,7 @@ const TransferCertificate = () => {
     denotifiedCommunities: "Independent",
     otherCaste: "-",
     qualifiedForPromotion: "Yes. Promoted to higher studies",
-    feesPaid: "Yes",
+    feesPaid: "Yes"
   })
 
   const [loading, setLoading] = useState(false)
@@ -62,6 +62,8 @@ const TransferCertificate = () => {
   const [showDropdown, setShowDropdown] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const componentRef = useRef()
+  const dropdownRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -90,6 +92,20 @@ const TransferCertificate = () => {
       fetchAdmissionData()
     }
   }, [administrationId])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+          inputRef.current && !inputRef.current.contains(event.target)) {
+        setShowDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   const fetchAdmissionData = async () => {
     try {
@@ -158,7 +174,7 @@ const TransferCertificate = () => {
           dateOfRelieve: data.dateOfRelieve || "",
           status: data.status || (data.studentType === "New" ? "active" : "inactive"),
         })
-
+        
         return true
       } else {
         setError("No student found with this admission number")
@@ -213,19 +229,18 @@ const TransferCertificate = () => {
     }))
 
     if (name === "admissionNumber") {
-      const filtered = admissionData.filter(
-        (item) =>
-          item.admissionNumber.toLowerCase().includes(value.toLowerCase()) ||
-          item.studentName.toLowerCase().includes(value.toLowerCase()),
+      const filtered = admissionData.filter((item) => 
+        item.admissionNumber.toLowerCase().includes(value.toLowerCase()) ||
+        item.studentName.toLowerCase().includes(value.toLowerCase())
       )
       setFilteredAdmissionData(filtered)
-      setShowDropdown(filtered.length > 0)
+      setShowDropdown(true)
     }
   }
 
   const handleEditableInputChange = (e) => {
     const { name, value } = e.target
-    setEditableData((prevData) => ({ ...prevData, [name]: value }))
+    setEditableData(prevData => ({ ...prevData, [name]: value }))
   }
 
   const handleAdmissionSelect = (admissionNum) => {
@@ -338,14 +353,15 @@ const TransferCertificate = () => {
                 style={{ maxWidth: "300px" }}
                 disabled={loading}
                 autoComplete="off"
-                onClick={() => setShowDropdown(true)}
+                onFocus={() => setShowDropdown(true)}
+                ref={inputRef}
               />
               {showDropdown && (
-                <div className="admission-dropdown">
+                <div className="admission-dropdown" ref={dropdownRef}>
                   {filteredAdmissionData.map((item, index) => (
-                    <div
-                      key={index}
-                      className="admission-dropdown-item"
+                    <div 
+                      key={index} 
+                      className="admission-dropdown-item" 
                       onClick={() => handleAdmissionSelect(item.admissionNumber)}
                     >
                       {`${item.admissionNumber}-${item.studentName}`}
@@ -425,10 +441,7 @@ const TransferCertificate = () => {
 
                   <div className="detail-row">
                     <div className="label">4. Nationality - Religion & Caste</div>
-                    <div className="value">
-                      :{" "}
-                      {`${formData.nationality || "Indian"} - ${formData.religion || "Hindu"} - ${formData.caste || "Vaniyar"}`}
-                    </div>
+                    <div className="value">: {`${formData.nationality || "Indian"} - ${formData.religion || "Hindu"} - ${formData.caste || "Vaniyar"}`}</div>
                   </div>
 
                   <div className="detail-row">
@@ -502,9 +515,7 @@ const TransferCertificate = () => {
 
                   <div className="detail-row">
                     <div className="label">10. Whether Qualified for Promotion</div>
-                    <div className="value">
-                      : {renderField("qualifiedForPromotion", "Yes. Promoted to higher studies")}
-                    </div>
+                    <div className="value">: {renderField("qualifiedForPromotion", "Yes. Promoted to higher studies")}</div>
                   </div>
 
                   <div className="detail-row">
@@ -684,4 +695,3 @@ const TransferCertificate = () => {
 }
 
 export default TransferCertificate
-
