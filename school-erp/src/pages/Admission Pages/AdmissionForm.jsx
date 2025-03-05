@@ -583,12 +583,46 @@ const AdmissionForm = () => {
     }
   }
 
+  const isValidDateFormat = (dateString) => {
+    const regex = /^(\d{2})-(\d{2})-(\d{4})$/
+    if (!regex.test(dateString)) return false
+
+    const [day, month, year] = dateString.split("-").map(Number)
+    const date = new Date(year, month - 1, day)
+    return (
+      date instanceof Date &&
+      !isNaN(date) &&
+      date.getDate() === day &&
+      date.getMonth() === month - 1 &&
+      date.getFullYear() === year
+    )
+  }
+
+  const formatDate = (date) => {
+    if (!date) return ""
+    const [year, month, day] = date.split("-")
+    return `${day}-${month}-${year}`
+  }
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    if (name === "dateOfAdmission" || name === "dateOfBirth") {
+      let formattedDate = value.replace(/\D/g, "")
+      if (formattedDate.length > 2 && formattedDate.length <= 4) {
+        formattedDate = formattedDate.slice(0, 2) + "-" + formattedDate.slice(2)
+      } else if (formattedDate.length > 4) {
+        formattedDate = formattedDate.slice(0, 2) + "-" + formattedDate.slice(2, 4) + "-" + formattedDate.slice(4, 8)
+      }
+      setFormData((prev) => ({
+        ...prev,
+        [name]: formattedDate,
+      }))
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }))
+    }
     setErrors((prev) => ({ ...prev, [name]: "" }))
 
     if (name === "enquiryKey") {
@@ -635,6 +669,15 @@ const AdmissionForm = () => {
 
     if (name === "lunchRefresh") {
       fetchHostelFee()
+    }
+
+    if (name === "aadharNumber") {
+      // Allow only numbers and limit to 12 digits
+      const numericValue = value.replace(/\D/g, "")
+      setFormData((prev) => ({
+        ...prev,
+        aadharNumber: numericValue.slice(0, 12),
+      }))
     }
   }
 
@@ -722,6 +765,18 @@ const AdmissionForm = () => {
         } is required`
       }
     })
+
+    if (formData.aadharNumber && formData.aadharNumber.length !== 12) {
+      newErrors.aadharNumber = "Aadhar Number must be exactly 12 digits"
+    }
+
+    if (formData.dateOfAdmission && !isValidDateFormat(formData.dateOfAdmission)) {
+      newErrors.dateOfAdmission = "Date of Admission must be in DD-MM-YYYY format"
+    }
+
+    if (formData.dateOfBirth && !isValidDateFormat(formData.dateOfBirth)) {
+      newErrors.dateOfBirth = "Date of Birth must be in DD-MM-YYYY format"
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -990,20 +1045,40 @@ const AdmissionForm = () => {
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Enquiry Key</Form.Label>
-                  <Form.Select
-                    name="enquiryKey"
-                    value={formData.enquiryKey || ""}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                  >
-                    <option value="">Select Enquiry Key</option>
-                    {enquiryNumbers.map((key) => (
-                      <option key={key} value={key}>
-                        {key}
-                      </option>
-                    ))}
-                  </Form.Select>
+                  <div className="d-flex">
+                    <Form.Control
+                      type="text"
+                      name="enquiryKey"
+                      value={formData.enquiryKey || ""}
+                      onChange={handleInputChange}
+                      disabled={isViewMode}
+                      className="form-control-blue"
+                      placeholder="Enter or select Enquiry Key"
+                      list="enquiry-options"
+                    />
+                    <datalist id="enquiry-options">
+                      {enquiryNumbers.map((key) => (
+                        <option key={key} value={key} />
+                      ))}
+                    </datalist>
+                    <Form.Select
+                      className="ms-2"
+                      style={{ width: "auto" }}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleEnquirySelect(e.target.value)
+                        }
+                      }}
+                      disabled={isViewMode}
+                    >
+                      <option value="">Select</option>
+                      {enquiryNumbers.map((key) => (
+                        <option key={key} value={key}>
+                          {key}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </div>
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1133,16 +1208,41 @@ const AdmissionForm = () => {
 
                 <Form.Group className="mb-3">
                   <Form.Label>Date Of Birth</Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth || ""}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                    ref={dateOfBirthRef}
-                    onClick={() => handleDateInputClick(dateOfBirthRef)}
-                  />
+                  <div className="d-flex">
+                    <Form.Control
+                      type="text"
+                      name="dateOfBirth"
+                      value={formData.dateOfBirth || ""}
+                      onChange={handleInputChange}
+                      disabled={isViewMode}
+                      className="form-control-blue"
+                      placeholder="DD-MM-YYYY"
+                    />
+                    <Button
+                      variant="outline-secondary"
+                      className="ms-2"
+                      onClick={() => handleDateInputClick(dateOfBirthRef)}
+                      disabled={isViewMode}
+                    >
+                      <i className="bi bi-calendar"></i>
+                    </Button>
+                    <input
+                      ref={dateOfBirthRef}
+                      type="date"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const selectedDate = new Date(e.target.value)
+                        const formattedDate = `${String(selectedDate.getDate()).padStart(2, "0")}-${String(
+                          selectedDate.getMonth() + 1,
+                        ).padStart(2, "0")}-${selectedDate.getFullYear()}`
+                        setFormData((prev) => ({
+                          ...prev,
+                          dateOfBirth: formattedDate,
+                        }))
+                      }}
+                    />
+                  </div>
+                  {errors.dateOfBirth && <Form.Text className="text-danger">{errors.dateOfBirth}</Form.Text>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1262,7 +1362,12 @@ const AdmissionForm = () => {
                     onChange={handleInputChange}
                     disabled={isViewMode}
                     className="form-control-blue"
+                    maxLength={12}
+                    placeholder="Enter 12 digit Aadhar Number"
                   />
+                  {formData.aadharNumber && formData.aadharNumber.length !== 12 && (
+                    <Form.Text className="text-danger">Aadhar Number must be exactly 12 digits</Form.Text>
+                  )}
                 </Form.Group>
 
                 <h3 className="section-title">Address Details</h3>
@@ -1425,16 +1530,41 @@ const AdmissionForm = () => {
 
                 <Form.Group className="mb-3">
                   <Form.Label>Date Of Admission</Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="dateOfAdmission"
-                    value={formData.dateOfAdmission || ""}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                    ref={dateOfAdmissionRef}
-                    onClick={() => handleDateInputClick(dateOfAdmissionRef)}
-                  />
+                  <div className="d-flex">
+                    <Form.Control
+                      type="text"
+                      name="dateOfAdmission"
+                      value={formData.dateOfAdmission || ""}
+                      onChange={handleInputChange}
+                      disabled={isViewMode}
+                      className="form-control-blue"
+                      placeholder="DD-MM-YYYY"
+                    />
+                    <Button
+                      variant="outline-secondary"
+                      className="ms-2"
+                      onClick={() => handleDateInputClick(dateOfAdmissionRef)}
+                      disabled={isViewMode}
+                    >
+                      <i className="bi bi-calendar"></i>
+                    </Button>
+                    <input
+                      ref={dateOfAdmissionRef}
+                      type="date"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const selectedDate = new Date(e.target.value)
+                        const formattedDate = `${String(selectedDate.getDate()).padStart(2, "0")}-${String(
+                          selectedDate.getMonth() + 1,
+                        ).padStart(2, "0")}-${selectedDate.getFullYear()}`
+                        setFormData((prev) => ({
+                          ...prev,
+                          dateOfAdmission: formattedDate,
+                        }))
+                      }}
+                    />
+                  </div>
+                  {errors.dateOfAdmission && <Form.Text className="text-danger">{errors.dateOfAdmission}</Form.Text>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1455,7 +1585,7 @@ const AdmissionForm = () => {
                     type="switch"
                     id="bus-toggle"
                     label="Bus Transport Required"
-                    // checked={isBusRequired}
+                    checked={isBusRequired}
                     onChange={handleBusToggle}
                     disabled={isViewMode}
                   />
@@ -1506,7 +1636,7 @@ const AdmissionForm = () => {
                     type="switch"
                     id="hostel-toggle"
                     label="Hostel Required"
-                    // checked={isHostelRequired}
+                    checked={isHostelRequired}
                     onChange={handleHostelToggle}
                     disabled={isViewMode}
                   />

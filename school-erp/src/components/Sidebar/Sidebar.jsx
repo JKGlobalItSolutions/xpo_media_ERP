@@ -301,8 +301,6 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       icon: settingIcon,
       path: "/settings",
       subItems: [
-        { id: "11-1", title: "• General Settings", path: "/settings/general" },
-        { id: "11-2", title: "• User Settings", path: "/settings/user" },
       ],
     },
     {
