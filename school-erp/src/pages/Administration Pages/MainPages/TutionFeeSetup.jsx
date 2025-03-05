@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
-import { useAuthContext } from "../../../context/AuthContext"
+import { useAuthContext } from "../../../Context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
@@ -17,6 +17,9 @@ const AddTuitionFeeModal = ({ isOpen, onClose, onConfirm, courses, studentCatego
   const [studentCategory, setStudentCategory] = useState({ id: "", name: "" })
   const [feeHeading, setFeeHeading] = useState({ id: "", name: "" })
   const [feeAmount, setFeeAmount] = useState("")
+  const addButtonRef = useRef(null)
+  const closeButtonRef = useRef(null)
+  const formRef = useRef(null)
 
   if (!isOpen) return null
 
@@ -29,90 +32,118 @@ const AddTuitionFeeModal = ({ isOpen, onClose, onConfirm, courses, studentCatego
       feeHeadingId: feeHeading.id,
       feeHeading: feeHeading.name,
       feeAmount,
-    })
+    }, false) // false indicates it's not a final close
     setStandard({ id: "", name: "" })
     setStudentCategory({ id: "", name: "" })
     setFeeHeading({ id: "", name: "" })
     setFeeAmount("")
+    formRef.current.focus() // Return focus to form
+  }
+
+  const handleClose = () => {
+    onClose(true) // true indicates final close
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      handleSubmit()
+    } else if (e.key === "Tab") {
+      if (document.activeElement === addButtonRef.current) {
+        e.preventDefault()
+        closeButtonRef.current.focus()
+      }
+    }
   }
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
         <h2 className="modal-title">Add Tuition Fee</h2>
-        <div className="modal-body">
-          <Form.Group className="mb-3">
-            <Form.Label className="w-100 text-start">Select Standard</Form.Label>
-            <Form.Select
-              value={standard.id}
-              onChange={(e) => {
-                const selectedCourse = courses.find((course) => course.id === e.target.value)
-                setStandard({ id: selectedCourse.id, name: selectedCourse.standard })
-              }}
-              className="custom-input"
+        <Form ref={formRef} onKeyDown={handleKeyDown}>
+          <div className="modal-body">
+            <Form.Group className="mb-3">
+              <Form.Label className="w-100 text-start">Select Standard</Form.Label>
+              <Form.Select
+                value={standard.id}
+                onChange={(e) => {
+                  const selectedCourse = courses.find((course) => course.id === e.target.value)
+                  setStandard({ id: selectedCourse.id, name: selectedCourse.standard })
+                }}
+                className="custom-input"
+                autoFocus
+              >
+                <option value="">Select Standard</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.standard}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="w-100 text-start">Select Student Category</Form.Label>
+              <Form.Select
+                value={studentCategory.id}
+                onChange={(e) => {
+                  const selectedCategory = studentCategories.find((category) => category.id === e.target.value)
+                  setStudentCategory({ id: selectedCategory.id, name: selectedCategory.StudentCategoryName })
+                }}
+                className="custom-input"
+              >
+                <option value="">Select Student Category</option>
+                {studentCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.StudentCategoryName}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="w-100 text-start">Select Fee Heading</Form.Label>
+              <Form.Select
+                value={feeHeading.id}
+                onChange={(e) => {
+                  const selectedHeading = feeHeadings.find((heading) => heading.id === e.target.value)
+                  setFeeHeading({ id: selectedHeading.id, name: selectedHeading.feeHead })
+                }}
+                className="custom-input"
+              >
+                <option value="">Select Fee Heading</option>
+                {feeHeadings.map((heading) => (
+                  <option key={heading.id} value={heading.id}>
+                    {heading.feeHead}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="w-100 text-start">Fee Amount</Form.Label>
+              <Form.Control
+                type="number"
+                value={feeAmount}
+                onChange={(e) => setFeeAmount(e.target.value)}
+                className="custom-input"
+              />
+            </Form.Group>
+          </div>
+          <div className="modal-buttons">
+            <Button 
+              ref={addButtonRef}
+              className="modal-button confirm" 
+              onClick={handleSubmit}
             >
-              <option value="">Select Standard</option>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.standard}
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="w-100 text-start">Select Student Category</Form.Label>
-            <Form.Select
-              value={studentCategory.id}
-              onChange={(e) => {
-                const selectedCategory = studentCategories.find((category) => category.id === e.target.value)
-                setStudentCategory({ id: selectedCategory.id, name: selectedCategory.StudentCategoryName })
-              }}
-              className="custom-input"
+              Add Fee
+            </Button>
+            <Button 
+              ref={closeButtonRef}
+              className="modal-button cancel" 
+              onClick={handleClose}
             >
-              <option value="">Select Student Category</option>
-              {studentCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.StudentCategoryName}
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="w-100 text-start">Select Fee Heading</Form.Label>
-            <Form.Select
-              value={feeHeading.id}
-              onChange={(e) => {
-                const selectedHeading = feeHeadings.find((heading) => heading.id === e.target.value)
-                setFeeHeading({ id: selectedHeading.id, name: selectedHeading.feeHead })
-              }}
-              className="custom-input"
-            >
-              <option value="">Select Fee Heading</option>
-              {feeHeadings.map((heading) => (
-                <option key={heading.id} value={heading.id}>
-                  {heading.feeHead}
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="w-100 text-start">Fee Amount</Form.Label>
-            <Form.Control
-              type="number"
-              value={feeAmount}
-              onChange={(e) => setFeeAmount(e.target.value)}
-              className="custom-input"
-            />
-          </Form.Group>
-        </div>
-        <div className="modal-buttons">
-          <Button className="modal-button confirm" onClick={handleSubmit}>
-            Add Fee
-          </Button>
-          <Button className="modal-button cancel" onClick={onClose}>
-            Cancel
-          </Button>
-        </div>
+              Close
+            </Button>
+          </div>
+        </Form>
       </div>
     </div>
   )
@@ -434,9 +465,8 @@ const TutionFeeSetup = () => {
     }
   }
 
-  const handleAddFee = async (newFee) => {
+  const handleAddFee = async (newFee, shouldClose) => {
     try {
-      // Check for duplicate fee
       const isDuplicate = tuitionFees.some(
         (fee) =>
           fee.standardId === newFee.standardId &&
@@ -451,7 +481,11 @@ const TutionFeeSetup = () => {
 
       const feesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "FeeSetup")
       await addDoc(feesRef, newFee)
-      setIsAddModalOpen(false)
+      
+      if (shouldClose) {
+        setIsAddModalOpen(false)
+      }
+      
       toast.success("Tuition fee added successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -563,14 +597,28 @@ const TutionFeeSetup = () => {
     setIsDeleteModalOpen(true)
   }
 
-  const filteredFees = tuitionFees.filter(
-    (fee) =>
-      (selectedCourse === "" || fee.standardId === selectedCourse) &&
-      (selectedStudentCategory === "" || fee.studentCategoryId === selectedStudentCategory) &&
-      (fee.feeHeading.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        fee.standard.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        fee.studentCategory.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
+  // Custom sorting function for standards
+  const sortStandards = (a, b) => {
+    const order = ['LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th']
+    const aIndex = order.indexOf(a.standard)
+    const bIndex = order.indexOf(b.standard)
+    
+    if (aIndex === -1 && bIndex === -1) return a.standard.localeCompare(b.standard)
+    if (aIndex === -1) return 1
+    if (bIndex === -1) return -1
+    return aIndex - bIndex
+  }
+
+  const filteredFees = tuitionFees
+    .filter(
+      (fee) =>
+        (selectedCourse === "" || fee.standardId === selectedCourse) &&
+        (selectedStudentCategory === "" || fee.studentCategoryId === selectedStudentCategory) &&
+        (fee.feeHeading.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          fee.standard.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          fee.studentCategory.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+    .sort(sortStandards)
 
   const calculateTotalFee = () => {
     return filteredFees.reduce((total, fee) => total + Number(fee.feeAmount || 0), 0).toFixed(2)
@@ -584,9 +632,9 @@ const TutionFeeSetup = () => {
             <div className="tuition-fee-setup-container">
               <nav className="custom-breadcrumb py-1 py-lg-3">
                 <Link to="/home">Home</Link>
-                <span className="separator">&gt;</span>
+                <span className="separator"></span>
                 <span to="">Administration</span>
-                <span className="separator">&gt;</span>
+                <span className="separator"></span>
                 <Link to="/admin/tuition-setup">Tuition Fee Setup</Link>
               </nav>
 
@@ -702,7 +750,9 @@ const TutionFeeSetup = () => {
       {/* Modals */}
       <AddTuitionFeeModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={(shouldClose) => {
+          if (shouldClose) setIsAddModalOpen(false)
+        }}
         onConfirm={handleAddFee}
         courses={courses}
         studentCategories={studentCategories}
@@ -919,4 +969,3 @@ const TutionFeeSetup = () => {
 }
 
 export default TutionFeeSetup
-
