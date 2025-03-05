@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table, ListGroup, Modal } from "react-bootstrap"
 import { db, auth } from "../../Firebase/config"
 import {
   doc,
@@ -23,6 +23,8 @@ import PaymentHistoryModal from "./PaymentHistoryModal"
 
 const BillEntry = () => {
   const navigate = useNavigate()
+  const dropdownRef = useRef(null)
+  const confirmYesButtonRef = useRef(null)
 
   // State for administration and transport IDs
   const [administrationId, setAdministrationId] = useState(null)
@@ -31,7 +33,7 @@ const BillEntry = () => {
   // Bill data state
   const [billData, setBillData] = useState({
     billNumber: "",
-    admissionNumber: "",
+    admissionNumber: "ADM",
     studentName: "",
     fatherName: "",
     course: "",
@@ -61,6 +63,14 @@ const BillEntry = () => {
   // State for history modal
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [paymentHistory, setPaymentHistory] = useState([])
+
+  // State for student search dropdown
+  const [studentsList, setStudentsList] = useState([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [searchTimeout, setSearchTimeout] = useState(null)
+
+  // State for confirmation modal
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
 
   // Generate bill number
   useEffect(() => {
@@ -170,6 +180,35 @@ const BillEntry = () => {
     fetchFeeHeads()
   }, [administrationId])
 
+  // Handle click outside dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  // Handle Enter key press for confirmation modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Enter" && showConfirmModal) {
+        e.preventDefault()
+        confirmYesButtonRef.current?.click()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [showConfirmModal])
+
   // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -177,11 +216,89 @@ const BillEntry = () => {
       ...prev,
       [name]: value,
     }))
+
+    // Auto-search functionality for admission number
+    if (name === "admissionNumber") {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout)
+      }
+
+      if (value.trim() === "") {
+        setShowDropdown(false)
+        return
+      }
+
+      const timeoutId = setTimeout(() => {
+        searchStudents(value)
+      }, 300)
+
+      setSearchTimeout(timeoutId)
+    }
+  }
+
+  // Search students by admission number
+  const searchStudents = async (searchTerm) => {
+    if (!administrationId || searchTerm.trim() === "") return
+
+    try {
+      const admissionRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "AdmissionSetup",
+      )
+
+      // Query for students whose admission number starts with the search term
+      const q = query(
+        admissionRef,
+        where("admissionNumber", ">=", searchTerm),
+        where("admissionNumber", "<=", searchTerm + "\uf8ff"),
+        limit(10),
+      )
+
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        setStudentsList([])
+        setShowDropdown(false)
+        return
+      }
+
+      const students = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        admissionNumber: doc.data().admissionNumber,
+        studentName: doc.data().studentName,
+      }))
+
+      setStudentsList(students)
+      setShowDropdown(true)
+    } catch (error) {
+      console.error("Error searching students:", error)
+      toast.error("Failed to search students")
+    }
+  }
+
+  // Handle student selection from dropdown
+  const handleStudentSelect = (admissionNumber) => {
+    setBillData((prev) => ({
+      ...prev,
+      admissionNumber,
+    }))
+    setShowDropdown(false)
+    fetchStudentDataByAdmissionNumber(admissionNumber)
   }
 
   // Fetch student data by admission number
   const fetchStudentData = async () => {
     if (!billData.admissionNumber || !administrationId) return
+    fetchStudentDataByAdmissionNumber(billData.admissionNumber)
+  }
+
+  // Fetch student data by admission number (reusable function)
+  const fetchStudentDataByAdmissionNumber = async (admissionNumber) => {
+    if (!admissionNumber || !administrationId) return
 
     setIsLoading(true)
     try {
@@ -194,7 +311,7 @@ const BillEntry = () => {
         administrationId,
         "AdmissionSetup",
       )
-      const q = query(admissionRef, where("admissionNumber", "==", billData.admissionNumber))
+      const q = query(admissionRef, where("admissionNumber", "==", admissionNumber))
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
@@ -299,8 +416,8 @@ const BillEntry = () => {
     }))
   }
 
-  // Handle payment submission
-  const handleSubmit = async (e) => {
+  // Handle form submission - show confirmation modal
+  const handleSubmit = (e) => {
     e.preventDefault()
 
     if (!administrationId) {
@@ -319,8 +436,16 @@ const BillEntry = () => {
       return
     }
 
+    // Show confirmation modal
+    setShowConfirmModal(true)
+  }
+
+  // Process payment after confirmation
+  const processPayment = async () => {
     try {
+      setShowConfirmModal(false)
       const now = new Date()
+      const totalPaidAmount = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
 
       // Create a single fee log entry for all paid fees
       const feeLogEntry = {
@@ -455,7 +580,7 @@ const BillEntry = () => {
 
     setBillData({
       billNumber: newBillNumber,
-      admissionNumber: "",
+      admissionNumber: "ADM",
       studentName: "",
       fatherName: "",
       course: "",
@@ -525,22 +650,15 @@ const BillEntry = () => {
                   <Col md={8}>
                     <Form.Group>
                       <Form.Label>Admin. No.</Form.Label>
-                      <div className="d-flex">
+                      <div className="d-flex position-relative" ref={dropdownRef}>
                         <Form.Control
                           type="text"
                           name="admissionNumber"
                           value={billData.admissionNumber}
                           onChange={handleInputChange}
                           className="form-control-light"
+                          autoComplete="off"
                         />
-                        <Button
-                          variant="outline-secondary"
-                          onClick={fetchStudentData}
-                          disabled={isLoading}
-                          className="ms-2"
-                        >
-                          {isLoading ? "Loading..." : "Fetch"}
-                        </Button>
                         <Button
                           variant="outline-primary"
                           onClick={fetchPaymentHistory}
@@ -549,6 +667,23 @@ const BillEntry = () => {
                         >
                           History
                         </Button>
+                        {showDropdown && studentsList.length > 0 && (
+                          <ListGroup
+                            className="position-absolute dropdown-menu show w-100"
+                            style={{ top: "100%", zIndex: 1000 }}
+                          >
+                            {studentsList.map((student) => (
+                              <ListGroup.Item
+                                key={student.id}
+                                action
+                                onClick={() => handleStudentSelect(student.admissionNumber)}
+                                className="dropdown-item"
+                              >
+                                {student.admissionNumber} - {student.studentName}
+                              </ListGroup.Item>
+                            ))}
+                          </ListGroup>
+                        )}
                       </div>
                     </Form.Group>
                   </Col>
@@ -730,16 +865,6 @@ const BillEntry = () => {
                     />
                     <Form.Check
                       type="radio"
-                      id="dd"
-                      label="D.D."
-                      name="paymentMode"
-                      value="D.D."
-                      checked={billData.paymentMode === "D.D."}
-                      onChange={handleInputChange}
-                      className="me-3"
-                    />
-                    <Form.Check
-                      type="radio"
                       id="cash"
                       label="Cash"
                       name="paymentMode"
@@ -810,11 +935,39 @@ const BillEntry = () => {
         </div>
       </Container>
 
+      {/* Payment History Modal */}
       <PaymentHistoryModal
         show={showHistoryModal}
         onHide={() => setShowHistoryModal(false)}
         paymentHistory={paymentHistory}
       />
+
+      {/* Confirmation Modal */}
+      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered size="sm">
+        <Modal.Header className="border-0 pb-0">
+          <Modal.Title className="w-100 text-center">Confirm Bill</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center pb-0">
+          <p>Are you sure you want to confirm this bill?</p>
+        </Modal.Body>
+        <Modal.Footer className="border-0 justify-content-center">
+          <Button variant="secondary" onClick={() => setShowConfirmModal(false)} style={{ width: "80px" }}>
+            No
+          </Button>
+          <Button
+            variant="primary"
+            onClick={processPayment}
+            ref={confirmYesButtonRef}
+            autoFocus
+            style={{
+              width: "80px",
+              backgroundColor: "#0B3D7B",
+            }}
+          >
+            Yes
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <style>
         {`
@@ -866,11 +1019,62 @@ const BillEntry = () => {
             z-index: 1;
           }
 
+          .dropdown-menu {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          }
+
+          .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+          }
+
+          .dropdown-item:hover {
+            background-color: #f8f9fa;
+          }
+
           @media print {
             .custom-breadcrumb,
             button[type="submit"] {
               display: none;
             }
+          }
+
+          .modal-content {
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+
+          .modal-title {
+            font-size: 1.25rem;
+            font-weight: 500;
+          }
+
+          .modal-body p {
+            margin-bottom: 0;
+            color: #666;
+          }
+
+          .modal-footer .btn {
+            padding: 0.375rem 1rem;
+            border-radius: 4px;
+          }
+
+          .modal-footer .btn-secondary {
+            background-color: #6c757d;
+            border: none;
+          }
+
+          .modal-footer .btn-secondary:hover {
+            background-color: #5a6268;
+          }
+
+          .modal-footer .btn-primary:hover {
+            background-color: #092c5a;
           }
         `}
       </style>

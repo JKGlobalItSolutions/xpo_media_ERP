@@ -1,6 +1,11 @@
 import { Modal, Button, Table } from "react-bootstrap"
 
 const PaymentHistoryModal = ({ show, onHide, paymentHistory }) => {
+  // Sort payment history by transaction date (newest first)
+  const sortedPaymentHistory = [...paymentHistory].sort((a, b) => {
+    return new Date(b.transactionDate) - new Date(a.transactionDate)
+  })
+
   return (
     <Modal show={show} onHide={onHide} centered dialogClassName="payment-history-modal" size="lg">
       <Modal.Header style={{ backgroundColor: "#fff", borderBottom: "1px solid #dee2e6" }}>
@@ -19,7 +24,7 @@ const PaymentHistoryModal = ({ show, onHide, paymentHistory }) => {
                 </tr>
               </thead>
               <tbody>
-                {paymentHistory.map((payment) => (
+                {sortedPaymentHistory.map((payment) => (
                   <tr key={payment.id}>
                     <td>{payment.billNumber}</td>
                     <td>{new Date(payment.transactionDate).toLocaleDateString()}</td>
