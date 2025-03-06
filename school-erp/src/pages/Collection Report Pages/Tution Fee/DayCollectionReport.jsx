@@ -1,117 +1,561 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Card, Container } from "react-bootstrap"
+import { Form, Button, Container, Spinner, Table, Card, Row, Col } from "react-bootstrap"
+import { db, auth } from "../../../Firebase/config"
+import { collection, getDocs, query, where, doc, getDoc, limit } from "firebase/firestore"
+import { toast, ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import jsPDF from "jspdf"
+import "jspdf-autotable"
+import DatePicker from "react-datepicker"
+import "react-datepicker/dist/react-datepicker.css"
+import { FaPrint, FaFilePdf, FaUndo, FaSearch } from "react-icons/fa"
 
 const DayCollectionReport = () => {
-  const [courseWiseData, setCourseWiseData] = useState({
-    course: "",
-    sex: "",
-    feeHead: "",
-    amount: "",
-    reportDate: "", // Added report date state
-  })
+  const [loading, setLoading] = useState(false)
+  const [processing, setProcessing] = useState(false)
+  const [administrationId, setAdministrationId] = useState(null)
+  const [schoolInfo, setSchoolInfo] = useState({ name: "", address: "" })
+  const [reportDate, setReportDate] = useState(new Date())
+  const [collectionData, setCollectionData] = useState([])
+  const [totalCollection, setTotalCollection] = useState(0)
+  const componentRef = useRef(null)
 
-  const [individualData, setIndividualData] = useState({
-    adminNumber: "",
-    name: "",
-    feeHead: "",
-    amount: "",
-  })
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      await fetchSchoolInfo()
+      const adminId = await fetchAdministrationId()
+      if (adminId) {
+        await fetchDayCollection(adminId)
+      }
+    }
 
-  const handleCourseWiseChange = (e) => {
-    const { name, value } = e.target
-    setCourseWiseData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    fetchInitialData()
+  }, [])
+
+  const fetchSchoolInfo = async () => {
+    try {
+      const schoolDoc = doc(db, "Schools", auth.currentUser.uid)
+      const schoolSnapshot = await getDoc(schoolDoc)
+      if (schoolSnapshot.exists()) {
+        const data = schoolSnapshot.data()
+        setSchoolInfo({
+          name: data.SchoolName || "",
+          address: data.SchoolAddres || "",
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching school information:", error)
+      toast.error("Failed to fetch school information")
+    }
   }
 
-  const handleIndividualChange = (e) => {
-    const { name, value } = e.target
-    setIndividualData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+  const fetchAdministrationId = async () => {
+    try {
+      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
+      const q = query(adminRef, limit(1))
+      const querySnapshot = await getDocs(q)
+
+      if (!querySnapshot.empty) {
+        const adminId = querySnapshot.docs[0].id
+        setAdministrationId(adminId)
+        return adminId
+      } else {
+        toast.error("No administration found")
+        return null
+      }
+    } catch (error) {
+      console.error("Error fetching Administration ID:", error)
+      toast.error("Failed to initialize. Please try again.")
+      return null
+    }
   }
 
-  const handleCourseWiseSubmit = (e) => {
-    e.preventDefault()
-    console.log("Course Wise Data:", courseWiseData)
+  const processCollectionData = (rawData) => {
+    const groupedData = rawData.reduce((acc, item) => {
+      const admissionNumber = item.admissionNumber
+      if (!acc[admissionNumber]) {
+        acc[admissionNumber] = []
+      }
+      acc[admissionNumber].push(item)
+      return acc
+    }, {})
+
+    const processedData = []
+    let grandTotal = 0
+
+    Object.entries(groupedData).forEach(([admissionNumber, items]) => {
+      let studentTotal = 0
+
+      items.forEach((item, index) => {
+        processedData.push({
+          ...item,
+          isFirstInGroup: index === 0,
+          isLastInGroup: index === items.length - 1,
+          rowSpan: items.length,
+        })
+        studentTotal += Number(item.amount) || 0
+      })
+
+      processedData.push({
+        type: "subtotal",
+        admissionNumber,
+        amount: studentTotal,
+      })
+
+      grandTotal += studentTotal
+    })
+
+    return { processedData, grandTotal }
   }
 
-  const handleIndividualSubmit = (e) => {
-    e.preventDefault()
-    console.log("Individual Data:", individualData)
+  const fetchDayCollection = async (adminId = administrationId) => {
+    if (!adminId) return
+
+    setLoading(true)
+    try {
+      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", adminId, "FeeLog")
+
+      const startDate = new Date(reportDate)
+      startDate.setHours(0, 0, 0, 0)
+      const endDate = new Date(reportDate)
+      endDate.setHours(23, 59, 59, 999)
+
+      const q = query(feeLogRef, where("billDate", ">=", startDate), where("billDate", "<=", endDate))
+
+      const snapshot = await getDocs(q)
+      const rawCollections = []
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        rawCollections.push({
+          billNumber: data.billNumber,
+          admissionNumber: data.admissionNumber,
+          studentName: data.studentName,
+          standard: data.standard,
+          section: data.section,
+          description: data.feePayments?.map((fee) => fee.feeHead).join(", ") || "",
+          amount: Number.parseFloat(data.totalPaidAmount) || 0,
+          concession: Number.parseFloat(data.totalConcessionAmount) || 0,
+        })
+      })
+
+      const { processedData, grandTotal } = processCollectionData(rawCollections)
+      setCollectionData(processedData)
+      setTotalCollection(grandTotal)
+
+      if (processedData.length === 0) {
+        toast.info("No collection data found for the selected date")
+      } else {
+        toast.success(`Successfully loaded collection records`)
+      }
+    } catch (error) {
+      console.error("Error fetching collection data:", error)
+      toast.error("Failed to fetch collection data")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDateChange = (date) => {
+    setReportDate(date)
+  }
+
+  const handlePrint = () => {
+    const doc = generatePDF()
+    doc.autoPrint()
+    window.open(doc.output("bloburl"), "_blank")
+  }
+
+  const generatePDF = () => {
+    const doc = new jsPDF()
+
+    doc.setFontSize(16)
+    doc.text(schoolInfo.name, 105, 20, { align: "center" })
+    doc.setFontSize(12)
+    doc.text(schoolInfo.address, 105, 30, { align: "center" })
+    doc.setFontSize(14)
+    doc.text("DAY FEES COLLECTION REPORT", 105, 45, { align: "center" })
+    doc.setFontSize(10)
+    doc.text(`Report As on: ${reportDate.toLocaleDateString()}`, 20, 55)
+    doc.text(`Page 1 of 1`, 180, 55)
+
+    const columns = [
+      { header: "Bill No", dataKey: "billNumber" },
+      { header: "Adm No", dataKey: "admissionNumber" },
+      { header: "Name of the Student", dataKey: "studentName" },
+      { header: "Std", dataKey: "standard" },
+      { header: "Sec", dataKey: "section" },
+      { header: "Description", dataKey: "description" },
+      { header: "Amount", dataKey: "amount" },
+    ]
+
+    const tableData = []
+    let currentAdmissionNumber = null
+    let rowSpan = 0
+
+    collectionData.forEach((item, index) => {
+      if (item.type === "subtotal") {
+        tableData.push({
+          billNumber: "",
+          admissionNumber: "",
+          studentName: "",
+          standard: "",
+          section: "",
+          description: "",
+          amount: { content: item.amount.toFixed(2), styles: { fontStyle: "bold", textColor: [0, 0, 0] } },
+        })
+        rowSpan = 0
+      } else {
+        if (item.admissionNumber !== currentAdmissionNumber) {
+          rowSpan = item.rowSpan
+          currentAdmissionNumber = item.admissionNumber
+        }
+
+        const row = {
+          billNumber: item.billNumber,
+          admissionNumber: rowSpan > 0 ? { content: item.admissionNumber, rowSpan: rowSpan } : "",
+          studentName: rowSpan > 0 ? { content: item.studentName, rowSpan: rowSpan } : "",
+          standard: rowSpan > 0 ? { content: item.standard, rowSpan: rowSpan } : "",
+          section: rowSpan > 0 ? { content: item.section, rowSpan: rowSpan } : "",
+          description: item.description,
+          amount: item.amount.toFixed(2),
+        }
+        tableData.push(row)
+
+        if (item.concession > 0) {
+          tableData.push({
+            billNumber: "",
+            admissionNumber: "",
+            studentName: "",
+            standard: "",
+            section: "",
+            description: "Concession",
+            amount: { content: `-${item.concession.toFixed(2)}`, styles: { textColor: [220, 53, 69] } },
+          })
+        }
+
+        rowSpan--
+      }
+    })
+
+    doc.autoTable({
+      columns: columns,
+      body: tableData,
+      startY: 65,
+      theme: "grid",
+      styles: { fontSize: 8, cellPadding: 2 },
+      columnStyles: {
+        admissionNumber: { halign: "center", valign: "middle" },
+        studentName: { halign: "center", valign: "middle" },
+        standard: { halign: "center", valign: "middle" },
+        section: { halign: "center", valign: "middle" },
+        amount: { halign: "right" },
+      },
+      headStyles: { fillColor: [11, 61, 123], textColor: [255, 255, 255] },
+      didParseCell: (data) => {
+        if (
+          data.section === "body" &&
+          data.column.dataKey === "amount" &&
+          data.cell.raw &&
+          typeof data.cell.raw === "object"
+        ) {
+          data.cell.styles.fontStyle = data.cell.raw.styles.fontStyle || "normal"
+          data.cell.styles.textColor = data.cell.raw.styles.textColor || [0, 0, 0]
+          data.cell.text = data.cell.raw.content
+        }
+      },
+    })
+
+    const finalY = doc.lastAutoTable.finalY || 65
+    doc.setFontSize(10)
+    doc.setFont(undefined, "bold")
+    doc.text(`Total Fee: ${totalCollection.toFixed(2)}`, 170, finalY + 10, { align: "right" })
+
+    return doc
+  }
+
+  const downloadPDF = () => {
+    const doc = generatePDF()
+    doc.save("day_collection_report.pdf")
+  }
+
+  const handleReset = () => {
+    setReportDate(new Date())
+    setCollectionData([])
+    setTotalCollection(0)
+  }
+
+  const renderTableBody = () => {
+    if (collectionData.length === 0) {
+      return (
+        <tr>
+          <td colSpan="7" className="text-center">
+            No collection data available for the selected date.
+          </td>
+        </tr>
+      )
+    }
+
+    return collectionData.map((item, index) => {
+      if (item.type === "subtotal") {
+        return (
+          <tr key={`subtotal-${item.admissionNumber}`} className="subtotal-row">
+            <td colSpan="6"></td>
+            <td className="text-end fw-bold dotted-underline">{item.amount.toFixed(2)}</td>
+          </tr>
+        )
+      }
+
+      return (
+        <tr key={index}>
+          <td>{item.billNumber}</td>
+          {item.isFirstInGroup ? (
+            <>
+              <td rowSpan={item.rowSpan} className="align-middle text-center">
+                {item.admissionNumber}
+              </td>
+              <td rowSpan={item.rowSpan} className="align-middle text-center">
+                {item.studentName}
+              </td>
+              <td rowSpan={item.rowSpan} className="align-middle text-center">
+                {item.standard}
+              </td>
+              <td rowSpan={item.rowSpan} className="align-middle text-center">
+                {item.section}
+              </td>
+            </>
+          ) : null}
+          <td>{item.description}</td>
+          <td className="text-end">
+            {item.amount.toFixed(2)}
+            {item.concession > 0 && (
+              <>
+                <br />
+                <span className="text-danger">-{item.concession.toFixed(2)}</span>
+              </>
+            )}
+          </td>
+        </tr>
+      )
+    })
   }
 
   return (
     <MainContentPage>
       <Container fluid className="px-0">
-        {/* Header and Breadcrumb */}
         <div className="mb-4">
-          <h2 className="mb-2">Day Collection Report</h2>
           <nav className="custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <Link to="">Collection Report</Link>
-            <span className="separator mx-2">&gt;</span>
-            <Link to="/collection-report/tution-fee">Tuition Fee</Link>
+            <div>Collection Report</div>
             <span className="separator mx-2">&gt;</span>
             <span>Day Collection Report</span>
           </nav>
         </div>
 
-        {/* Course Wise Fee Setting Card */}
-        <Card className="mb-4">
-          <Card.Header className="p-3 custom-btn-clr" >
-            <h5 className="m-0">Day Collection Report</h5>
+        <Card className="shadow-sm">
+          <Card.Header className="bg-primary text-white py-3">
+            <h2 className="mb-0">Day Collection Report</h2>
           </Card.Header>
           <Card.Body className="p-4">
-            <Form onSubmit={handleCourseWiseSubmit}>
-              <div className="row mb-3">
-                <div className="col-md-3">
-                  <Form.Label>Select Your Report Date</Form.Label>
-                </div>
-                <div className="col-md-9">
-                  <Form.Control
-                    type="date"
-                    name="reportDate"
-                    value={courseWiseData.reportDate}
-                    onChange={handleCourseWiseChange}
-                    onClick={(e) => e.target.showPicker()} // Open date picker when clicked anywhere on the field
-                  />
+            <Form className="mb-4">
+              <Row className="align-items-end">
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label>Select Your Report Date</Form.Label>
+                    <DatePicker
+                      selected={reportDate}
+                      onChange={handleDateChange}
+                      dateFormat="dd/MM/yyyy"
+                      className="form-control"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={2}>
+                  <Button className="custom-btn-clr w-100" onClick={() => fetchDayCollection()} disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Spinner size="sm" className="me-2" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <FaSearch className="me-2" /> Fetch Report
+                      </>
+                    )}
+                  </Button>
+                </Col>
+                <Col md={6}>
+                  <div className="d-flex justify-content-end">
+                    <Button className="btn custom-btn-clr me-2" onClick={handlePrint} disabled={processing}>
+                      <FaPrint className="me-2" /> Print
+                    </Button>
+                    <Button className="btn custom-btn-clr me-2" onClick={downloadPDF} disabled={processing}>
+                      <FaFilePdf className="me-2" /> Download PDF
+                    </Button>
+                    <Button className="btn btn-secondary" onClick={handleReset}>
+                      <FaUndo className="me-2" /> Reset
+                    </Button>
+                  </div>
+                </Col>
+              </Row>
+            </Form>
+
+            <div ref={componentRef} className="report-preview">
+              <div className="text-center mb-4">
+                <h3 className="school-name">{schoolInfo.name}</h3>
+                <p className="school-address">{schoolInfo.address}</p>
+                <h4 className="report-title">DAY FEES COLLECTION REPORT</h4>
+                <div className="d-flex justify-content-between mt-3">
+                  <p>Report As on: {reportDate.toLocaleDateString()}</p>
+                  <p>Page 1 of 1</p>
                 </div>
               </div>
 
-              <div className="d-flex justify-content-center gap-2 mt-4">
-                <Button type="submit" className="custom-btn-clr">
-                  Generate
-                </Button>
-                <Button type="submit" className="custom-btn-clr">
-                  Save
-                </Button>
-                <Button variant="secondary">Cancel</Button>
+              <div className="table-responsive">
+                <Table bordered hover className="report-table">
+                  <thead>
+                    <tr>
+                      <th>Bill No</th>
+                      <th>Adm No</th>
+                      <th>Name of the Student</th>
+                      <th>Std</th>
+                      <th>Sec</th>
+                      <th>Description</th>
+                      <th className="text-end">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>{renderTableBody()}</tbody>
+                  <tfoot>
+                    <tr className="total-row">
+                      <td colSpan="6" className="text-end fw-bold">
+                        Total Fee
+                      </td>
+                      <td className="text-end fw-bold double-underline">{totalCollection.toFixed(2)}</td>
+                    </tr>
+                  </tfoot>
+                </Table>
               </div>
-            </Form>
+            </div>
           </Card.Body>
         </Card>
-
-        {/* Footer */}
-        <footer className="mt-4 text-muted">
-          <small>
-            © Copyrights{" "}
-            <a href="#" className="text-decoration-none">
-              XPO Media
-            </a>{" "}
-            2024. All rights reserved
-          </small>
-        </footer>
       </Container>
+
+      <ToastContainer position="top-right" autoClose={3000} />
+
+      <style jsx>{`
+        .bg-primary {
+          background-color: #0B3D7B !important;
+        }
+        .text-primary {
+          color: #0B3D7B !important;
+        }
+        .custom-btn-clr {
+          background-color: #0B3D7B;
+          border-color: #0B3D7B;
+          color: white;
+        }
+        .custom-btn-clr:hover {
+          background-color: #092c5a;
+          border-color: #092c5a;
+        }
+        
+        .report-preview {
+          border: 1px solid #dee2e6;
+          padding: 20px;
+          margin-bottom: 20px;
+          background-color: white;
+        }
+
+        .school-name {
+          font-size: 24px;
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
+
+        .school-address {
+          font-size: 16px;
+          margin-bottom: 16px;
+        }
+
+        .report-title {
+          font-size: 20px;
+          font-weight: bold;
+          margin: 16px 0;
+          text-decoration: underline;
+        }
+
+        .report-table {
+          font-size: 14px;
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .report-table th, .report-table td {
+          border: 1px solid #dee2e6;
+          padding: 8px;
+          text-align: left;
+        }
+
+        .report-table th {
+          background-color: #0B3D7B;
+          color: white;
+          vertical-align: middle;
+        }
+        
+        .report-table td {
+          vertical-align: middle;
+        }
+        
+        .concession-row td {
+          background-color: #f8f9fa;
+        }
+        
+        .subtotal-row td {
+          border-top: 1px dashed #dee2e6;
+        }
+        
+        .total-row td {
+          border-top: 2px solid #000;
+        }
+
+        .dotted-underline {
+          border-bottom: 1px dotted #000;
+          padding-bottom: 4px;
+        }
+
+        .double-underline {
+          border-bottom: 3px double #000;
+          padding-bottom: 4px;
+        }
+
+        .text-danger {
+          color: #dc3545;
+        }
+
+        /* Group spacing */
+        tr + tr:not(.subtotal-row) td:empty {
+          border-top: none;
+        }
+
+        .subtotal-row td {
+          border-top: none;
+        }
+
+        @media (max-width: 768px) {
+          .btn {
+            width: 100%;
+            margin-bottom: 10px;
+          }
+        }
+      `}</style>
     </MainContentPage>
   )
 }
 
 export default DayCollectionReport
+

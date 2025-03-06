@@ -16,7 +16,7 @@ const IndividualPaid = () => {
   const [administrationId, setAdministrationId] = useState(null)
   const [schoolInfo, setSchoolInfo] = useState({ name: "", address: "" })
   const [studentData, setStudentData] = useState({
-    admissionNumber: "",
+    admissionNumber: "ADM",
     studentName: "",
     standard: "",
     section: "",
@@ -26,7 +26,11 @@ const IndividualPaid = () => {
     concessAmount: "0",
   })
   const [paymentHistory, setPaymentHistory] = useState([])
+  const [admissionData, setAdmissionData] = useState([])
+  const [filteredAdmissionData, setFilteredAdmissionData] = useState([])
+  const [showDropdown, setShowDropdown] = useState(false)
   const componentRef = useRef(null)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
     const fetchSchoolInfo = async () => {
@@ -49,6 +53,25 @@ const IndividualPaid = () => {
     fetchAdministrationId()
   }, [])
 
+  useEffect(() => {
+    if (administrationId) {
+      fetchAdmissionData()
+    }
+  }, [administrationId])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
   const fetchAdministrationId = async () => {
     try {
       const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
@@ -64,13 +87,51 @@ const IndividualPaid = () => {
     }
   }
 
-  const handleInputChange = async (e) => {
+  const fetchAdmissionData = async () => {
+    try {
+      const admissionsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AdmissionMaster",
+        administrationId,
+        "AdmissionSetup",
+      )
+      const snapshot = await getDocs(admissionsRef)
+      const data = snapshot.docs.map((doc) => ({
+        admissionNumber: doc.data().admissionNumber,
+        studentName: doc.data().studentName,
+      }))
+      setAdmissionData(data)
+    } catch (error) {
+      console.error("Error fetching admission data:", error)
+      toast.error("Failed to fetch admission data")
+    }
+  }
+
+  const handleInputChange = (e) => {
     const { name, value } = e.target
     setStudentData((prev) => ({ ...prev, [name]: value }))
 
-    if (name === "admissionNumber" && value.length >= 3) {
-      await fetchStudentData(value)
+    if (name === "admissionNumber") {
+      const filtered = admissionData.filter(
+        (item) =>
+          item.admissionNumber.toLowerCase().includes(value.toLowerCase()) ||
+          item.studentName.toLowerCase().includes(value.toLowerCase()),
+      )
+      setFilteredAdmissionData(filtered)
+      setShowDropdown(true)
     }
+  }
+
+  const handleAdmissionSelect = async (selectedAdmission) => {
+    setStudentData((prev) => ({
+      ...prev,
+      admissionNumber: selectedAdmission.admissionNumber,
+      studentName: selectedAdmission.studentName,
+    }))
+    setShowDropdown(false)
+    await fetchStudentData(selectedAdmission.admissionNumber)
   }
 
   const fetchStudentData = async (admissionNumber) => {
@@ -99,7 +160,7 @@ const IndividualPaid = () => {
         const payments = paymentSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-          date: doc.data().transactionDate,
+          date: doc.data().transactionDate.toDate(),
         }))
 
         const totalPaid = payments.reduce((sum, payment) => sum + Number(payment.totalPaidAmount), 0)
@@ -176,7 +237,7 @@ const IndividualPaid = () => {
       xPos = 20
       doc.text((index + 1).toString(), xPos, yPos)
       doc.text(payment.billNumber || "", xPos + 30, yPos)
-      doc.text(new Date(payment.date).toLocaleDateString("en-GB"), xPos + 60, yPos)
+      doc.text(payment.date.toLocaleDateString("en-GB"), xPos + 60, yPos)
       doc.text(payment.description || "", xPos + 90, yPos)
       doc.text(payment.fixedAmount?.toString() || "", xPos + 120, yPos)
       doc.text(payment.totalPaidAmount?.toString() || "", xPos + 150, yPos)
@@ -195,7 +256,7 @@ const IndividualPaid = () => {
 
   const handleReset = () => {
     setStudentData({
-      admissionNumber: "",
+      admissionNumber: "ADM",
       studentName: "",
       standard: "",
       section: "",
@@ -231,14 +292,30 @@ const IndividualPaid = () => {
             <div className="col-md-4">
               <div className="form-group">
                 <label className="form-label">Admission Number</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="admissionNumber"
-                  value={studentData.admissionNumber}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                />
+                <div className="position-relative">
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="admissionNumber"
+                    value={studentData.admissionNumber}
+                    onChange={handleInputChange}
+                    disabled={loading}
+                    autoComplete="off"
+                  />
+                  {showDropdown && (
+                    <div className="admission-dropdown" ref={dropdownRef}>
+                      {filteredAdmissionData.map((item, index) => (
+                        <div
+                          key={index}
+                          className="admission-dropdown-item"
+                          onClick={() => handleAdmissionSelect(item)}
+                        >
+                          {item.admissionNumber} - {item.studentName}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="col-md-4">
@@ -312,7 +389,7 @@ const IndividualPaid = () => {
                   {paymentHistory.map((payment, index) => (
                     <tr key={payment.id}>
                       <td className="sno-column">{index + 1}</td>
-                      <td className="date-column">{new Date(payment.date).toLocaleDateString("en-GB")}</td>
+                      <td className="date-column">{payment.date.toLocaleDateString("en-GB")}</td>
                       <td className="amount-column">{payment.totalPaidAmount}</td>
                       <td className="bill-column">{payment.billNumber}</td>
                       <td className="desc-column">{payment.feePayments?.map((fee) => fee.feeHead).join(", ")}</td>
@@ -376,7 +453,7 @@ const IndividualPaid = () => {
                 <tr key={payment.id}>
                   <td>{index + 1}</td>
                   <td>{payment.billNumber}</td>
-                  <td>{new Date(payment.date).toLocaleDateString("en-GB")}</td>
+                  <td>{payment.date.toLocaleDateString("en-GB")}</td>
                   <td>{payment.description}</td>
                   <td>{payment.fixedAmount}</td>
                   <td>{payment.totalPaidAmount}</td>
@@ -497,6 +574,29 @@ const IndividualPaid = () => {
         .custom-btn-clr:hover {
           background-color: #092c5a;
           border-color: #092c5a;
+        }
+
+        /* Admission number dropdown styles */
+        .admission-dropdown {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background-color: white;
+          border: 1px solid #ced4da;
+          border-top: none;
+          max-height: 200px;
+          overflow-y: auto;
+          z-index: 1000;
+        }
+
+        .admission-dropdown-item {
+          padding: 8px 12px;
+          cursor: pointer;
+        }
+
+        .admission-dropdown-item:hover {
+          background-color: #f8f9fa;
         }
 
         /* Printable content styles */

@@ -17,6 +17,7 @@ import {
   addDoc,
   updateDoc,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
@@ -41,7 +42,7 @@ const BillEntry = () => {
     course: "",
     section: "",
     pickupPoint: "",
-    date: new Date(),
+    billDate: new Date(),
     balance: "0",
     paidAmount: "0",
     balanceAmount: "0",
@@ -49,7 +50,7 @@ const BillEntry = () => {
     paymentNumber: "",
     operatorName: "XPO ADMIN",
     transactionNarrative: "",
-    transactionDate: new Date(),
+    transactionDate: null,
   })
 
   const [feeDetails, setFeeDetails] = useState([])
@@ -73,16 +74,6 @@ const BillEntry = () => {
 
   // State for confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-
-  // Helper function to format date as YYYY-MM-DD
-  const formatDateForFirestore = (date) => {
-    return date.toISOString().split("T")[0]
-  }
-
-  // Helper function to parse date string from Firestore
-  const parseDateFromFirestore = (dateString) => {
-    return new Date(dateString)
-  }
 
   // Generate bill number
   useEffect(() => {
@@ -500,6 +491,10 @@ const BillEntry = () => {
     setShowConfirmModal(true)
   }
 
+  const formatDateForFirestore = (date) => {
+    return Timestamp.fromDate(date)
+  }
+
   // Process payment after confirmation
   const processPayment = async () => {
     try {
@@ -522,13 +517,14 @@ const BillEntry = () => {
         paymentMode: billData.paymentMode,
         paymentNumber: billData.paymentNumber,
         operatorName: billData.operatorName,
-        transactionDate: formatDateForFirestore(billData.date), // Store as YYYY-MM-DD
+        billDate: formatDateForFirestore(billData.billDate),
+        transactionDate: billData.transactionDate ? formatDateForFirestore(billData.transactionDate) : null,
         transactionNarrative: billData.transactionNarrative,
         boardingPoint: billData.pickupPoint,
         routeNumber: studentData.busRouteNumber || "",
         totalPaidAmount: totalPaidAmount.toFixed(2),
         totalConcessionAmount: totalConcessionAmount.toFixed(2),
-        timestamp: formatDateForFirestore(now), // Store as YYYY-MM-DD
+        timestamp: Timestamp.fromDate(now), // Use Firestore Timestamp
         feePayments: feeTableData
           .filter((fee) => Number.parseFloat(fee.paidAmount) > 0 || Number.parseFloat(fee.concessionAmount) > 0)
           .map((fee) => ({
@@ -630,8 +626,12 @@ const BillEntry = () => {
           return {
             id: doc.id,
             ...data,
-            transactionDate: parseDateFromFirestore(data.transactionDate),
-            timestamp: parseDateFromFirestore(data.timestamp),
+            billDate: data.billDate instanceof Timestamp ? data.billDate.toDate() : new Date(data.billDate),
+            transactionDate:
+              data.transactionDate instanceof Timestamp
+                ? data.transactionDate.toDate()
+                : new Date(data.transactionDate),
+            timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate() : new Date(data.timestamp),
           }
         })
         setPaymentHistory(history)
@@ -661,7 +661,7 @@ const BillEntry = () => {
       course: "",
       section: "",
       pickupPoint: "",
-      date: new Date(),
+      billDate: new Date(),
       balance: "0",
       paidAmount: "0",
       balanceAmount: "0",
@@ -669,7 +669,7 @@ const BillEntry = () => {
       paymentNumber: "",
       operatorName: "XPO ADMIN",
       transactionNarrative: "",
-      transactionDate: new Date(),
+      transactionDate: null,
     })
 
     setFeeDetails([])
@@ -809,14 +809,14 @@ const BillEntry = () => {
                   </Form.Group>
 
                   <Form.Group className="my-1">
-                    <Form.Label>Date</Form.Label>
+                    <Form.Label>Bill Date</Form.Label>
                     <br />
                     <DatePicker
-                      selected={billData.date}
-                      onChange={(date) => handleDateChange(date, "date")}
+                      selected={billData.billDate}
+                      onChange={(date) => handleDateChange(date, "billDate")}
                       dateFormat="dd/MM/yyyy"
                       className="form-control"
-                      customInput={<Form.Control type="text" name="date" className="form-control-light" />}
+                      customInput={<Form.Control type="text" name="billDate" className="form-control-light" />}
                     />
                   </Form.Group>
                 </Col>
@@ -983,6 +983,8 @@ const BillEntry = () => {
                       onChange={(date) => handleDateChange(date, "transactionDate")}
                       dateFormat="dd/MM/yyyy"
                       className="form-control"
+                      isClearable
+                      placeholderText="Select a date (optional)"
                       customInput={<Form.Control type="text" name="transactionDate" className="form-control-light" />}
                     />
                   </Form.Group>
@@ -1000,7 +1002,7 @@ const BillEntry = () => {
                   </Form.Group>
                 </Col>
                 <Col md={12} className="d-flex align-items-end justify-content-end">
-                  <Button variant="primary" type="submit" className="px-4 my-4">
+                  <Button variant="primary" type="submit" className="px-4 py-2">
                     Submit Bill Entry
                   </Button>
                 </Col>
