@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import { db, auth } from "../../Firebase/config"
-import { collection, getDocs, query, where, limit } from "firebase/firestore"
+import { collection, getDocs, query, where, limit, doc, getDoc } from "firebase/firestore"
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 import { toast, ToastContainer } from "react-toastify"
@@ -46,8 +46,8 @@ const TransferCertificate = () => {
     subjects: "",
     result: "",
     lastAttendanceDate: "",
-    schoolName: "XPOMEDIA MATRIC. HR. SEC. SCHOOL",
-    schoolAddress: "TIRUVANAMALAI 606601",
+    schoolName: "",
+    schoolAddress: "",
     districtName: "TIRUVANAMALAI",
     affiliationNo: "",
     schoolCode: "",
@@ -96,6 +96,7 @@ const TransferCertificate = () => {
     }
 
     fetchAdministrationId()
+    fetchSchoolDetails()
   }, [])
 
   useEffect(() => {
@@ -121,6 +122,38 @@ const TransferCertificate = () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [])
+
+  const fetchSchoolDetails = async () => {
+    try {
+      if (!auth.currentUser) {
+        // Mock data for development
+        setFormData((prevState) => ({
+          ...prevState,
+          schoolName: "XPOMEDIA MATRIC. HR. SEC. SCHOOL",
+          schoolAddress: "TIRUVANAMALAI 606601",
+        }))
+        return
+      }
+
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      const schoolDocSnap = await getDoc(schoolDocRef)
+
+      if (schoolDocSnap.exists()) {
+        const schoolData = schoolDocSnap.data()
+        setFormData((prevState) => ({
+          ...prevState,
+          schoolName: schoolData.SchoolName || "",
+          schoolAddress: schoolData.SchoolAddres || "", // Corrected field name
+        }))
+      } else {
+        console.error("No school document found")
+        setError("Error fetching school details. Please contact administrator.")
+      }
+    } catch (error) {
+      console.error("Error fetching school details:", error)
+      setError("Error fetching school details. Please try again.")
+    }
+  }
 
   const fetchAdmissionData = async () => {
     try {
@@ -168,8 +201,8 @@ const TransferCertificate = () => {
       if (!auth.currentUser) {
         // Mock data for development
         setTimeout(() => {
-          setFormData({
-            ...formData,
+          setFormData((prevState) => ({
+            ...prevState,
             admissionNumber: admissionNum,
             studentName: "RAHUL E",
             fatherName: "Elamathi",
@@ -200,7 +233,7 @@ const TransferCertificate = () => {
             subjects: "English, Tamil, Mathematics, Science, Social Science",
             result: "Pass",
             lastAttendanceDate: "31/03/2024",
-          })
+          }))
           setLoading(false)
           setShowCertificate(true)
         }, 500)
@@ -218,10 +251,10 @@ const TransferCertificate = () => {
         const studentDoc = admissionSetupSnapshot.docs[0]
         const data = studentDoc.data()
 
-        setFormData({
-          ...formData,
+        setFormData((prevState) => ({
+          ...prevState,
           ...data,
-        })
+        }))
         setShowCertificate(true)
         return true
       } else {
@@ -240,8 +273,8 @@ const TransferCertificate = () => {
   }
 
   const resetForm = () => {
-    setFormData({
-      ...formData,
+    setFormData((prevState) => ({
+      ...prevState,
       admissionNumber: "",
       studentName: "",
       fatherName: "",
@@ -272,7 +305,7 @@ const TransferCertificate = () => {
       subjects: "",
       result: "",
       lastAttendanceDate: "",
-    })
+    }))
     setShowCertificate(false)
   }
 
