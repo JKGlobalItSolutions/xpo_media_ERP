@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import MainContentPage from "../../components/MainContent/MainContentPage"
-import { Form, Button, Container, Spinner } from "react-bootstrap"
 import { Link } from "react-router-dom"
 import { db, auth } from "../../Firebase/config"
 import { collection, getDocs, query, where, limit } from "firebase/firestore"
@@ -10,6 +8,11 @@ import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import MainContentPage from "../../components/MainContent/MainContentPage"
+import TenthCertificate from "./TC-View-Wise/TenthCertificate"
+import TwelfthCertificate from "./TC-View-Wise/TwelfthCertificate"
+import CBSECertificate1 from "./TC-View-Wise/CBSECertificate1"
+import CBSECertificate2 from "./TC-View-Wise/CBSECertificate2"
 
 const TransferCertificate = () => {
   const [formData, setFormData] = useState({
@@ -17,41 +20,39 @@ const TransferCertificate = () => {
     studentName: "",
     fatherName: "",
     motherName: "",
-    permanentAddress: "",
-    placeName: "",
-    busRouteNumber: "",
-    communicationAdd: "",
-    nationality: "",
-    religion: "",
-    community: "",
-    caste: "",
-    state: "",
-    standard: "",
-    section: "",
-    gender: "",
     dateOfBirth: "",
-    dateOfAdmission: "",
-    studiedStandard: "",
-    studiedYear: "",
-    studiedSchoolName: "",
-    parentOccupation: "",
-    bloodGroup: "",
-    dateOfRelieve: "",
-    status: "",
-  })
-
-  const [editableData, setEditableData] = useState({
-    schoolName: "",
-    educationalDistrict: "Tiruvanamalai",
-    revenueDistrict: "Tiruvanamalai",
-    adiDravidar: "-",
-    backwardClass: "-",
-    mostBackwardClass: "MBC",
-    convertedChristianity: "-",
-    denotifiedCommunities: "Independent",
-    otherCaste: "-",
-    qualifiedForPromotion: "Yes. Promoted to higher studies",
-    feesPaid: "Yes",
+    religion: "",
+    caste: "",
+    nationality: "",
+    monthAndYearOfAdmission: "",
+    classOfAdmission: "",
+    classStudying: "",
+    mediumOfInstruction: "",
+    scholarshipParticulars: "",
+    dateOfLeaving: "",
+    classAtTimeOfLeaving: "",
+    reasonForLeaving: "",
+    noOfSchoolDays: "",
+    noOfSchoolDaysAttended: "",
+    characterAndConduct: "",
+    dateOfTransferCertificateIssue: "",
+    gender: "",
+    identificationMarks: "",
+    qualifiedForPromotion: "",
+    feesPaid: "",
+    medicalInspection: "",
+    feesPaidUpto: "",
+    dateOfTCApplication: "",
+    subjects: "",
+    result: "",
+    lastAttendanceDate: "",
+    schoolName: "XPOMEDIA MATRIC. HR. SEC. SCHOOL",
+    schoolAddress: "TIRUVANAMALAI 606601",
+    districtName: "TIRUVANAMALAI",
+    affiliationNo: "",
+    schoolCode: "",
+    bookNo: "",
+    slNo: "",
   })
 
   const [loading, setLoading] = useState(false)
@@ -62,13 +63,22 @@ const TransferCertificate = () => {
   const [filteredAdmissionData, setFilteredAdmissionData] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const componentRef = useRef()
+  const [certificateType, setCertificateType] = useState("")
+  const [showCertificate, setShowCertificate] = useState(false)
+
+  const componentRef = useRef(null)
   const dropdownRef = useRef(null)
   const inputRef = useRef(null)
 
   useEffect(() => {
     const fetchAdministrationId = async () => {
       try {
+        if (!auth.currentUser) {
+          console.warn("No authenticated user. Using mock data for development.")
+          setAdministrationId("mock-admin-id")
+          return
+        }
+
         const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
         const q = query(adminRef, limit(1))
         const querySnapshot = await getDocs(q)
@@ -114,6 +124,20 @@ const TransferCertificate = () => {
 
   const fetchAdmissionData = async () => {
     try {
+      if (!auth.currentUser) {
+        // Mock data for development
+        const mockData = [
+          { admissionNumber: "19/858016", studentName: "RAHUL E" },
+          { admissionNumber: "19/858017", studentName: "PRIYA S" },
+          { admissionNumber: "19/858018", studentName: "KUMAR M" },
+          { admissionNumber: "19/858019", studentName: "DIVYA P" },
+          { admissionNumber: "19/858020", studentName: "SURESH K" },
+        ]
+        setAdmissionData(mockData)
+        setFilteredAdmissionData(mockData)
+        return
+      }
+
       const admissionsRef = collection(
         db,
         `Schools/${auth.currentUser.uid}/AdmissionMaster/${administrationId}/AdmissionSetup`,
@@ -141,6 +165,48 @@ const TransferCertificate = () => {
       setLoading(true)
       setError("")
 
+      if (!auth.currentUser) {
+        // Mock data for development
+        setTimeout(() => {
+          setFormData({
+            ...formData,
+            admissionNumber: admissionNum,
+            studentName: "RAHUL E",
+            fatherName: "Elamathi",
+            motherName: "Saranya",
+            dateOfBirth: "01/04/2000",
+            religion: "Hindu",
+            caste: "Vaniyar",
+            nationality: "Indian",
+            monthAndYearOfAdmission: "June 2010",
+            classOfAdmission: "LKG",
+            classStudying: "X",
+            mediumOfInstruction: "English",
+            scholarshipParticulars: "NIL",
+            dateOfLeaving: "31/03/2024",
+            classAtTimeOfLeaving: "X",
+            reasonForLeaving: "Completed Studies",
+            noOfSchoolDays: "220",
+            noOfSchoolDaysAttended: "210",
+            characterAndConduct: "Good",
+            dateOfTransferCertificateIssue: "01/04/2024",
+            gender: "Male",
+            identificationMarks: "Mole on right cheek",
+            qualifiedForPromotion: "Yes",
+            feesPaid: "Yes",
+            medicalInspection: "Done",
+            feesPaidUpto: "March 2024",
+            dateOfTCApplication: "25/03/2024",
+            subjects: "English, Tamil, Mathematics, Science, Social Science",
+            result: "Pass",
+            lastAttendanceDate: "31/03/2024",
+          })
+          setLoading(false)
+          setShowCertificate(true)
+        }, 500)
+        return true
+      }
+
       const admissionSetupRef = collection(
         db,
         `Schools/${auth.currentUser.uid}/AdmissionMaster/${administrationId}/AdmissionSetup`,
@@ -153,33 +219,10 @@ const TransferCertificate = () => {
         const data = studentDoc.data()
 
         setFormData({
-          admissionNumber: data.admissionNumber || "",
-          studentName: data.studentName || "",
-          fatherName: data.fatherName || "",
-          motherName: data.motherName || "",
-          permanentAddress: `${data.streetVillage || ""}, ${data.district || ""}, ${data.state || ""} - ${data.placePincode || ""}`,
-          placeName: data.boardingPoint || "",
-          busRouteNumber: data.busRouteNumber || "",
-          communicationAdd: data.communicationAddress || "",
-          nationality: data.nationality || "",
-          religion: data.religion || "",
-          community: data.community || "",
-          caste: data.caste || "",
-          state: data.state || "",
-          standard: data.standard || "",
-          section: data.section || "",
-          gender: data.gender || "",
-          dateOfBirth: data.dateOfBirth || "",
-          dateOfAdmission: data.dateOfAdmission || "",
-          studiedStandard: data.classLastStudied || "",
-          studiedYear: data.studiedYear || "",
-          studiedSchoolName: data.nameOfSchool || "",
-          parentOccupation: `${data.fatherOccupation || ""} / ${data.motherOccupation || ""}`,
-          bloodGroup: data.bloodGroup || "",
-          dateOfRelieve: data.dateOfRelieve || "",
-          status: data.status || (data.studentType === "New" ? "active" : "inactive"),
+          ...formData,
+          ...data,
         })
-
+        setShowCertificate(true)
         return true
       } else {
         setError("No student found with this admission number")
@@ -198,32 +241,39 @@ const TransferCertificate = () => {
 
   const resetForm = () => {
     setFormData({
+      ...formData,
       admissionNumber: "",
       studentName: "",
       fatherName: "",
       motherName: "",
-      permanentAddress: "",
-      placeName: "",
-      busRouteNumber: "",
-      communicationAdd: "",
-      nationality: "",
-      religion: "",
-      community: "",
-      caste: "",
-      state: "",
-      standard: "",
-      section: "",
-      gender: "",
       dateOfBirth: "",
-      dateOfAdmission: "",
-      studiedStandard: "",
-      studiedYear: "",
-      studiedSchoolName: "",
-      parentOccupation: "",
-      bloodGroup: "",
-      dateOfRelieve: "",
-      status: "",
+      religion: "",
+      caste: "",
+      nationality: "",
+      monthAndYearOfAdmission: "",
+      classOfAdmission: "",
+      classStudying: "",
+      mediumOfInstruction: "",
+      scholarshipParticulars: "",
+      dateOfLeaving: "",
+      classAtTimeOfLeaving: "",
+      reasonForLeaving: "",
+      noOfSchoolDays: "",
+      noOfSchoolDaysAttended: "",
+      characterAndConduct: "",
+      dateOfTransferCertificateIssue: "",
+      gender: "",
+      identificationMarks: "",
+      qualifiedForPromotion: "",
+      feesPaid: "",
+      medicalInspection: "",
+      feesPaidUpto: "",
+      dateOfTCApplication: "",
+      subjects: "",
+      result: "",
+      lastAttendanceDate: "",
     })
+    setShowCertificate(false)
   }
 
   const handleInputChange = (e) => {
@@ -242,11 +292,6 @@ const TransferCertificate = () => {
       setFilteredAdmissionData(filtered)
       setShowDropdown(true)
     }
-  }
-
-  const handleEditableInputChange = (e) => {
-    const { name, value } = e.target
-    setEditableData((prevData) => ({ ...prevData, [name]: value }))
   }
 
   const handleAdmissionSelect = (admissionNum) => {
@@ -366,6 +411,7 @@ const TransferCertificate = () => {
         const imgY = 0
         pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio)
         pdf.save("transfer_certificate.pdf")
+        toast.success("PDF downloaded successfully!")
       } catch (error) {
         console.error("Error generating PDF:", error)
         toast.error("Failed to generate PDF")
@@ -375,321 +421,206 @@ const TransferCertificate = () => {
     }, 100)
   }
 
-  const renderField = (fieldName, defaultValue = "") => {
-    if (formData[fieldName]) {
-      return formData[fieldName]
-    } else if (isEditing) {
-      return (
-        <Form.Control
-          type="text"
-          name={fieldName}
-          value={editableData[fieldName] || ""}
-          onChange={handleEditableInputChange}
-          placeholder={`Enter ${fieldName}`}
-        />
-      )
-    } else {
-      return editableData[fieldName] || defaultValue
+  const renderField = (fieldName, label, defaultValue = "") => {
+    return (
+      <div className="detail-row">
+        <div className="label">{label}</div>
+        <div className="value">
+          :{" "}
+          {isEditing ? (
+            <input
+              type="text"
+              name={fieldName}
+              value={formData[fieldName] || ""}
+              onChange={handleInputChange}
+              className="form-control form-control-sm"
+            />
+          ) : (
+            formData[fieldName] || defaultValue
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const handleCertificateSelect = (type) => {
+    setCertificateType(type)
+    setShowCertificate(true)
+  }
+
+  const handleBack = () => {
+    setCertificateType("")
+    setShowCertificate(false)
+    resetForm()
+  }
+
+  const renderCertificateContent = () => {
+    switch (certificateType) {
+      case "10th":
+        return <TenthCertificate formData={formData} renderField={renderField} />
+      case "12th":
+        return <TwelfthCertificate formData={formData} renderField={renderField} />
+      case "CBSE1":
+        return <CBSECertificate1 formData={formData} renderField={renderField} />
+      case "CBSE2":
+        return <CBSECertificate2 formData={formData} renderField={renderField} />
+      default:
+        return null
     }
   }
 
   return (
-    <MainContentPage>
-      <Container fluid className="px-0">
-        {/* Header */}
+    <MainContentPage className="container-fluid px-0">
+      <div className="row mb-4">
+        <div className="col-12">
+          <h4 className="fw-bold">Transfer Certificate</h4>
+        </div>
+      </div>
+
+      <div className="row mb-4">
+        <div className="col-12">
+          <nav aria-label="breadcrumb">
+            <ol className="breadcrumb m-0">
+              <li className="breadcrumb-item">
+                <Link to="/home" className="text-decoration-none">
+                  Home
+                </Link>
+              </li>
+              <li className="breadcrumb-item">
+                <Link to="/admission" className="text-decoration-none">
+                  Admission
+                </Link>
+              </li>
+              <li className="breadcrumb-item active" aria-current="page">
+                Transfer Certificate
+              </li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+
+      {!showCertificate && (
         <div className="row mb-4">
           <div className="col-12">
-            <h4 className="fw-bold">Transfer Certificate</h4>
-          </div>
-        </div>
-
-        {/* Breadcrumb Navigation */}
-        <div className="row mb-4">
-          <div className="col-12">
-            <nav aria-label="breadcrumb">
-              <ol className="breadcrumb m-0">
-                <li className="breadcrumb-item">
-                  <Link to="/home" className="text-decoration-none">
-                    Home
-                  </Link>
-                </li>
-                <li className="breadcrumb-item">
-                  <Link to="/admission" className="text-decoration-none">
-                    Admission
-                  </Link>
-                </li>
-                <li className="breadcrumb-item active" aria-current="page">
-                  Transfer Certificate
-                </li>
-              </ol>
-            </nav>
-          </div>
-        </div>
-
-        <div className="transfer-form bg-white rounded shadow-sm">
-          {/* Header with Admission Number Input */}
-          <div className="header p-3 d-flex justify-content-between align-items-center custom-btn-clr">
-            <h4 className="m-0 text-white">Transfer Certificate</h4>
-            <div className="position-relative">
-              <Form.Control
-                type="text"
-                placeholder="Enter Admission Number"
-                value={formData.admissionNumber}
-                onChange={handleInputChange}
-                name="admissionNumber"
-                className="w-auto"
-                style={{ maxWidth: "300px" }}
-                disabled={loading}
-                autoComplete="off"
-                onFocus={() => setShowDropdown(true)}
-                ref={inputRef}
-              />
-              {showDropdown && (
-                <div className="admission-dropdown" ref={dropdownRef}>
-                  {filteredAdmissionData.map((item, index) => (
-                    <div
-                      key={index}
-                      className="admission-dropdown-item"
-                      onClick={() => handleAdmissionSelect(item.admissionNumber)}
-                    >
-                      {`${item.admissionNumber}-${item.studentName}`}
-                    </div>
-                  ))}
+            <h5 className="mb-3">Choose the View for the Transfer Certificate:</h5>
+            <div className="row g-4">
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="card fee-setup-card h-100" onClick={() => handleCertificateSelect("10th")}>
+                  <div className="card-body d-flex align-items-center justify-content-center">
+                    <h5 className="card-title text-white m-0">10th Standard</h5>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Certificate Content */}
-          <div className="p-4">
-            <div className="d-flex justify-content-between align-items-center mb-4 no-print">
-              <h2 style={{ color: "#0B3D7B" }}>Transfer Certificate</h2>
-              <div>
-                {isEditing ? (
-                  <Button variant="success" onClick={handleSave} className="me-2">
-                    Save Changes
-                  </Button>
-                ) : (
-                  <Button variant="primary" onClick={() => setIsEditing(true)} className="me-2">
-                    Edit
-                  </Button>
-                )}
-                <Button variant="primary" onClick={handlePrintCertificate} className="me-2" disabled={processing}>
-                  {processing ? (
-                    <>
-                      <Spinner
-                        as="span"
-                        animation="border"
-                        size="sm"
-                        role="status"
-                        aria-hidden="true"
-                        className="me-2"
-                      />
-                      Processing...
-                    </>
-                  ) : (
-                    "Print"
-                  )}
-                </Button>
-                <Button variant="success" onClick={handleDownloadPDF} className="me-2" disabled={processing}>
-                  {processing ? (
-                    <>
-                      <Spinner
-                        as="span"
-                        animation="border"
-                        size="sm"
-                        role="status"
-                        aria-hidden="true"
-                        className="me-2"
-                      />
-                      Processing...
-                    </>
-                  ) : (
-                    "Download PDF"
-                  )}
-                </Button>
+              </div>
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="card fee-setup-card h-100" onClick={() => handleCertificateSelect("12th")}>
+                  <div className="card-body d-flex align-items-center justify-content-center">
+                    <h5 className="card-title text-white m-0">12th Standard</h5>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="card fee-setup-card h-100" onClick={() => handleCertificateSelect("CBSE1")}>
+                  <div className="card-body d-flex align-items-center justify-content-center">
+                    <h5 className="card-title text-white m-0">CBSE (Format 1)</h5>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="card fee-setup-card h-100" onClick={() => handleCertificateSelect("CBSE2")}>
+                  <div className="card-body d-flex align-items-center justify-content-center">
+                    <h5 className="card-title text-white m-0">CBSE (Format 2)</h5>
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Processing Overlay */}
+      {showCertificate && (
+        <div className="transfer-form bg-white rounded shadow-sm">
+          <div className="header p-3 d-flex justify-content-between align-items-center custom-btn-clr">
+            <h4 className="m-0 text-white">Transfer Certificate - {certificateType}</h4>
+            <div className="d-flex align-items-center">
+              <div className="position-relative">
+                <input
+                  type="text"
+                  placeholder="Enter Admission Number"
+                  value={formData.admissionNumber}
+                  onChange={handleInputChange}
+                  name="admissionNumber"
+                  className="form-control w-auto"
+                  style={{ maxWidth: "300px" }}
+                  disabled={loading}
+                  autoComplete="off"
+                  onFocus={() => setShowDropdown(true)}
+                  ref={inputRef}
+                />
+                {showDropdown && (
+                  <div className="admission-dropdown" ref={dropdownRef}>
+                    {filteredAdmissionData.map((item, index) => (
+                      <div
+                        key={index}
+                        className="admission-dropdown-item"
+                        onClick={() => handleAdmissionSelect(item.admissionNumber)}
+                      >
+                        {`${item.admissionNumber}-${item.studentName}`}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4">
+            {showCertificate && (
+              <div className="d-flex justify-content-between align-items-center mb-4 no-print">
+                <h2 style={{ color: "#0B3D7B" }}>Transfer Certificate</h2>
+                <div>
+                  <button className="btn btn-secondary me-2" onClick={handleBack}>
+                    Back
+                  </button>
+                  {isEditing ? (
+                    <button className="btn btn-success me-2" onClick={handleSave}>
+                      Save Changes
+                    </button>
+                  ) : (
+                    <button className="btn btn-primary me-2" onClick={() => setIsEditing(true)}>
+                      Edit
+                    </button>
+                  )}
+                  <button className="btn btn-primary me-2" onClick={handlePrintCertificate} disabled={processing}>
+                    {processing ? "Processing..." : "Print"}
+                  </button>
+                  <button className="btn btn-success" onClick={handleDownloadPDF} disabled={processing}>
+                    {processing ? "Processing..." : "Download PDF"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {processing && (
               <div className="processing-overlay">
                 <div className="processing-content">
-                  <Spinner animation="border" role="status" variant="primary" />
+                  <div className="spinner-border text-primary" role="status"></div>
                   <p className="mt-2">Processing document...</p>
                 </div>
               </div>
             )}
 
-            <div className="certificate-container" ref={componentRef}>
-              <div className="certificate-content">
-                <h1 className="text-center mb-2">TRANSFER CERTIFICATE</h1>
-                <h2 className="text-center mb-2">Government of Tamil Nadu</h2>
-                <p className="text-center mb-4">(Department of School Education)</p>
-                <p className="text-center small-text mb-4">(Recognized by the Director of School Education)</p>
-
-                <div className="header-details">
-                  <div className="left-details">
-                    <p>Aadhar No.: {formData.aadharNumber || "984903618730"}</p>
-                    <p>Serial No.: {formData.serialNumber || "1/2022"}</p>
-                  </div>
-                  <div className="right-details">
-                    <p>EMIS No: {formData.emis || "Yes Promoted"}</p>
-                    <p>Admission No.: {formData.admissionNumber || "19/858016"}</p>
-                  </div>
-                </div>
-
-                <div className="certificate-body">
-                  <div className="detail-row">
-                    <div className="label">1. (a) Name of the School</div>
-                    <div className="value">: {renderField("schoolName")}</div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">(b) Name of the Educational District</div>
-                    <div className="value">: {renderField("educationalDistrict", "Tiruvanamalai")}</div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">(c) Name of the Revenue District</div>
-                    <div className="value">: {renderField("revenueDistrict", "Tiruvanamalai")}</div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">2. Name of the Pupil (in block letters)</div>
-                    <div className="value">: {formData.studentName || "RAHUL E"}</div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">3. Name of the Father or Mother of the Pupil</div>
-                    <div className="value">: {formData.fatherName || formData.motherName || "Elamathi"}</div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">4. Nationality - Religion & Caste</div>
-                    <div className="value">
-                      :{" "}
-                      {`${formData.nationality || "Indian"} - ${formData.religion || "Hindu"} - ${formData.caste || "Vaniyar"}`}
-                    </div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">5. Community Whether He/She belongs to</div>
-                    <div className="value">: {formData.community || ""}</div>
-                  </div>
-
-                  <div className="sub-details">
-                    <div className="detail-row">
-                      <div className="label">(a) Adi Dravidar (S.C.) or (S.T.)</div>
-                      <div className="value">: {renderField("adiDravidar", "-")}</div>
-                    </div>
-
-                    <div className="detail-row">
-                      <div className="label">(b) Backward Class</div>
-                      <div className="value">: {renderField("backwardClass", "-")}</div>
-                    </div>
-
-                    <div className="detail-row">
-                      <div className="label">(c) Most Backward Class</div>
-                      <div className="value">: {renderField("mostBackwardClass", "MBC")}</div>
-                    </div>
-
-                    <div className="detail-row">
-                      <div className="label">(d) Converted to Christianity from Scheduled Caste</div>
-                      <div className="value">: {renderField("convertedChristianity", "-")}</div>
-                    </div>
-
-                    <div className="detail-row">
-                      <div className="label">(e) Denotified Communities</div>
-                      <div className="value">: {renderField("denotifiedCommunities", "Independent")}</div>
-                    </div>
-
-                    <div className="detail-row">
-                      <div className="label">(f) Other Caste</div>
-                      <div className="value">: {renderField("otherCaste", "-")}</div>
-                    </div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">6. Sex</div>
-                    <div className="value">: {formData.gender || "Male"}</div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">
-                      7. Date of Birth as entered in the Admission Register
-                      <br />
-                      <span className="sub-text">(in figures and words)</span>
-                    </div>
-                    <div className="value">: {formData.dateOfBirth || "01/04/2000"}</div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">
-                      8. Date of admission and standard in which admitted
-                      <br />
-                      <span className="sub-text">(the year to be entered in words)</span>
-                    </div>
-                    <div className="value">: {formData.dateOfAdmission || "28/12/2021"}</div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">
-                      9. Standard in which the pupil was studying at the time of
-                      <br />
-                      leaving (in words)
-                    </div>
-                    <div className="value">: {formData.standard || "xi std"}</div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">10. Whether Qualified for Promotion</div>
-                    <div className="value">
-                      : {renderField("qualifiedForPromotion", "Yes. Promoted to higher studies")}
-                    </div>
-                  </div>
-
-                  <div className="detail-row">
-                    <div className="label">11. Whether the Pupil has paid all the fees due to the School</div>
-                    <div className="value">: {renderField("feesPaid", "Yes")}</div>
-                  </div>
-                </div>
+            {showCertificate && (
+              <div className="certificate-container" ref={componentRef}>
+                {renderCertificateContent()}
               </div>
-            </div>
+            )}
           </div>
         </div>
-      </Container>
+      )}
 
       <ToastContainer position="bottom-right" autoClose={3000} />
 
       <style jsx>{`
-        @media print {
-          @page {
-            size: A4;
-            margin: 20mm;
-          }
-          body * {
-            visibility: hidden;
-          }
-          .certificate-container,
-          .certificate-container * {
-            visibility: visible;
-          }
-          .certificate-container {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm;
-            margin: 0;
-            background: white;
-          }
-          .no-print, input, button {
-            display: none !important;
-          }
-        }
-
         .admission-dropdown {
           position: absolute;
           top: 100%;
@@ -797,7 +728,6 @@ const TransferCertificate = () => {
           font-style: italic;
         }
 
-        /* Processing overlay styles */
         .processing-overlay {
           position: fixed;
           top: 0;
@@ -808,6 +738,7 @@ const TransferCertificate = () => {
           justify-content: center;
           align-items: center;
           z-index: 9999;
+          background-color: rgba(255, 255, 255, 0.8);
         }
 
         .processing-content {
@@ -840,6 +771,43 @@ const TransferCertificate = () => {
           .label, .value {
             width: 100%;
           }
+        }
+
+        @media print {
+          @page {
+            size: A4;
+            margin: 20mm;
+          }
+          body * {
+            visibility: hidden;
+          }
+          .certificate-container,
+          .certificate-container * {
+            visibility: visible;
+          }
+          .certificate-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 0;
+            background: white;
+          }
+          .no-print, input, button {
+            display: none !important;
+          }
+        }
+        .fee-setup-card {
+          background-color: #0B3D7B;
+          color: white;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .fee-setup-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
       `}</style>
     </MainContentPage>
