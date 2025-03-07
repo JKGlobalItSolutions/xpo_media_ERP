@@ -30,7 +30,7 @@ const ConcessionAC = () => {
       await fetchSchoolInfo()
       const adminId = await fetchAdministrationId()
       if (adminId) {
-        await fetchConcessionDetails(adminId)
+        setAdministrationId(adminId)
       }
     }
 
@@ -61,9 +61,7 @@ const ConcessionAC = () => {
       const querySnapshot = await getDocs(q)
 
       if (!querySnapshot.empty) {
-        const adminId = querySnapshot.docs[0].id
-        setAdministrationId(adminId)
-        return adminId
+        return querySnapshot.docs[0].id
       } else {
         toast.error("No administration found")
         return null
@@ -75,12 +73,22 @@ const ConcessionAC = () => {
     }
   }
 
-  const fetchConcessionDetails = async (adminId = administrationId) => {
-    if (!adminId) return
+  const fetchConcessionDetails = async () => {
+    if (!administrationId) {
+      toast.error("Administration ID not available")
+      return
+    }
 
     setLoading(true)
     try {
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", adminId, "FeeLog")
+      const billEntriesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Transactions",
+        administrationId,
+        "BillEntries",
+      )
 
       const start = new Date(startDate)
       start.setHours(0, 0, 0, 0)
@@ -88,10 +96,9 @@ const ConcessionAC = () => {
       end.setHours(23, 59, 59, 999)
 
       const q = query(
-        feeLogRef,
-        where("billDate", ">=", start),
-        where("billDate", "<=", end),
-        where("totalConcessionAmount", ">", 0),
+        billEntriesRef,
+        where("billDate", ">=", Timestamp.fromDate(start)),
+        where("billDate", "<=", Timestamp.fromDate(end)),
       )
 
       const snapshot = await getDocs(q)
@@ -100,18 +107,19 @@ const ConcessionAC = () => {
 
       snapshot.docs.forEach((doc) => {
         const data = doc.data()
-        if (data.totalConcessionAmount > 0) {
+        const concessionAmount = Number(data.totalConcessionAmount) || 0
+        if (concessionAmount > 0) {
           concessions.push({
             billNumber: data.billNumber,
             billDate: data.billDate instanceof Timestamp ? data.billDate.toDate() : new Date(data.billDate),
             admissionNumber: data.admissionNumber,
             studentName: data.studentName,
-            standard: data.standard,
+            standard: data.course || data.standard,
             section: data.section,
             description: "Concession",
-            concessionAmount: Number(data.totalConcessionAmount),
+            concessionAmount: concessionAmount,
           })
-          total += Number(data.totalConcessionAmount)
+          total += concessionAmount
         }
       })
 
@@ -146,23 +154,37 @@ const ConcessionAC = () => {
   }
 
   const generatePDF = () => {
-    const doc = new jsPDF()
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    })
+
+    const pageWidth = doc.internal.pageSize.width
+    const pageHeight = doc.internal.pageSize.height
+    const margin = 10
+    const contentWidth = pageWidth - 2 * margin
 
     // Header
     doc.setFontSize(16)
-    doc.text(schoolInfo.name, 105, 20, { align: "center" })
+    doc.setFont("helvetica", "bold")
+    doc.text(schoolInfo.name, pageWidth / 2, margin + 10, { align: "center" })
+
     doc.setFontSize(12)
-    doc.text(schoolInfo.address, 105, 30, { align: "center" })
+    doc.setFont("helvetica", "normal")
+    doc.text(schoolInfo.address, pageWidth / 2, margin + 20, { align: "center" })
 
-    // Report Title and Date
+    // Report Title
     doc.setFontSize(14)
-    doc.text("CONCESSION LIST", 105, 45, { align: "center" })
-    doc.setLineWidth(0.5)
-    doc.line(85, 46, 125, 46) // Underline for CONCESSION LIST
+    doc.setFont("helvetica", "bold")
+    doc.text("CONCESSION LIST", pageWidth / 2, margin + 35, { align: "center" })
+    doc.line(margin + 30, margin + 37, pageWidth - margin - 30, margin + 37)
 
+    // Date Range and Page Number
     doc.setFontSize(10)
-    doc.text(`Report as on: ${startDate.toLocaleDateString()}`, 20, 55)
-    doc.text(`Page 1 of 1`, 180, 55)
+    doc.setFont("helvetica", "normal")
+    doc.text(`Report as on: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`, margin, margin + 45)
+    doc.text(`Page 1 of 1`, pageWidth - margin, margin + 45, { align: "right" })
 
     const columns = [
       { header: "Bill No", dataKey: "billNumber" },
@@ -195,13 +217,14 @@ const ConcessionAC = () => {
     doc.autoTable({
       head: [columns.map((col) => col.header)],
       body: tableData,
-      startY: 65,
+      startY: margin + 50,
+      margin: { top: margin, right: margin, bottom: margin, left: margin },
       theme: "grid",
       styles: { fontSize: 8, cellPadding: 2 },
       columnStyles: {
-        0: { cellWidth: 25 }, // Bill No
-        1: { cellWidth: 25 }, // Bill Date
-        2: { cellWidth: 25 }, // Admin.No
+        0: { cellWidth: 20 }, // Bill No
+        1: { cellWidth: 20 }, // Bill Date
+        2: { cellWidth: 20 }, // Admin.No
         3: { cellWidth: 40 }, // Student Name
         4: { cellWidth: 15 }, // Std
         5: { cellWidth: 15 }, // Sec
@@ -313,7 +336,7 @@ const ConcessionAC = () => {
                   </Form.Group>
                 </Col>
                 <Col md={2}>
-                  <Button className="custom-btn-clr w-100" onClick={() => fetchConcessionDetails()} disabled={loading}>
+                  <Button className="custom-btn-clr w-100" onClick={fetchConcessionDetails} disabled={loading}>
                     {loading ? (
                       <>
                         <Spinner size="sm" className="me-2" />
@@ -348,7 +371,9 @@ const ConcessionAC = () => {
                 <p className="school-address">{schoolInfo.address}</p>
                 <h4 className="report-title">CONCESSION LIST</h4>
                 <div className="d-flex justify-content-between mt-3">
-                  <p>Report as on: {startDate.toLocaleDateString()}</p>
+                  <p>
+                    Report as on: {startDate.toLocaleDateString()} - {endDate.toLocaleDateString()}
+                  </p>
                   <p>Page 1 of 1</p>
                 </div>
               </div>
