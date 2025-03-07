@@ -435,9 +435,8 @@ const BillEntry = () => {
       return
     }
 
-    // Allow concession only if there's a paid amount
-    if (paidAmount <= 0) {
-      toast.error("Please enter the paid amount before applying concession")
+    if (concessionAmount > paidAmount) {
+      toast.error("Concession amount cannot exceed the paid amount")
       return
     }
 

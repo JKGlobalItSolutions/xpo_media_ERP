@@ -105,14 +105,20 @@ const PeriodicalCollectionReport = () => {
         let concessionTotal = 0
 
         admissionItems.forEach((item, index) => {
+          const paidAmount = Number(item.amount) || 0
+          const concessionAmount = Number(item.concession) || 0
+
           processedData.push({
             ...item,
             isFirstInGroup: index === 0,
             isLastInGroup: index === admissionItems.length - 1,
             rowSpan: admissionItems.length,
+            paidAmount: paidAmount,
+            concessionAmount: concessionAmount,
           })
-          studentTotal += Number(item.amount) || 0
-          concessionTotal += Number(item.concession) || 0
+
+          studentTotal += paidAmount
+          concessionTotal += concessionAmount
         })
 
         // Add concession row if there's any concession
@@ -125,13 +131,16 @@ const PeriodicalCollectionReport = () => {
           })
         }
 
+        // Calculate net total without subtracting concession
+        const netTotal = studentTotal
+
         processedData.push({
           type: "subtotal",
           admissionNumber,
-          amount: studentTotal - concessionTotal,
+          amount: netTotal,
         })
 
-        grandTotal += studentTotal - concessionTotal
+        grandTotal += netTotal
       })
     })
 
@@ -258,14 +267,14 @@ const PeriodicalCollectionReport = () => {
         })
       } else {
         const row = {
-          date: "",
+          date: currentDate,
           billNumber: item.billNumber,
           admissionNumber: item.isFirstInGroup ? { content: item.admissionNumber, rowSpan: item.rowSpan } : "",
           studentName: item.isFirstInGroup ? { content: item.studentName, rowSpan: item.rowSpan } : "",
           standard: item.isFirstInGroup ? { content: item.standard, rowSpan: item.rowSpan } : "",
           section: item.isFirstInGroup ? { content: item.section, rowSpan: item.rowSpan } : "",
           description: item.description,
-          amount: item.amount.toFixed(2),
+          amount: item.paidAmount.toFixed(2),
         }
         tableData.push(row)
       }
@@ -363,7 +372,7 @@ const PeriodicalCollectionReport = () => {
 
       return (
         <tr key={index}>
-          <td></td>
+          <td>{item.date}</td>
           <td>{item.billNumber}</td>
           {item.isFirstInGroup ? (
             <>
@@ -382,7 +391,7 @@ const PeriodicalCollectionReport = () => {
             </>
           ) : null}
           <td>{item.description}</td>
-          <td className="text-end">{item.amount.toFixed(2)}</td>
+          <td className="text-end">{item.paidAmount.toFixed(2)}</td>
         </tr>
       )
     })

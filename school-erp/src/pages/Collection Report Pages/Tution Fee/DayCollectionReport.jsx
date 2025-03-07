@@ -92,14 +92,20 @@ const DayCollectionReport = () => {
       let concessionTotal = 0
 
       items.forEach((item, index) => {
+        const paidAmount = Number(item.amount) || 0
+        const concessionAmount = Number(item.concession) || 0
+
         processedData.push({
           ...item,
           isFirstInGroup: index === 0,
           isLastInGroup: index === items.length - 1,
           rowSpan: items.length,
+          paidAmount: paidAmount,
+          concessionAmount: concessionAmount,
         })
-        studentTotal += Number(item.amount) || 0
-        concessionTotal += Number(item.concession) || 0
+
+        studentTotal += paidAmount
+        concessionTotal += concessionAmount
       })
 
       // Add concession row if there's any concession
@@ -112,13 +118,16 @@ const DayCollectionReport = () => {
         })
       }
 
+      // Calculate net total after applying concession
+      const netTotal = studentTotal
+
       processedData.push({
         type: "subtotal",
         admissionNumber,
-        amount: studentTotal - concessionTotal,
+        amount: netTotal,
       })
 
-      grandTotal += studentTotal - concessionTotal
+      grandTotal += netTotal
     })
 
     return { processedData, grandTotal }
@@ -244,7 +253,7 @@ const DayCollectionReport = () => {
           standard: rowSpan > 0 ? { content: item.standard, rowSpan: rowSpan } : "",
           section: rowSpan > 0 ? { content: item.section, rowSpan: rowSpan } : "",
           description: item.description,
-          amount: item.amount.toFixed(2),
+          amount: item.paidAmount.toFixed(2),
         }
         tableData.push(row)
 
@@ -351,7 +360,7 @@ const DayCollectionReport = () => {
             </>
           ) : null}
           <td>{item.description}</td>
-          <td className="text-end">{item.amount.toFixed(2)}</td>
+          <td className="text-end">{item.paidAmount.toFixed(2)}</td>
         </tr>
       )
     })

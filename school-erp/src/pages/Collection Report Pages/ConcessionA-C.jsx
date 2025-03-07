@@ -235,12 +235,12 @@ const ConcessionAC = () => {
         fillColor: [11, 61, 123],
         textColor: [255, 255, 255],
         lineWidth: 0.5,
-        lineColor: [255, 0, 0],
+        lineColor: [0, 0, 0],
       },
       didDrawCell: (data) => {
-        // Add red border to cells
+        // Add black border to cells
         if (data.section === "head" || data.section === "body") {
-          doc.setDrawColor(255, 0, 0)
+          doc.setDrawColor(0, 0, 0)
           doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, "S")
         }
       },
@@ -471,7 +471,7 @@ const ConcessionAC = () => {
         }
 
         .report-table th, .report-table td {
-          border: 1px solid #ff0000;
+          border: 1px solid #dee2e6;
           padding: 8px;
           text-align: left;
         }
