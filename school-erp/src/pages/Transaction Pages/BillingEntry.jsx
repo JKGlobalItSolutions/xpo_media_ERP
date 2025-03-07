@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { Form, Button, Row, Col, Container, Table, ListGroup, Modal, Card } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table, ListGroup, Modal, Card, Image } from "react-bootstrap"
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
-import { db, auth } from "../../Firebase/config"
+import { db, auth, storage } from "../../Firebase/config"
 import {
   doc,
   getDoc,
@@ -19,10 +19,14 @@ import {
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore"
+import { ref, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import PaymentHistoryModal from "./PaymentHistoryModal"
+
+// Import the static profile image
+import defaultProfileImage from "../../images/StudentProfileIcon/studentProfile.jpeg"
 
 const BillEntry = () => {
   const navigate = useNavigate()
@@ -58,6 +62,7 @@ const BillEntry = () => {
   const [studentData, setStudentData] = useState(null)
   const [feeTableData, setFeeTableData] = useState([])
   const [totalBalance, setTotalBalance] = useState(0)
+  const [studentImageUrl, setStudentImageUrl] = useState(null)
 
   // Loading state
   const [isLoading, setIsLoading] = useState(false)
@@ -312,6 +317,8 @@ const BillEntry = () => {
     if (!admissionNumber || !administrationId) return
 
     setIsLoading(true)
+    setStudentImageUrl(null) // Reset image URL
+
     try {
       // Query for student in AdmissionSetup
       const admissionRef = collection(
@@ -361,6 +368,31 @@ const BillEntry = () => {
         totalBalance += Number.parseFloat(fee.amount) || 0
       })
 
+      // Load student image
+      if (student.studentPhoto) {
+        try {
+          console.log("Student photo data:", student.studentPhoto)
+          let photoUrl = student.studentPhoto
+
+          // Check if the studentPhoto is a path or a URL
+          if (!photoUrl.startsWith("http") && !photoUrl.startsWith("blob")) {
+            // If it's a path, get the download URL
+            const imageRef = ref(storage, photoUrl)
+            photoUrl = await getDownloadURL(imageRef)
+          }
+
+          console.log("Student photo URL:", photoUrl)
+          setStudentImageUrl(photoUrl)
+        } catch (error) {
+          console.error("Error fetching student image:", error)
+          // Set the default image if there's an error
+          setStudentImageUrl(defaultProfileImage)
+        }
+      } else {
+        console.log("No student photo found, using default image")
+        setStudentImageUrl(defaultProfileImage)
+      }
+
       // Update states with fetched data
       setStudentData({
         id: studentDoc.id,
@@ -395,6 +427,8 @@ const BillEntry = () => {
     } catch (error) {
       console.error("Error fetching student data:", error)
       toast.error("Failed to fetch student data")
+      // Set the default image if there's an error
+      setStudentImageUrl(defaultProfileImage)
     } finally {
       setIsLoading(false)
     }
@@ -703,6 +737,7 @@ const BillEntry = () => {
     setTotalBalance(0)
     setStudentData(null)
     setStudentLoaded(false)
+    setStudentImageUrl(null)
   }
 
   return (
@@ -720,6 +755,14 @@ const BillEntry = () => {
               <Row className="mb-4">
                 {/* First Column */}
                 <Col md={4}>
+                  <div className="d-flex justify-content-center mb-3">
+                    <Image
+                      src={studentImageUrl || defaultProfileImage}
+                      alt="Student"
+                      roundedCircle
+                      style={{ width: "100px", height: "100px", objectFit: "cover" }}
+                    />
+                  </div>
                   <Form.Group className="my-1">
                     <Form.Label>Bill No.</Form.Label>
                     <Form.Control
@@ -783,6 +826,12 @@ const BillEntry = () => {
                     />
                   </Form.Group>
 
+
+
+                </Col>
+
+                {/* Second Column */}
+                <Col md={4}>
                   <Form.Group className="my-1">
                     <Form.Label>Father Name</Form.Label>
                     <Form.Control
@@ -794,10 +843,6 @@ const BillEntry = () => {
                       className="form-control-light"
                     />
                   </Form.Group>
-                </Col>
-
-                {/* Second Column */}
-                <Col md={4}>
                   <Form.Group className="my-1">
                     <Form.Label>Course</Form.Label>
                     <Form.Control
@@ -809,7 +854,6 @@ const BillEntry = () => {
                       className="form-control-light"
                     />
                   </Form.Group>
-
                   <Form.Group className="my-1">
                     <Form.Label>Section</Form.Label>
                     <Form.Control
@@ -834,7 +878,11 @@ const BillEntry = () => {
                     />
                   </Form.Group>
 
-                  <Form.Group className="my-1">
+                </Col>
+
+                {/* Third Column */}
+                <Col md={4}>
+                <Form.Group className="my-1">
                     <Form.Label>Bill Date</Form.Label>
                     <br />
                     <DatePicker
@@ -845,10 +893,7 @@ const BillEntry = () => {
                       customInput={<Form.Control type="text" name="billDate" className="form-control-light" />}
                     />
                   </Form.Group>
-                </Col>
 
-                {/* Third Column */}
-                <Col md={4}>
                   <Form.Group className="my-1">
                     <Form.Label>Balance</Form.Label>
                     <Form.Control
