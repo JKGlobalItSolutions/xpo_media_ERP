@@ -1,16 +1,28 @@
+"use client"
+
 import { Modal, Button, Table } from "react-bootstrap"
+import { Timestamp } from "firebase/firestore"
 
 const PaymentHistoryModal = ({ show, onHide, paymentHistory }) => {
-  // Sort payment history by transaction date (newest first)
+  // Sort payment history by bill date (newest first)
   const sortedPaymentHistory = [...paymentHistory].sort((a, b) => {
-    return new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
+    const dateA = a.billDate instanceof Timestamp ? a.billDate.toDate() : new Date(a.billDate)
+    const dateB = b.billDate instanceof Timestamp ? b.billDate.toDate() : new Date(b.billDate)
+    return dateB.getTime() - dateA.getTime()
   })
 
   // Function to format date
   const formatDate = (date) => {
-    if (!(date instanceof Date) || isNaN(date.getTime())) {
+    if (date instanceof Timestamp) {
+      date = date.toDate()
+    } else if (!(date instanceof Date)) {
+      date = new Date(date)
+    }
+
+    if (isNaN(date.getTime())) {
       return "Invalid Date"
     }
+
     return date.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "2-digit",
@@ -39,7 +51,7 @@ const PaymentHistoryModal = ({ show, onHide, paymentHistory }) => {
                 {sortedPaymentHistory.map((payment) => (
                   <tr key={payment.id}>
                     <td>{payment.billNumber}</td>
-                    <td>{formatDate(payment.transactionDate)}</td>
+                    <td>{formatDate(payment.billDate)}</td>
                     <td>₹{payment.totalPaidAmount}</td>
                     <td>{payment.paymentMode}</td>
                   </tr>

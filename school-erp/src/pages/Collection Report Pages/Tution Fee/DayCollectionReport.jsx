@@ -89,6 +89,7 @@ const DayCollectionReport = () => {
 
     Object.entries(groupedData).forEach(([admissionNumber, items]) => {
       let studentTotal = 0
+      let concessionTotal = 0
 
       items.forEach((item, index) => {
         processedData.push({
@@ -98,15 +99,26 @@ const DayCollectionReport = () => {
           rowSpan: items.length,
         })
         studentTotal += Number(item.amount) || 0
+        concessionTotal += Number(item.concession) || 0
       })
+
+      // Add concession row if there's any concession
+      if (concessionTotal > 0) {
+        processedData.push({
+          type: "concession",
+          admissionNumber,
+          amount: -concessionTotal,
+          description: "Concession",
+        })
+      }
 
       processedData.push({
         type: "subtotal",
         admissionNumber,
-        amount: studentTotal,
+        amount: studentTotal - concessionTotal,
       })
 
-      grandTotal += studentTotal
+      grandTotal += studentTotal - concessionTotal
     })
 
     return { processedData, grandTotal }
@@ -205,10 +217,20 @@ const DayCollectionReport = () => {
           studentName: "",
           standard: "",
           section: "",
-          description: "",
+          description: "Subtotal",
           amount: { content: item.amount.toFixed(2), styles: { fontStyle: "bold", textColor: [0, 0, 0] } },
         })
         rowSpan = 0
+      } else if (item.type === "concession") {
+        tableData.push({
+          billNumber: "",
+          admissionNumber: "",
+          studentName: "",
+          standard: "",
+          section: "",
+          description: "Concession",
+          amount: { content: item.amount.toFixed(2), styles: { textColor: [220, 53, 69] } },
+        })
       } else {
         if (item.admissionNumber !== currentAdmissionNumber) {
           rowSpan = item.rowSpan
@@ -225,18 +247,6 @@ const DayCollectionReport = () => {
           amount: item.amount.toFixed(2),
         }
         tableData.push(row)
-
-        if (item.concession > 0) {
-          tableData.push({
-            billNumber: "",
-            admissionNumber: "",
-            studentName: "",
-            standard: "",
-            section: "",
-            description: "Concession",
-            amount: { content: `-${item.concession.toFixed(2)}`, styles: { textColor: [220, 53, 69] } },
-          })
-        }
 
         rowSpan--
       }
@@ -310,6 +320,17 @@ const DayCollectionReport = () => {
         )
       }
 
+      if (item.type === "concession") {
+        return (
+          <tr key={`concession-${item.admissionNumber}`} className="concession-row">
+            <td colSpan="6" className="text-end">
+              Concession
+            </td>
+            <td className="text-end text-danger">{item.amount.toFixed(2)}</td>
+          </tr>
+        )
+      }
+
       return (
         <tr key={index}>
           <td>{item.billNumber}</td>
@@ -330,15 +351,7 @@ const DayCollectionReport = () => {
             </>
           ) : null}
           <td>{item.description}</td>
-          <td className="text-end">
-            {item.amount.toFixed(2)}
-            {item.concession > 0 && (
-              <>
-                <br />
-                <span className="text-danger">-{item.concession.toFixed(2)}</span>
-              </>
-            )}
-          </td>
+          <td className="text-end">{item.amount.toFixed(2)}</td>
         </tr>
       )
     })

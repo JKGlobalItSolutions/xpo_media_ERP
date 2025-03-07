@@ -435,8 +435,9 @@ const BillEntry = () => {
       return
     }
 
-    if (concessionAmount + paidAmount > originalAmount) {
-      toast.error("Sum of concession and paid amount cannot exceed the original fee amount")
+    // Allow concession only if there's a paid amount
+    if (paidAmount <= 0) {
+      toast.error("Please enter the paid amount before applying concession")
       return
     }
 
@@ -506,8 +507,8 @@ const BillEntry = () => {
         0,
       )
 
-      // Create a single fee log entry for all paid fees
-      const feeLogEntry = {
+      // Create the main fee log entry for the full amount
+      const mainFeeLogEntry = {
         billNumber: billData.billNumber,
         admissionNumber: billData.admissionNumber,
         studentName: billData.studentName,
@@ -523,26 +524,52 @@ const BillEntry = () => {
         boardingPoint: billData.pickupPoint,
         routeNumber: studentData.busRouteNumber || "",
         totalPaidAmount: totalPaidAmount.toFixed(2),
-        totalConcessionAmount: totalConcessionAmount.toFixed(2),
-        timestamp: Timestamp.fromDate(now), // Use Firestore Timestamp
+        totalConcessionAmount: "0", // Set to 0 for main entry
+        timestamp: Timestamp.fromDate(now),
         feePayments: feeTableData
-          .filter((fee) => Number.parseFloat(fee.paidAmount) > 0 || Number.parseFloat(fee.concessionAmount) > 0)
+          .filter((fee) => Number.parseFloat(fee.paidAmount) > 0)
           .map((fee) => ({
             feeHead: fee.heading,
             feeAmount: fee.amount,
             paidAmount: fee.paidAmount,
-            concessionAmount: fee.concessionAmount || "0",
+            concessionAmount: "0", // Set to 0 for main entry
           })),
       }
 
-      if (feeLogEntry.feePayments.length === 0) {
+      // Create a separate concession entry if there are concessions
+      const concessionFeeLogEntry =
+        totalConcessionAmount > 0
+          ? {
+              ...mainFeeLogEntry,
+              totalPaidAmount: (-totalConcessionAmount).toFixed(2), // Negative amount for concession
+              totalConcessionAmount: totalConcessionAmount.toFixed(2),
+              transactionNarrative: "Concession",
+              feePayments: feeTableData
+                .filter((fee) => Number.parseFloat(fee.concessionAmount) > 0)
+                .map((fee) => ({
+                  feeHead: fee.heading,
+                  feeAmount: fee.amount,
+                  paidAmount: (-Number.parseFloat(fee.concessionAmount)).toFixed(2), // Negative amount
+                  concessionAmount: fee.concessionAmount,
+                })),
+            }
+          : null
+
+      if (mainFeeLogEntry.feePayments.length === 0 && !concessionFeeLogEntry) {
         toast.error("No fees have been paid or concessions applied")
         return
       }
 
-      // Add to FeeLog collection
+      // Add entries to FeeLog collection
       const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
-      await addDoc(feeLogRef, feeLogEntry)
+
+      // Add main entry
+      await addDoc(feeLogRef, mainFeeLogEntry)
+
+      // Add concession entry if exists
+      if (concessionFeeLogEntry && concessionFeeLogEntry.feePayments.length > 0) {
+        await addDoc(feeLogRef, concessionFeeLogEntry)
+      }
 
       // Add to BillEntries collection
       const billEntryRef = collection(
@@ -555,9 +582,9 @@ const BillEntry = () => {
       )
       await addDoc(billEntryRef, {
         ...billData,
-        feeDetails: feeLogEntry.feePayments,
-        totalPaidAmount: feeLogEntry.totalPaidAmount,
-        totalConcessionAmount: feeLogEntry.totalConcessionAmount,
+        feeDetails: [...mainFeeLogEntry.feePayments],
+        totalPaidAmount: totalPaidAmount.toFixed(2),
+        totalConcessionAmount: totalConcessionAmount.toFixed(2),
         timestamp: serverTimestamp(),
       })
 

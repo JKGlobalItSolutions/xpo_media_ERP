@@ -5,7 +5,7 @@ import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Link } from "react-router-dom"
 import { Button } from "react-bootstrap"
 import { db, auth } from "../../Firebase/config"
-import { collection, getDocs, query, where, limit, doc, getDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, limit, doc, getDoc, Timestamp } from "firebase/firestore"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import jsPDF from "jspdf"
@@ -157,11 +157,14 @@ const IndividualPaid = () => {
         const paymentQuery = query(feeLogRef, where("admissionNumber", "==", admissionNumber))
         const paymentSnapshot = await getDocs(paymentQuery)
 
-        const payments = paymentSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          date: doc.data().transactionDate,
-        }))
+        const payments = paymentSnapshot.docs.map((doc) => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            ...data,
+            date: data.billDate instanceof Timestamp ? data.billDate.toDate() : new Date(data.billDate),
+          }
+        })
 
         const totalPaid = payments.reduce((sum, payment) => sum + Number(payment.totalPaidAmount), 0)
         const totalConcession = payments.reduce((sum, payment) => sum + Number(payment.totalConcessionAmount || 0), 0)
@@ -237,7 +240,7 @@ const IndividualPaid = () => {
       xPos = 20
       doc.text((index + 1).toString(), xPos, yPos)
       doc.text(payment.billNumber || "", xPos + 30, yPos)
-      doc.text(new Date(payment.date).toLocaleDateString("en-GB"), xPos + 60, yPos)
+      doc.text(payment.date.toLocaleDateString("en-GB"), xPos + 60, yPos)
       doc.text(payment.description || "", xPos + 90, yPos)
       doc.text(payment.fixedAmount?.toString() || "", xPos + 120, yPos)
       doc.text(payment.totalPaidAmount?.toString() || "", xPos + 150, yPos)
@@ -389,7 +392,7 @@ const IndividualPaid = () => {
                   {paymentHistory.map((payment, index) => (
                     <tr key={payment.id}>
                       <td className="sno-column">{index + 1}</td>
-                      <td className="date-column">{new Date(payment.date).toLocaleDateString("en-GB")}</td>
+                      <td className="date-column">{payment.date.toLocaleDateString("en-GB")}</td>
                       <td className="amount-column">{payment.totalPaidAmount}</td>
                       <td className="bill-column">{payment.billNumber}</td>
                       <td className="desc-column">{payment.feePayments?.map((fee) => fee.feeHead).join(", ")}</td>
@@ -453,7 +456,7 @@ const IndividualPaid = () => {
                 <tr key={payment.id}>
                   <td>{index + 1}</td>
                   <td>{payment.billNumber}</td>
-                  <td>{new Date(payment.date).toLocaleDateString("en-GB")}</td>
+                  <td>{payment.date.toLocaleDateString("en-GB")}</td>
                   <td>{payment.description}</td>
                   <td>{payment.fixedAmount}</td>
                   <td>{payment.totalPaidAmount}</td>
