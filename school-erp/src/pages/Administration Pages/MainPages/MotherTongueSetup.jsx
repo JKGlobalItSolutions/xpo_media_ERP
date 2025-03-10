@@ -10,6 +10,7 @@ import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } 
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import * as XLSX from "xlsx" // Added for import/export
 
 // Add Mother Tongue Modal Component
 const AddMotherTongueModal = ({ isOpen, onClose, onConfirm }) => {
@@ -39,7 +40,9 @@ const AddMotherTongueModal = ({ isOpen, onClose, onConfirm }) => {
           <Button className="modal-button confirm" onClick={handleSubmit}>
             Add
           </Button>
-          <Button className="modal-button cancel" onClick={onClose}>
+          <Button className="modal-button cancel" onClick={onClose
+
+}>
             Cancel
           </Button>
         </div>
@@ -194,11 +197,9 @@ const MotherTongueSetup = () => {
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
-        // If no Administration document exists, create one
         const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
         setAdministrationId(newAdminRef.id)
       } else {
-        // Use the ID of the first (and presumably only) Administration document
         setAdministrationId(querySnapshot.docs[0].id)
       }
     } catch (error) {
@@ -260,7 +261,19 @@ const MotherTongueSetup = () => {
       return
     }
 
-    // Check for duplicate mother tongue name
+    if (!motherTongueName.trim()) {
+      toast.error("Mother tongue name cannot be empty.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     const isDuplicate = motherTongues.some(
       (motherTongue) => motherTongue.MotherTongueName.toLowerCase() === motherTongueName.toLowerCase(),
     )
@@ -288,6 +301,7 @@ const MotherTongueSetup = () => {
       )
       const docRef = await addDoc(motherTonguesRef, { MotherTongueName: motherTongueName })
       console.log("Mother tongue added with ID:", docRef.id)
+      setMotherTongues((prev) => [...prev, { id: docRef.id, MotherTongueName: motherTongueName }])
       setIsAddModalOpen(false)
       toast.success("Mother tongue added successfully!", {
         position: "top-right",
@@ -328,7 +342,19 @@ const MotherTongueSetup = () => {
       return
     }
 
-    // Check for duplicate mother tongue name
+    if (!newName.trim()) {
+      toast.error("Mother tongue name cannot be empty.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     const isDuplicate = motherTongues.some(
       (motherTongue) =>
         motherTongue.id !== motherTongueId && motherTongue.MotherTongueName.toLowerCase() === newName.toLowerCase(),
@@ -364,6 +390,11 @@ const MotherTongueSetup = () => {
       )
       await updateDoc(motherTongueRef, { MotherTongueName: newMotherTongueName })
       console.log("Mother tongue updated:", selectedMotherTongue.id)
+      setMotherTongues((prev) =>
+        prev.map((mt) =>
+          mt.id === selectedMotherTongue.id ? { ...mt, MotherTongueName: newMotherTongueName } : mt
+        )
+      )
       setIsConfirmEditModalOpen(false)
       setSelectedMotherTongue(null)
       setNewMotherTongueName("")
@@ -418,6 +449,7 @@ const MotherTongueSetup = () => {
       )
       await deleteDoc(motherTongueRef)
       console.log("Mother tongue deleted:", motherTongueId)
+      setMotherTongues((prev) => prev.filter((mt) => mt.id !== motherTongueId))
       setIsDeleteModalOpen(false)
       setSelectedMotherTongue(null)
       toast.success("Mother tongue deleted successfully!", {
@@ -444,6 +476,102 @@ const MotherTongueSetup = () => {
     }
   }
 
+  const handleImport = async (event) => {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    const file = event.target.files[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const data = new Uint8Array(e.target.result)
+      const workbook = XLSX.read(data, { type: "array" })
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const jsonData = XLSX.utils.sheet_to_json(sheet)
+
+      if (jsonData.length === 0) {
+        toast.error("No data found in the imported file.")
+        return
+      }
+
+      try {
+        const motherTonguesRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Administration",
+          administrationId,
+          "MotherTongue",
+        )
+        const newMotherTongues = []
+        for (const row of jsonData) {
+          const name = row["Mother Tongue"] || row["MotherTongueName"]
+          if (name && name.trim()) {
+            const isDuplicate = motherTongues.some(
+              (mt) => mt.MotherTongueName.toLowerCase() === name.toLowerCase()
+            )
+            if (!isDuplicate) {
+              const docRef = await addDoc(motherTonguesRef, { MotherTongueName: name })
+              newMotherTongues.push({ id: docRef.id, MotherTongueName: name })
+            }
+          }
+        }
+        setMotherTongues((prev) => [...prev, ...newMotherTongues])
+        toast.success("Mother tongues imported successfully!", {
+          style: { background: "#0B3D7B", color: "white" },
+        })
+        await fetchMotherTongues()
+      } catch (error) {
+        console.error("Error importing mother tongues:", error)
+        toast.error("Failed to import mother tongues. Please try again.")
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
+  const handleExport = () => {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    if (motherTongues.length === 0) {
+      toast.error("No data available to export.")
+      return
+    }
+
+    const exportData = motherTongues.map((mt) => ({
+      "Mother Tongue": mt.MotherTongueName,
+    }))
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "MotherTongues")
+    XLSX.writeFile(workbook, `MotherTongues_Export_${auth.currentUser.uid}.xlsx`)
+    toast.success("Mother tongues exported successfully!", {
+      style: { background: "#0B3D7B", color: "white" },
+    })
+  }
+
   const openEditModal = (motherTongue) => {
     setSelectedMotherTongue(motherTongue)
     setIsEditModalOpen(true)
@@ -455,13 +583,12 @@ const MotherTongueSetup = () => {
   }
 
   const filteredMotherTongues = motherTongues.filter((motherTongue) =>
-    motherTongue.MotherTongueName.toLowerCase().includes(searchTerm.toLowerCase()),
+    motherTongue.MotherTongueName.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
     <MainContentPage>
       <Container fluid className="px-0 px-lg-0">
-        {/* Breadcrumb Navigation */}
         <nav className="custom-breadcrumb py-1 py-lg-3">
           <Link to="/home">Home</Link>
           <span className="separator">&gt;</span>
@@ -473,18 +600,34 @@ const MotherTongueSetup = () => {
           <Col xs={12}>
             <div className="mother-tongue-setup-container">
               <div className="form-card mt-3">
-                {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Create Mother Tongue Setup</h2>
-                  <h6 className="m-0 d-lg-none">Create Mother Tongue Setup</h6>
-                  <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
-                    + Add Mother Tongue
-                  </Button>
+                  <div>
+                    <h2 className="m-0 d-none d-lg-block">Create Mother Tongue Setup</h2>
+                    <h6 className="m-0 d-lg-none">Create Mother Tongue Setup</h6>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleImport}
+                      style={{ display: "none" }}
+                      id="import-file"
+                    />
+                    <Button
+                      onClick={() => document.getElementById("import-file").click()}
+                      className="btn btn-light text-dark"
+                    >
+                      Import
+                    </Button>
+                    <Button onClick={handleExport} className="btn btn-light text-dark">
+                      Export
+                    </Button>
+                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                      + Add Mother Tongue
+                    </Button>
+                  </div>
                 </div>
-
-                {/* Content */}
                 <div className="content-wrapper p-4">
-                  {/* Search Bar */}
                   <Form.Control
                     type="text"
                     placeholder="Search by Mother Tongue"
@@ -492,8 +635,6 @@ const MotherTongueSetup = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="custom-search mb-3"
                   />
-
-                  {/* Mother Tongue Table */}
                   <div className="table-responsive">
                     <Table bordered hover>
                       <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
@@ -503,27 +644,41 @@ const MotherTongueSetup = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredMotherTongues.map((motherTongue) => (
-                          <tr key={motherTongue.id}>
-                            <td>{motherTongue.MotherTongueName}</td>
-                            <td>
-                              <Button
-                                variant="link"
-                                className="action-button edit-button me-2"
-                                onClick={() => openEditModal(motherTongue)}
-                              >
-                                <FaEdit />
-                              </Button>
-                              <Button
-                                variant="link"
-                                className="action-button delete-button"
-                                onClick={() => openDeleteModal(motherTongue)}
-                              >
-                                <FaTrash />
-                              </Button>
+                        {motherTongues.length === 0 ? (
+                          <tr>
+                            <td colSpan="2" className="text-center">
+                              No data available
                             </td>
                           </tr>
-                        ))}
+                        ) : filteredMotherTongues.length === 0 ? (
+                          <tr>
+                            <td colSpan="2" className="text-center">
+                              No matching mother tongues found
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredMotherTongues.map((motherTongue) => (
+                            <tr key={motherTongue.id}>
+                              <td>{motherTongue.MotherTongueName}</td>
+                              <td>
+                                <Button
+                                  variant="link"
+                                  className="action-button edit-button me-2"
+                                  onClick={() => openEditModal(motherTongue)}
+                                >
+                                  <FaEdit />
+                                </Button>
+                                <Button
+                                  variant="link"
+                                  className="action-button delete-button"
+                                  onClick={() => openDeleteModal(motherTongue)}
+                                >
+                                  <FaTrash />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </Table>
                   </div>
@@ -534,7 +689,6 @@ const MotherTongueSetup = () => {
         </Row>
       </Container>
 
-      {/* Modals */}
       <AddMotherTongueModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
@@ -570,7 +724,6 @@ const MotherTongueSetup = () => {
         newName={newMotherTongueName}
       />
 
-      {/* Toastify Container */}
       <ToastContainer />
 
       <style>
@@ -652,7 +805,6 @@ const MotherTongueSetup = () => {
             color: white;
           }
 
-          /* Modal Styles */
           .modal-overlay {
             position: fixed;
             top: 0;
@@ -722,7 +874,6 @@ const MotherTongueSetup = () => {
             border-radius: 4px;
           }
 
-          /* Toastify custom styles */
           .Toastify__toast-container {
             z-index: 9999;
           }
@@ -743,6 +894,10 @@ const MotherTongueSetup = () => {
           .Toastify__progress-bar {
             background-color: rgba(255, 255, 255, 0.7);
           }
+
+          .gap-2 {
+            gap: 0.5rem;
+          }
         `}
       </style>
     </MainContentPage>
@@ -750,4 +905,3 @@ const MotherTongueSetup = () => {
 }
 
 export default MotherTongueSetup
-

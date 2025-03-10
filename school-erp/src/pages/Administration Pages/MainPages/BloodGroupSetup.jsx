@@ -10,6 +10,7 @@ import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } 
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import * as XLSX from "xlsx" // Added for import/export
 
 // Add Blood Group Modal Component
 const AddBloodGroupModal = ({ isOpen, onClose, onConfirm }) => {
@@ -155,7 +156,7 @@ const BloodGroupSetup = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [bloodGroups, setBloodGroups] = useState([])
   const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
+  const [success, setSuccess] = useState(null) // Unused, kept for original structure
   const [administrationId, setAdministrationId] = useState(null)
   const { user } = useAuthContext()
 
@@ -194,11 +195,9 @@ const BloodGroupSetup = () => {
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
-        // If no Administration document exists, create one
         const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
         setAdministrationId(newAdminRef.id)
       } else {
-        // Use the ID of the first (and presumably only) Administration document
         setAdministrationId(querySnapshot.docs[0].id)
       }
     } catch (error) {
@@ -226,7 +225,7 @@ const BloodGroupSetup = () => {
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "BloodGroupSetup",
+        "BloodGroupSetup"
       )
       const querySnapshot = await getDocs(bloodGroupsRef)
       const bloodGroupsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -260,8 +259,22 @@ const BloodGroupSetup = () => {
       return
     }
 
-    // Check for duplicate blood group name
-    const isDuplicate = bloodGroups.some((bloodGroup) => bloodGroup.name.toLowerCase() === name.toLowerCase())
+    if (!name.trim()) {
+      toast.error("Blood group name cannot be empty.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    const isDuplicate = bloodGroups.some(
+      (bloodGroup) => bloodGroup.name.toLowerCase() === name.toLowerCase()
+    )
     if (isDuplicate) {
       toast.error("A blood group with this name already exists. Please choose a different name.", {
         position: "top-right",
@@ -282,10 +295,12 @@ const BloodGroupSetup = () => {
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "BloodGroupSetup",
+        "BloodGroupSetup"
       )
-      const docRef = await addDoc(bloodGroupsRef, { name: name })
+      const docRef = await addDoc(bloodGroupsRef, { name })
       console.log("Blood group added with ID:", docRef.id)
+
+      setBloodGroups((prev) => [...prev, { id: docRef.id, name }])
       setIsAddModalOpen(false)
       toast.success("Blood group added successfully!", {
         position: "top-right",
@@ -326,9 +341,21 @@ const BloodGroupSetup = () => {
       return
     }
 
-    // Check for duplicate blood group name
+    if (!newName.trim()) {
+      toast.error("Blood group name cannot be empty.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     const isDuplicate = bloodGroups.some(
-      (bloodGroup) => bloodGroup.id !== bloodGroupId && bloodGroup.name.toLowerCase() === newName.toLowerCase(),
+      (bloodGroup) => bloodGroup.id !== bloodGroupId && bloodGroup.name.toLowerCase() === newName.toLowerCase()
     )
     if (isDuplicate) {
       toast.error("A blood group with this name already exists. Please choose a different name.", {
@@ -357,10 +384,14 @@ const BloodGroupSetup = () => {
         "Administration",
         administrationId,
         "BloodGroupSetup",
-        selectedBloodGroup.id,
+        selectedBloodGroup.id
       )
       await updateDoc(bloodGroupRef, { name: newBloodGroupName })
       console.log("Blood group updated:", selectedBloodGroup.id)
+
+      setBloodGroups((prev) =>
+        prev.map((bg) => (bg.id === selectedBloodGroup.id ? { ...bg, name: newBloodGroupName } : bg))
+      )
       setIsConfirmEditModalOpen(false)
       setSelectedBloodGroup(null)
       setNewBloodGroupName("")
@@ -411,10 +442,12 @@ const BloodGroupSetup = () => {
         "Administration",
         administrationId,
         "BloodGroupSetup",
-        bloodGroupId,
+        bloodGroupId
       )
       await deleteDoc(bloodGroupRef)
       console.log("Blood group deleted:", bloodGroupId)
+
+      setBloodGroups((prev) => prev.filter((bg) => bg.id !== bloodGroupId))
       setIsDeleteModalOpen(false)
       setSelectedBloodGroup(null)
       toast.success("Blood group deleted successfully!", {
@@ -425,6 +458,7 @@ const BloodGroupSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
+        style: { background: "#0B3D7B", color: "white" },
       })
       await fetchBloodGroups()
     } catch (error) {
@@ -441,6 +475,103 @@ const BloodGroupSetup = () => {
     }
   }
 
+  const handleImport = async (event) => {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    const file = event.target.files[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const data = new Uint8Array(e.target.result)
+      const workbook = XLSX.read(data, { type: "array" })
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const jsonData = XLSX.utils.sheet_to_json(sheet)
+
+      if (jsonData.length === 0) {
+        toast.error("No data found in the imported file.")
+        return
+      }
+
+      try {
+        const bloodGroupsRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Administration",
+          administrationId,
+          "BloodGroupSetup"
+        )
+        const newBloodGroups = []
+        for (const row of jsonData) {
+          const name = row["Blood Group Name"] || row["name"]
+          if (name && name.trim()) {
+            const isDuplicate = bloodGroups.some(
+              (bg) => bg.name.toLowerCase() === name.toLowerCase()
+            )
+            if (!isDuplicate) {
+              const docRef = await addDoc(bloodGroupsRef, { name })
+              newBloodGroups.push({ id: docRef.id, name })
+            }
+          }
+        }
+
+        setBloodGroups((prev) => [...prev, ...newBloodGroups])
+        toast.success("Blood groups imported successfully!", {
+          style: { background: "#0B3D7B", color: "white" },
+        })
+        await fetchBloodGroups()
+      } catch (error) {
+        console.error("Error importing blood groups:", error)
+        toast.error("Failed to import blood groups. Please try again.")
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
+  const handleExport = () => {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    if (bloodGroups.length === 0) {
+      toast.error("No data available to export.")
+      return
+    }
+
+    const exportData = bloodGroups.map((bg) => ({
+      "Blood Group Name": bg.name,
+    }))
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "BloodGroups")
+    XLSX.writeFile(workbook, `BloodGroups_Export_${auth.currentUser.uid}.xlsx`)
+    toast.success("Blood groups exported successfully!", {
+      style: { background: "#0B3D7B", color: "white" },
+    })
+  }
+
   const openEditModal = (bloodGroup) => {
     setSelectedBloodGroup(bloodGroup)
     setIsEditModalOpen(true)
@@ -452,13 +583,12 @@ const BloodGroupSetup = () => {
   }
 
   const filteredBloodGroups = bloodGroups.filter((bloodGroup) =>
-    bloodGroup.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    bloodGroup.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
     <MainContentPage>
       <Container fluid className="px-0 px-lg-0">
-        {/* Breadcrumb Navigation */}
         <nav className="custom-breadcrumb py-1 py-lg-3">
           <Link to="/home">Home</Link>
           <span className="separator">&gt;</span>
@@ -470,18 +600,34 @@ const BloodGroupSetup = () => {
           <Col xs={12}>
             <div className="blood-group-setup-container">
               <div className="form-card mt-3">
-                {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Blood Group Setup</h2>
-                  <h6 className="m-0 d-lg-none">Blood Group Setup</h6>
-                  <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
-                    + Add Blood Group
-                  </Button>
+                  <div>
+                    <h2 className="m-0 d-none d-lg-block">Blood Group Setup</h2>
+                    <h6 className="m-0 d-lg-none">Blood Group Setup</h6>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleImport}
+                      style={{ display: "none" }}
+                      id="import-file"
+                    />
+                    <Button
+                      onClick={() => document.getElementById("import-file").click()}
+                      className="btn btn-light text-dark"
+                    >
+                      Import
+                    </Button>
+                    <Button onClick={handleExport} className="btn btn-light text-dark">
+                      Export
+                    </Button>
+                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                      + Add Blood Group
+                    </Button>
+                  </div>
                 </div>
-
-                {/* Content */}
                 <div className="content-wrapper p-4">
-                  {/* Search Bar */}
                   <Form.Control
                     type="text"
                     placeholder="Search by Blood Group Name"
@@ -489,8 +635,6 @@ const BloodGroupSetup = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="custom-search mb-3"
                   />
-
-                  {/* Blood Group Table */}
                   <div className="table-responsive">
                     <Table bordered hover>
                       <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
@@ -500,27 +644,41 @@ const BloodGroupSetup = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredBloodGroups.map((bloodGroup) => (
-                          <tr key={bloodGroup.id}>
-                            <td>{bloodGroup.name}</td>
-                            <td>
-                              <Button
-                                variant="link"
-                                className="action-button edit-button me-2"
-                                onClick={() => openEditModal(bloodGroup)}
-                              >
-                                <FaEdit />
-                              </Button>
-                              <Button
-                                variant="link"
-                                className="action-button delete-button"
-                                onClick={() => openDeleteModal(bloodGroup)}
-                              >
-                                <FaTrash />
-                              </Button>
+                        {bloodGroups.length === 0 ? (
+                          <tr>
+                            <td colSpan="2" className="text-center">
+                              No data available
                             </td>
                           </tr>
-                        ))}
+                        ) : filteredBloodGroups.length === 0 && searchTerm ? (
+                          <tr>
+                            <td colSpan="2" className="text-center">
+                              No matching blood groups found
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredBloodGroups.map((bloodGroup) => (
+                            <tr key={bloodGroup.id}>
+                              <td>{bloodGroup.name}</td>
+                              <td>
+                                <Button
+                                  variant="link"
+                                  className="action-button edit-button me-2"
+                                  onClick={() => openEditModal(bloodGroup)}
+                                >
+                                  <FaEdit />
+                                </Button>
+                                <Button
+                                  variant="link"
+                                  className="action-button delete-button"
+                                  onClick={() => openDeleteModal(bloodGroup)}
+                                >
+                                  <FaTrash />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </Table>
                   </div>
@@ -531,7 +689,6 @@ const BloodGroupSetup = () => {
         </Row>
       </Container>
 
-      {/* Modals */}
       <AddBloodGroupModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
@@ -567,7 +724,6 @@ const BloodGroupSetup = () => {
         newName={newBloodGroupName}
       />
 
-      {/* Toastify Container */}
       <ToastContainer />
 
       <style>
@@ -575,171 +731,54 @@ const BloodGroupSetup = () => {
           .blood-group-setup-container {
             background-color: #fff;
           }
-
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          .form-card {
-            background-color: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-          }
-
-          .header {
-            border-bottom: 1px solid #dee2e6;
-          }
-
-          .custom-search {
-            max-width: 300px;
-          }
-
-          .table-responsive {
-            margin-bottom: 0;
-          }
-
-          .table th {
-            font-weight: 500;
-          }
-
-          .table td {
-            vertical-align: middle;
-          }
-
+          .custom-breadcrumb { padding: 0.5rem 1rem; }
+          .custom-breadcrumb a { color: #0B3D7B; text-decoration: none; }
+          .custom-breadcrumb .separator { margin: 0 0.5rem; color: #6c757d; }
+          .custom-breadcrumb .current { color: #212529; }
+          .form-card { background-color: #fff; border: 1px solid #dee2e6; border-radius: 0.25rem; }
+          .header { border-bottom: 1px solid #dee2e6; }
+          .custom-search { max-width: 300px; }
+          .table-responsive { margin-bottom: 0; }
+          .table th { font-weight: 500; }
+          .table td { vertical-align: middle; }
           .action-button {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            padding: 0;
-            color: white;
+            width: 30px; height: 30px; display: inline-flex; align-items: center;
+            justify-content: center; border-radius: 4px; padding: 0; color: white;
           }
-
-          .edit-button {
-            background-color: #0B3D7B;
-          }
-
-          .edit-button:hover {
-            background-color: #092a54;
-            color: white;
-          }
-
-          .delete-button {
-            background-color: #dc3545;
-          }
-
-          .delete-button:hover {
-            background-color: #bb2d3b;
-            color: white;
-          }
-
-          /* Modal Styles */
+          .edit-button { background-color: #0B3D7B; }
+          .edit-button:hover { background-color: #092a54; color: white; }
+          .delete-button { background-color: #dc3545; }
+          .delete-button:hover { background-color: #bb2d3b; color: white; }
           .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1100;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5); display: flex;
+            justify-content: center; align-items: center; z-index: 1100;
           }
-
           .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
+            background: white; padding: 2rem; border-radius: 8px;
+            width: 90%; max-width: 400px;
           }
-
           .modal-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #333;
-            text-align: center;
+            font-size: 1.5rem; margin-bottom: 1rem; color: #333; text-align: center;
           }
-
-          .modal-body {
-            margin-bottom: 1.5rem;
-          }
-
-          .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-          }
-
+          .modal-body { margin-bottom: 1.5rem; }
+          .modal-buttons { display: flex; justify-content: center; gap: 1rem; }
           .modal-button {
-            padding: 0.5rem 2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
+            padding: 0.5rem 2rem; border: none; border-radius: 4px;
+            cursor: pointer; font-weight: 500; transition: opacity 0.2s;
           }
-
-          .modal-button.confirm {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .modal-button.delete {
-            background-color: #dc3545;
-            color: white;
-          }
-
-          .modal-button.cancel {
-            background-color: #6c757d;
-            color: white;
-          }
-
+          .modal-button.confirm { background-color: #0B3D7B; color: white; }
+          .modal-button.delete { background-color: #dc3545; color: white; }
+          .modal-button.cancel { background-color: #6c757d; color: white; }
           .custom-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
+            width: 100%; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;
           }
-
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
+          .Toastify__toast-container { z-index: 9999; }
+          .Toastify__toast { background-color: #0B3D7B; color: white; }
+          .Toastify__toast--success { background-color: #0B3D7B; }
+          .Toastify__toast--error { background-color: #dc3545; }
+          .Toastify__progress-bar { background-color: rgba(255, 255, 255, 0.7); }
+          .gap-2 { gap: 0.5rem; }
         `}
       </style>
     </MainContentPage>
@@ -747,4 +786,3 @@ const BloodGroupSetup = () => {
 }
 
 export default BloodGroupSetup
-

@@ -10,6 +10,7 @@ import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } 
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import * as XLSX from "xlsx" // Added for import/export functionality
 
 // Add Section Modal Component
 const AddSectionModal = ({ isOpen, onClose, onConfirm }) => {
@@ -194,11 +195,9 @@ const SectionSetup = () => {
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
-        // If no Administration document exists, create one
         const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
         setAdministrationId(newAdminRef.id)
       } else {
-        // Use the ID of the first (and presumably only) Administration document
         setAdministrationId(querySnapshot.docs[0].id)
       }
     } catch (error) {
@@ -260,7 +259,19 @@ const SectionSetup = () => {
       return
     }
 
-    // Check for duplicate section name
+    if (!name.trim()) {
+      toast.error("Section name cannot be empty.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     const isDuplicate = sections.some((section) => section.name.toLowerCase() === name.toLowerCase())
     if (isDuplicate) {
       toast.error("A section with this name already exists. Please choose a different name.", {
@@ -284,8 +295,13 @@ const SectionSetup = () => {
         administrationId,
         "SectionSetup",
       )
-      const docRef = await addDoc(sectionsRef, { name: name })
+      const docRef = await addDoc(sectionsRef, { name })
       console.log("Section added with ID:", docRef.id)
+
+      // Immediately update UI
+      const newSection = { id: docRef.id, name }
+      setSections((prevSections) => [...prevSections, newSection])
+
       setIsAddModalOpen(false)
       toast.success("Section added successfully!", {
         position: "top-right",
@@ -326,7 +342,19 @@ const SectionSetup = () => {
       return
     }
 
-    // Check for duplicate section name
+    if (!newName.trim()) {
+      toast.error("Section name cannot be empty.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     const isDuplicate = sections.some(
       (section) => section.id !== sectionId && section.name.toLowerCase() === newName.toLowerCase(),
     )
@@ -349,6 +377,19 @@ const SectionSetup = () => {
   }
 
   const confirmEditSection = async () => {
+    if (!administrationId) {
+      toast.error("Administration not initialized. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     try {
       const sectionRef = doc(
         db,
@@ -361,6 +402,14 @@ const SectionSetup = () => {
       )
       await updateDoc(sectionRef, { name: newSectionName })
       console.log("Section updated:", selectedSection.id)
+
+      // Immediately update UI
+      setSections((prevSections) =>
+        prevSections.map((section) =>
+          section.id === selectedSection.id ? { ...section, name: newSectionName } : section
+        )
+      )
+
       setIsConfirmEditModalOpen(false)
       setSelectedSection(null)
       setNewSectionName("")
@@ -415,6 +464,10 @@ const SectionSetup = () => {
       )
       await deleteDoc(sectionRef)
       console.log("Section deleted:", sectionId)
+
+      // Immediately update UI
+      setSections((prevSections) => prevSections.filter((section) => section.id !== sectionId))
+
       setIsDeleteModalOpen(false)
       setSelectedSection(null)
       toast.success("Section deleted successfully!", {
@@ -441,6 +494,106 @@ const SectionSetup = () => {
     }
   }
 
+  // Import function (mirrors CourseSetup.jsx)
+  const handleImport = async (event) => {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    const file = event.target.files[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const data = new Uint8Array(e.target.result)
+      const workbook = XLSX.read(data, { type: "array" })
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const jsonData = XLSX.utils.sheet_to_json(sheet)
+
+      if (jsonData.length === 0) {
+        toast.error("No data found in the imported file.")
+        return
+      }
+
+      try {
+        const sectionsRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Administration",
+          administrationId,
+          "SectionSetup",
+        )
+        const newSections = []
+        for (const row of jsonData) {
+          const name = row["Section Name"] || row["name"]
+          if (name && name.trim()) {
+            const isDuplicate = sections.some((section) => section.name.toLowerCase() === name.toLowerCase())
+            if (!isDuplicate) {
+              const docRef = await addDoc(sectionsRef, { name })
+              newSections.push({ id: docRef.id, name })
+              console.log("Imported section:", name, "for user:", auth.currentUser.uid)
+            }
+          }
+        }
+
+        // Update UI with imported sections
+        setSections((prevSections) => [...prevSections, ...newSections])
+
+        toast.success("Sections imported successfully!", {
+          style: { background: "#0B3D7B", color: "white" },
+        })
+        await fetchSections()
+      } catch (error) {
+        console.error("Error importing sections:", error)
+        toast.error("Failed to import sections. Please try again.")
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
+  // Export function (mirrors CourseSetup.jsx)
+  const handleExport = () => {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    if (sections.length === 0) {
+      toast.error("No data available to export.")
+      return
+    }
+
+    const exportData = sections.map((section) => ({
+      "Section Name": section.name,
+    }))
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sections")
+    XLSX.writeFile(workbook, `Sections_Export_${auth.currentUser.uid}.xlsx`)
+    toast.success("Sections exported successfully!", {
+      style: { background: "#0B3D7B", color: "white" },
+    })
+  }
+
   const openEditModal = (section) => {
     setSelectedSection(section)
     setIsEditModalOpen(true)
@@ -451,7 +604,9 @@ const SectionSetup = () => {
     setIsDeleteModalOpen(true)
   }
 
-  const filteredSections = sections.filter((section) => section.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredSections = sections.filter((section) =>
+    section.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   return (
     <MainContentPage>
@@ -470,11 +625,31 @@ const SectionSetup = () => {
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Section Setup</h2>
-                  <h6 className="m-0 d-lg-none">Section Setup</h6>
-                  <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
-                    + Add Section
-                  </Button>
+                  <div>
+                    <h2 className="m-0 d-none d-lg-block">Section Setup</h2>
+                    <h6 className="m-0 d-lg-none">Section Setup</h6>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleImport}
+                      style={{ display: "none" }}
+                      id="import-file"
+                    />
+                    <Button
+                      onClick={() => document.getElementById("import-file").click()}
+                      className="btn btn-light text-dark"
+                    >
+                      Import
+                    </Button>
+                    <Button onClick={handleExport} className="btn btn-light text-dark">
+                      Export
+                    </Button>
+                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                      + Add Section
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Content */}
@@ -498,27 +673,41 @@ const SectionSetup = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredSections.map((section) => (
-                          <tr key={section.id}>
-                            <td>{section.name}</td>
-                            <td>
-                              <Button
-                                variant="link"
-                                className="action-button edit-button me-2"
-                                onClick={() => openEditModal(section)}
-                              >
-                                <FaEdit />
-                              </Button>
-                              <Button
-                                variant="link"
-                                className="action-button delete-button"
-                                onClick={() => openDeleteModal(section)}
-                              >
-                                <FaTrash />
-                              </Button>
+                        {sections.length === 0 ? (
+                          <tr>
+                            <td colSpan="2" className="text-center">
+                              No data available
                             </td>
                           </tr>
-                        ))}
+                        ) : filteredSections.length === 0 && searchTerm ? (
+                          <tr>
+                            <td colSpan="2" className="text-center">
+                              No matching sections found
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredSections.map((section) => (
+                            <tr key={section.id}>
+                              <td>{section.name}</td>
+                              <td>
+                                <Button
+                                  variant="link"
+                                  className="action-button edit-button me-2"
+                                  onClick={() => openEditModal(section)}
+                                >
+                                  <FaEdit />
+                                </Button>
+                                <Button
+                                  variant="link"
+                                  className="action-button delete-button"
+                                  onClick={() => openDeleteModal(section)}
+                                >
+                                  <FaTrash />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </Table>
                   </div>
@@ -734,6 +923,10 @@ const SectionSetup = () => {
           .Toastify__progress-bar {
             background-color: rgba(255, 255, 255, 0.7);
           }
+
+          .gap-2 {
+            gap: 0.5rem;
+          }
         `}
       </style>
     </MainContentPage>
@@ -741,4 +934,3 @@ const SectionSetup = () => {
 }
 
 export default SectionSetup
-
