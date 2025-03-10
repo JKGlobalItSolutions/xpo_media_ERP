@@ -30,7 +30,7 @@ const AddBloodGroupModal = ({ isOpen, onClose, onConfirm }) => {
         <div className="modal-body">
           <Form.Control
             type="text"
-            placeholder="Enter Blood Group"
+            placeholder="Enter Blood Group Name"
             value={bloodGroupName}
             onChange={(e) => setBloodGroupName(e.target.value)}
             className="custom-input"
@@ -51,11 +51,11 @@ const AddBloodGroupModal = ({ isOpen, onClose, onConfirm }) => {
 
 // Edit Blood Group Modal Component
 const EditBloodGroupModal = ({ isOpen, onClose, onConfirm, bloodGroup }) => {
-  const [bloodGroupName, setBloodGroupName] = useState(bloodGroup?.BloodGroupName || "")
+  const [bloodGroupName, setBloodGroupName] = useState(bloodGroup?.name || "")
 
   useEffect(() => {
     if (bloodGroup) {
-      setBloodGroupName(bloodGroup.BloodGroupName)
+      setBloodGroupName(bloodGroup.name)
     }
   }, [bloodGroup])
 
@@ -72,7 +72,7 @@ const EditBloodGroupModal = ({ isOpen, onClose, onConfirm, bloodGroup }) => {
         <div className="modal-body">
           <Form.Control
             type="text"
-            placeholder="Enter Blood Group"
+            placeholder="Enter Blood Group Name"
             value={bloodGroupName}
             onChange={(e) => setBloodGroupName(e.target.value)}
             className="custom-input"
@@ -101,7 +101,7 @@ const DeleteBloodGroupModal = ({ isOpen, onClose, onConfirm, bloodGroup }) => {
         <h2 className="modal-title">Delete Blood Group</h2>
         <div className="modal-body text-center">
           <p>Are you sure you want to delete this blood group?</p>
-          <p className="fw-bold">{bloodGroup?.BloodGroupName}</p>
+          <p className="fw-bold">{bloodGroup?.name}</p>
         </div>
         <div className="modal-buttons">
           <Button className="modal-button delete" onClick={() => onConfirm(bloodGroup.id)}>
@@ -156,7 +156,7 @@ const BloodGroupSetup = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [bloodGroups, setBloodGroups] = useState([])
   const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
+  const [success, setSuccess] = useState(null) // Unused, kept for original structure
   const [administrationId, setAdministrationId] = useState(null)
   const { user } = useAuthContext()
 
@@ -225,7 +225,7 @@ const BloodGroupSetup = () => {
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "BloodGroup",
+        "BloodGroupSetup"
       )
       const querySnapshot = await getDocs(bloodGroupsRef)
       const bloodGroupsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -245,7 +245,7 @@ const BloodGroupSetup = () => {
     }
   }
 
-  const handleAddBloodGroup = async (bloodGroupName) => {
+  const handleAddBloodGroup = async (name) => {
     if (!administrationId) {
       toast.error("Administration not initialized. Please try again.", {
         position: "top-right",
@@ -259,7 +259,7 @@ const BloodGroupSetup = () => {
       return
     }
 
-    if (!bloodGroupName.trim()) {
+    if (!name.trim()) {
       toast.error("Blood group name cannot be empty.", {
         position: "top-right",
         autoClose: 1000,
@@ -273,7 +273,7 @@ const BloodGroupSetup = () => {
     }
 
     const isDuplicate = bloodGroups.some(
-      (bloodGroup) => bloodGroup.BloodGroupName.toLowerCase() === bloodGroupName.toLowerCase(),
+      (bloodGroup) => bloodGroup.name.toLowerCase() === name.toLowerCase()
     )
     if (isDuplicate) {
       toast.error("A blood group with this name already exists. Please choose a different name.", {
@@ -295,12 +295,12 @@ const BloodGroupSetup = () => {
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "BloodGroup",
+        "BloodGroupSetup"
       )
-      const docRef = await addDoc(bloodGroupsRef, { BloodGroupName: bloodGroupName })
+      const docRef = await addDoc(bloodGroupsRef, { name })
       console.log("Blood group added with ID:", docRef.id)
 
-      setBloodGroups((prev) => [...prev, { id: docRef.id, BloodGroupName: bloodGroupName }])
+      setBloodGroups((prev) => [...prev, { id: docRef.id, name }])
       setIsAddModalOpen(false)
       toast.success("Blood group added successfully!", {
         position: "top-right",
@@ -355,8 +355,7 @@ const BloodGroupSetup = () => {
     }
 
     const isDuplicate = bloodGroups.some(
-      (bloodGroup) =>
-        bloodGroup.id !== bloodGroupId && bloodGroup.BloodGroupName.toLowerCase() === newName.toLowerCase(),
+      (bloodGroup) => bloodGroup.id !== bloodGroupId && bloodGroup.name.toLowerCase() === newName.toLowerCase()
     )
     if (isDuplicate) {
       toast.error("A blood group with this name already exists. Please choose a different name.", {
@@ -384,16 +383,14 @@ const BloodGroupSetup = () => {
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "BloodGroup",
-        selectedBloodGroup.id,
+        "BloodGroupSetup",
+        selectedBloodGroup.id
       )
-      await updateDoc(bloodGroupRef, { BloodGroupName: newBloodGroupName })
+      await updateDoc(bloodGroupRef, { name: newBloodGroupName })
       console.log("Blood group updated:", selectedBloodGroup.id)
 
       setBloodGroups((prev) =>
-        prev.map((bg) =>
-          bg.id === selectedBloodGroup.id ? { ...bg, BloodGroupName: newBloodGroupName } : bg
-        )
+        prev.map((bg) => (bg.id === selectedBloodGroup.id ? { ...bg, name: newBloodGroupName } : bg))
       )
       setIsConfirmEditModalOpen(false)
       setSelectedBloodGroup(null)
@@ -444,8 +441,8 @@ const BloodGroupSetup = () => {
         auth.currentUser.uid,
         "Administration",
         administrationId,
-        "BloodGroup",
-        bloodGroupId,
+        "BloodGroupSetup",
+        bloodGroupId
       )
       await deleteDoc(bloodGroupRef)
       console.log("Blood group deleted:", bloodGroupId)
@@ -461,6 +458,7 @@ const BloodGroupSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
+        style: { background: "#0B3D7B", color: "white" },
       })
       await fetchBloodGroups()
     } catch (error) {
@@ -514,18 +512,18 @@ const BloodGroupSetup = () => {
           auth.currentUser.uid,
           "Administration",
           administrationId,
-          "BloodGroup",
+          "BloodGroupSetup"
         )
         const newBloodGroups = []
         for (const row of jsonData) {
-          const name = row["Blood Group"] || row["BloodGroupName"]
+          const name = row["Blood Group Name"] || row["name"]
           if (name && name.trim()) {
             const isDuplicate = bloodGroups.some(
-              (bg) => bg.BloodGroupName.toLowerCase() === name.toLowerCase()
+              (bg) => bg.name.toLowerCase() === name.toLowerCase()
             )
             if (!isDuplicate) {
-              const docRef = await addDoc(bloodGroupsRef, { BloodGroupName: name })
-              newBloodGroups.push({ id: docRef.id, BloodGroupName: name })
+              const docRef = await addDoc(bloodGroupsRef, { name })
+              newBloodGroups.push({ id: docRef.id, name })
             }
           }
         }
@@ -563,7 +561,7 @@ const BloodGroupSetup = () => {
     }
 
     const exportData = bloodGroups.map((bg) => ({
-      "Blood Group": bg.BloodGroupName,
+      "Blood Group Name": bg.name,
     }))
     const worksheet = XLSX.utils.json_to_sheet(exportData)
     const workbook = XLSX.utils.book_new()
@@ -585,7 +583,7 @@ const BloodGroupSetup = () => {
   }
 
   const filteredBloodGroups = bloodGroups.filter((bloodGroup) =>
-    bloodGroup.BloodGroupName.toLowerCase().includes(searchTerm.toLowerCase()),
+    bloodGroup.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
@@ -593,9 +591,9 @@ const BloodGroupSetup = () => {
       <Container fluid className="px-0 px-lg-0">
         <nav className="custom-breadcrumb py-1 py-lg-3">
           <Link to="/home">Home</Link>
-          <span className="separator"></span>
+          <span className="separator">&gt;</span>
           <span>Administration</span>
-          <span className="separator"></span>
+          <span className="separator">&gt;</span>
           <span className="current col-12">Blood Group Setup</span>
         </nav>
         <Row>
@@ -604,8 +602,8 @@ const BloodGroupSetup = () => {
               <div className="form-card mt-3">
                 <div className="header p-3 d-flex justify-content-between align-items-center">
                   <div>
-                    <h2 className="m-0 d-none d-lg-block">Create Blood Group Setup</h2>
-                    <h6 className="m-0 d-lg-none">Create Blood Group Setup</h6>
+                    <h2 className="m-0 d-none d-lg-block">Blood Group Setup</h2>
+                    <h6 className="m-0 d-lg-none">Blood Group Setup</h6>
                   </div>
                   <div className="d-flex align-items-center gap-2">
                     <input
@@ -632,7 +630,7 @@ const BloodGroupSetup = () => {
                 <div className="content-wrapper p-4">
                   <Form.Control
                     type="text"
-                    placeholder="Search by Blood Group"
+                    placeholder="Search by Blood Group Name"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="custom-search mb-3"
@@ -641,7 +639,7 @@ const BloodGroupSetup = () => {
                     <Table bordered hover>
                       <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
                         <tr>
-                          <th>Blood Group</th>
+                          <th>Blood Group Name</th>
                           <th>Action</th>
                         </tr>
                       </thead>
@@ -661,7 +659,7 @@ const BloodGroupSetup = () => {
                         ) : (
                           filteredBloodGroups.map((bloodGroup) => (
                             <tr key={bloodGroup.id}>
-                              <td>{bloodGroup.BloodGroupName}</td>
+                              <td>{bloodGroup.name}</td>
                               <td>
                                 <Button
                                   variant="link"
@@ -722,7 +720,7 @@ const BloodGroupSetup = () => {
           setNewBloodGroupName("")
         }}
         onConfirm={confirmEditBloodGroup}
-        currentName={selectedBloodGroup?.BloodGroupName}
+        currentName={selectedBloodGroup?.name}
         newName={newBloodGroupName}
       />
 
