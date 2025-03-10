@@ -566,6 +566,7 @@ const OtherFee = () => {
             feeAmount: fee.amount,
             paidAmount: fee.paidAmount,
             concessionAmount: "0", // Set to 0 for main entry
+            type: fee.type || "Other Fee", // Use the fee type from the data or default to "Other Fee"
           })),
       }
 
@@ -584,6 +585,7 @@ const OtherFee = () => {
                   feeAmount: fee.amount,
                   paidAmount: (-Number.parseFloat(fee.concessionAmount)).toFixed(2), // Negative amount
                   concessionAmount: fee.concessionAmount,
+                  type: fee.type || "Other Fee", // Use the fee type from the data or default to "Other Fee"
                 })),
             }
           : null
@@ -971,6 +973,7 @@ const OtherFee = () => {
                       <thead className="table-header">
                         <tr>
                           <th>Description</th>
+                          <th>Fee Type</th>
                           <th>Amount</th>
                           <th>Concession</th>
                           <th>Pay Amount</th>
@@ -983,6 +986,7 @@ const OtherFee = () => {
                           feeTableData.map((fee, index) => (
                             <tr key={index}>
                               <td>{fee.heading}</td>
+                              <td>{fee.type || "Other Fee"}</td>
                               <td>{fee.amount}</td>
                               <td>
                                 <Form.Control
@@ -1006,7 +1010,7 @@ const OtherFee = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="text-center">
+                            <td colSpan="7" className="text-center">
                               No fee details available
                             </td>
                           </tr>
@@ -1014,7 +1018,7 @@ const OtherFee = () => {
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan="3" className="text-end fw-bold">
+                          <td colSpan="4" className="text-end fw-bold">
                             Overall Total:
                           </td>
                           <td className="fw-bold">{billData.paidAmount}</td>
