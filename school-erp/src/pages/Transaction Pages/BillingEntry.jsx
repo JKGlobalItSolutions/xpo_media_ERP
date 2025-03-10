@@ -566,6 +566,7 @@ const BillEntry = () => {
             feeAmount: fee.amount,
             paidAmount: fee.paidAmount,
             concessionAmount: "0", // Set to 0 for main entry
+            type: fee.type || "Other Fee", // Add the fee type
           })),
       }
 
@@ -584,6 +585,7 @@ const BillEntry = () => {
                   feeAmount: fee.amount,
                   paidAmount: (-Number.parseFloat(fee.concessionAmount)).toFixed(2), // Negative amount
                   concessionAmount: fee.concessionAmount,
+                  type: fee.type || "Other Fee", // Add the fee type
                 })),
             }
           : null
@@ -825,9 +827,6 @@ const BillEntry = () => {
                       className="form-control-light"
                     />
                   </Form.Group>
-
-
-
                 </Col>
 
                 {/* Second Column */}
@@ -877,12 +876,11 @@ const BillEntry = () => {
                       className="form-control-light"
                     />
                   </Form.Group>
-
                 </Col>
 
                 {/* Third Column */}
                 <Col md={4}>
-                <Form.Group className="my-1">
+                  <Form.Group className="my-1">
                     <Form.Label>Bill Date</Form.Label>
                     <br />
                     <DatePicker
@@ -975,6 +973,7 @@ const BillEntry = () => {
                       <thead className="table-header">
                         <tr>
                           <th>Description</th>
+                          <th>Fee Type</th>
                           <th>Amount</th>
                           <th>Concession</th>
                           <th>Pay Amount</th>
@@ -987,6 +986,7 @@ const BillEntry = () => {
                           feeTableData.map((fee, index) => (
                             <tr key={index}>
                               <td>{fee.heading}</td>
+                              <td>{fee.type || "Other Fee"}</td>
                               <td>{fee.amount}</td>
                               <td>
                                 <Form.Control
@@ -1010,7 +1010,7 @@ const BillEntry = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="text-center">
+                            <td colSpan="7" className="text-center">
                               No fee details available
                             </td>
                           </tr>
@@ -1018,7 +1018,7 @@ const BillEntry = () => {
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan="3" className="text-end fw-bold">
+                          <td colSpan="4" className="text-end fw-bold">
                             Overall Total:
                           </td>
                           <td className="fw-bold">{billData.paidAmount}</td>
