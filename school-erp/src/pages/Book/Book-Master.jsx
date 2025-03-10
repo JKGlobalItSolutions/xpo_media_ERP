@@ -11,24 +11,27 @@ import "react-toastify/dist/ReactToastify.css"
 import { FaEdit, FaTrash } from "react-icons/fa"
 
 // Add Book Modal Component
-const AddBookModal = ({ isOpen, onClose, onConfirm, book }) => {
+const AddBookModal = ({ isOpen, onClose, onConfirm, book, categories }) => {
   const [bookName, setBookName] = useState("")
   const [amount, setAmount] = useState("")
+  const [category, setCategory] = useState("")
 
   useEffect(() => {
     if (book) {
       setBookName(book.bookname)
       setAmount(book.amount || "")
+      setCategory(book.category || "") // Load existing category if editing
     } else {
       setBookName("")
       setAmount("")
+      setCategory("")
     }
   }, [book])
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(bookName, amount)
+    onConfirm(bookName, amount, category)
   }
 
   return (
@@ -48,8 +51,20 @@ const AddBookModal = ({ isOpen, onClose, onConfirm, book }) => {
             placeholder="Enter Amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="custom-input"
+            className="custom-input mb-3"
           />
+          <Form.Select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="custom-input"
+          >
+            <option value="">Select Category</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.newCategory}>
+                {cat.newCategory} ({cat.accountHead})
+              </option>
+            ))}
+          </Form.Select>
         </div>
         <div className="modal-buttons">
           <Button className="modal-button confirm" onClick={handleSubmit}>
@@ -90,7 +105,7 @@ const DeleteBookModal = ({ isOpen, onClose, onConfirm, book }) => {
 }
 
 // Confirm Edit Modal Component
-const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName, currentAmount, newAmount }) => {
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName, currentAmount, newAmount, currentCategory, newCategory }) => {
   if (!isOpen) return null
 
   return (
@@ -110,6 +125,12 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName, cu
           </p>
           <p>
             <strong>New Amount:</strong> {newAmount}
+          </p>
+          <p>
+            <strong>Current Category:</strong> {currentCategory || "None"}
+          </p>
+          <p>
+            <strong>New Category:</strong> {newCategory || "None"}
           </p>
         </div>
         <div className="modal-buttons">
@@ -135,6 +156,8 @@ const BookMaster = () => {
   const [selectedBook, setSelectedBook] = useState(null)
   const [newBookName, setNewBookName] = useState("")
   const [newBookAmount, setNewBookAmount] = useState("")
+  const [newBookCategory, setNewBookCategory] = useState("")
+  const [categories, setCategories] = useState([]) // To store CategoryHead data
 
   useEffect(() => {
     const fetchStoreId = async () => {
@@ -169,6 +192,7 @@ const BookMaster = () => {
   useEffect(() => {
     if (storeId) {
       fetchBooks()
+      fetchCategories() // Fetch CategoryHead data
     }
   }, [storeId])
 
@@ -192,7 +216,27 @@ const BookMaster = () => {
     }
   }
 
-  const handleAddBook = async (bookName, amount) => {
+  const fetchCategories = async () => {
+    try {
+      const categoriesRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "CategoryHead")
+      const querySnapshot = await getDocs(categoriesRef)
+      const categoriesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setCategories(categoriesData)
+    } catch (error) {
+      console.error("Error fetching categories:", error)
+      toast.error("Failed to fetch categories. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    }
+  }
+
+  const handleAddBook = async (bookName, amount, category) => {
     if (!storeId) {
       toast.error("Store not initialized. Please try again.", {
         position: "top-right",
@@ -223,7 +267,7 @@ const BookMaster = () => {
 
     try {
       const booksRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "BookSetup")
-      await addDoc(booksRef, { bookname: bookName, amount: amount })
+      await addDoc(booksRef, { bookname: bookName, amount: amount, category: category || null })
       setIsAddModalOpen(false)
       toast.success("Book added successfully!", {
         position: "top-right",
@@ -250,7 +294,7 @@ const BookMaster = () => {
     }
   }
 
-  const handleEditBook = async (newName, newAmount) => {
+  const handleEditBook = async (newName, newAmount, newCategory) => {
     if (!storeId || !selectedBook) {
       toast.error("Store not initialized or no book selected. Please try again.", {
         position: "top-right",
@@ -285,16 +329,18 @@ const BookMaster = () => {
     setIsConfirmEditModalOpen(true)
     setNewBookName(newName)
     setNewBookAmount(newAmount)
+    setNewBookCategory(newCategory)
   }
 
   const confirmEditBook = async () => {
     try {
       const bookRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "BookSetup", selectedBook.id)
-      await updateDoc(bookRef, { bookname: newBookName, amount: newBookAmount })
+      await updateDoc(bookRef, { bookname: newBookName, amount: newBookAmount, category: newBookCategory || null })
       setIsConfirmEditModalOpen(false)
       setSelectedBook(null)
       setNewBookName("")
       setNewBookAmount("")
+      setNewBookCategory("")
       toast.success("Book updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -421,6 +467,7 @@ const BookMaster = () => {
                 <tr>
                   <th>Book Name</th>
                   <th>Amount</th>
+                  <th>Category</th> {/* Added Category column */}
                   <th>Action</th>
                 </tr>
               </thead>
@@ -429,6 +476,7 @@ const BookMaster = () => {
                   <tr key={book.id}>
                     <td>{book.bookname}</td>
                     <td>{book.amount}</td>
+                    <td>{book.category || "None"}</td> {/* Display category or "None" */}
                     <td>
                       <Button
                         variant="link"
@@ -459,10 +507,11 @@ const BookMaster = () => {
           setIsAddModalOpen(false)
           setSelectedBook(null)
         }}
-        onConfirm={(bookName, amount) =>
-          selectedBook ? handleEditBook(bookName, amount) : handleAddBook(bookName, amount)
+        onConfirm={(bookName, amount, category) =>
+          selectedBook ? handleEditBook(bookName, amount, category) : handleAddBook(bookName, amount, category)
         }
         book={selectedBook}
+        categories={categories} // Pass categories to the modal
       />
 
       <DeleteBookModal
@@ -482,12 +531,15 @@ const BookMaster = () => {
           setSelectedBook(null)
           setNewBookName("")
           setNewBookAmount("")
+          setNewBookCategory("")
         }}
         onConfirm={confirmEditBook}
         currentName={selectedBook?.bookname}
         newName={newBookName}
         currentAmount={selectedBook?.amount}
         newAmount={newBookAmount}
+        currentCategory={selectedBook?.category} // Added category fields
+        newCategory={newBookCategory}
       />
 
       <ToastContainer />
@@ -639,4 +691,3 @@ const BookMaster = () => {
 }
 
 export default BookMaster
-

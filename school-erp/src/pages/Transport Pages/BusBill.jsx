@@ -28,7 +28,7 @@ import PaymentHistoryModal from "./PaymentHistoryModal"
 // Import the static profile image
 import defaultProfileImage from "../../images/StudentProfileIcon/studentProfile.jpeg"
 
-const BillEntry = () => {
+const BusBill = () => {
   const navigate = useNavigate()
   const dropdownRef = useRef(null)
   const confirmYesButtonRef = useRef(null)
@@ -92,7 +92,7 @@ const BillEntry = () => {
           auth.currentUser.uid,
           "Transactions",
           administrationId,
-          "BillEntries",
+          "BusBillEntries",
         )
         const querySnapshot = await getDocs(billsRef)
 
@@ -177,7 +177,15 @@ const BillEntry = () => {
           "FeeHeadSetup",
         )
         const snapshot = await getDocs(feeHeadRef)
-        const feeHeadData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+
+        // Filter fee heads to only include Bus Fee types
+        const feeHeadData = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter(
+            (head) =>
+              head.type === "Bus Fee" || head.category === "Bus Fee" || head.heading?.toLowerCase().includes("bus"),
+          )
+
         setFeeHeads(feeHeadData)
       } catch (error) {
         console.error("Error fetching fee heads:", error)
@@ -312,6 +320,16 @@ const BillEntry = () => {
     fetchStudentDataByAdmissionNumber(billData.admissionNumber)
   }
 
+  // Helper function to check if a fee is a bus fee
+  const isBusFee = (fee) => {
+    return (
+      fee.type === "Bus Fee" ||
+      fee.category === "Bus Fee" ||
+      (fee.heading && fee.heading.toLowerCase().includes("bus")) ||
+      (fee.heading && fee.heading.toLowerCase().includes("transport"))
+    )
+  }
+
   // Fetch student data by admission number (reusable function)
   const fetchStudentDataByAdmissionNumber = async (admissionNumber) => {
     if (!admissionNumber || !administrationId) return
@@ -360,11 +378,19 @@ const BillEntry = () => {
       }
 
       const feeData = feeSnapshot.data()
-      const feeDetails = feeData.feeDetails || []
+      // Filter to only include Bus Fee types
+      const allFeeDetails = feeData.feeDetails || []
+      const busFeeDetails = allFeeDetails.filter((fee) => isBusFee(fee))
 
-      // Calculate total balance
+      if (busFeeDetails.length === 0) {
+        toast.error("No bus fee details found for this student")
+        setIsLoading(false)
+        return
+      }
+
+      // Calculate total balance for bus fees only
       let totalBalance = 0
-      feeDetails.forEach((fee) => {
+      busFeeDetails.forEach((fee) => {
         totalBalance += Number.parseFloat(fee.amount) || 0
       })
 
@@ -399,10 +425,11 @@ const BillEntry = () => {
         ...student,
       })
 
-      setFeeDetails(feeDetails)
+      setFeeDetails(busFeeDetails)
       setFeeTableData(
-        feeDetails.map((fee) => ({
+        busFeeDetails.map((fee) => ({
           ...fee,
+          type: "Bus Fee", // Ensure type is set to Bus Fee
           paidAmount: "0",
           concessionAmount: "0", // Initialize concession amount
           remainingBalance: fee.amount,
@@ -423,7 +450,7 @@ const BillEntry = () => {
       }))
 
       setStudentLoaded(true)
-      toast.success("Student data loaded successfully")
+      toast.success("Student bus fee data loaded successfully")
     } catch (error) {
       console.error("Error fetching student data:", error)
       toast.error("Failed to fetch student data")
@@ -566,7 +593,7 @@ const BillEntry = () => {
             feeAmount: fee.amount,
             paidAmount: fee.paidAmount,
             concessionAmount: "0", // Set to 0 for main entry
-            type: fee.type || "Other Fee", // Add the fee type
+            type: "Bus Fee", // Always set to Bus Fee
           })),
       }
 
@@ -585,7 +612,7 @@ const BillEntry = () => {
                   feeAmount: fee.amount,
                   paidAmount: (-Number.parseFloat(fee.concessionAmount)).toFixed(2), // Negative amount
                   concessionAmount: fee.concessionAmount,
-                  type: fee.type || "Other Fee", // Add the fee type
+                  type: "Bus Fee", // Always set to Bus Fee
                 })),
             }
           : null
@@ -595,8 +622,8 @@ const BillEntry = () => {
         return
       }
 
-      // Add entries to FeeLog collection
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
+      // Add entries to BusFeeLog collection
+      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "BusFeeLog")
 
       // Add main entry
       await addDoc(feeLogRef, mainFeeLogEntry)
@@ -606,14 +633,14 @@ const BillEntry = () => {
         await addDoc(feeLogRef, concessionFeeLogEntry)
       }
 
-      // Add to BillEntries collection
+      // Add to BusBillEntries collection
       const billEntryRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
         "Transactions",
         administrationId,
-        "BillEntries",
+        "BusBillEntries",
       )
       await addDoc(billEntryRef, {
         ...billData,
@@ -641,7 +668,7 @@ const BillEntry = () => {
         return fee
       })
 
-      // Update StudentFeeDetails document
+      // Get all existing fee details to update only the bus fees
       const studentFeeRef = doc(
         db,
         "Schools",
@@ -652,11 +679,26 @@ const BillEntry = () => {
         studentData.id,
       )
 
-      await updateDoc(studentFeeRef, {
-        feeDetails: updatedFeeDetails,
+      const currentFeeSnapshot = await getDoc(studentFeeRef)
+      const currentFeeData = currentFeeSnapshot.data()
+      const allCurrentFees = currentFeeData.feeDetails || []
+
+      // Replace only the bus fees, keep other fees unchanged
+      const updatedAllFees = allCurrentFees.map((fee) => {
+        if (isBusFee(fee)) {
+          // Find the updated version of this fee
+          const updatedFee = updatedFeeDetails.find((updated) => updated.heading === fee.heading)
+          return updatedFee || fee
+        }
+        return fee
       })
 
-      toast.success("Payment processed successfully!")
+      // Update StudentFeeDetails document
+      await updateDoc(studentFeeRef, {
+        feeDetails: updatedAllFees,
+      })
+
+      toast.success("Bus fee payment processed successfully!")
 
       // Reset form for next entry
       resetForm()
@@ -675,12 +717,12 @@ const BillEntry = () => {
 
     setIsLoading(true)
     try {
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
+      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "BusFeeLog")
       const q = query(feeLogRef, where("admissionNumber", "==", billData.admissionNumber))
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
-        toast.info("No payment history found for this student")
+        toast.info("No bus fee payment history found for this student")
         setPaymentHistory([])
       } else {
         const history = querySnapshot.docs.map((doc) => {
@@ -750,7 +792,7 @@ const BillEntry = () => {
             style={{ backgroundColor: "#0B3D7B" }}
             className="text-white py-3 d-flex justify-content-between align-items-center"
           >
-            <h2 className="mb-0 h4">Billing Dashboard</h2>
+            <h2 className="mb-0 h4">Bus Fee / Transportation Fee</h2>
           </Card.Header>
           <Card.Body className="p-4">
             <Form onSubmit={handleSubmit} className="billing-form">
@@ -986,7 +1028,7 @@ const BillEntry = () => {
                           feeTableData.map((fee, index) => (
                             <tr key={index}>
                               <td>{fee.heading}</td>
-                              <td>{fee.type || "Other Fee"}</td>
+                              <td>Bus Fee</td>
                               <td>{fee.amount}</td>
                               <td>
                                 <Form.Control
@@ -1011,7 +1053,7 @@ const BillEntry = () => {
                         ) : (
                           <tr>
                             <td colSpan="7" className="text-center">
-                              No fee details available
+                              No bus fee details available
                             </td>
                           </tr>
                         )}
@@ -1216,5 +1258,5 @@ const BillEntry = () => {
   )
 }
 
-export default BillEntry
+export default BusBill
 
