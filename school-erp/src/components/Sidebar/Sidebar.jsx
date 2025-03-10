@@ -200,10 +200,10 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
       icon: admissionIcon,
       path: "/book",
       subItems: [
+        { id: "4-4", title: "• Supplier Setup", path: "/book/supplier-Setup" },
         { id: "4-1", title: "• Item/Book Master", path: "/book/item-book-master" },
         { id: "4-2", title: "• Category Head", path: "/book/category-head" },
         { id: "4-3", title: "• Customer / Staff Master", path: "/book/customer-staff-master" },
-        { id: "4-4", title: "• Supplier Setup", path: "/book/supplier-Setup" },
         { id: "4-5", title: "• Book Master", path: "/book/Book-Master" },
         { id: "4-6", title: "• Book Setup Class Wise", path: "/book/Book-setup-class-wise" },
       ],
