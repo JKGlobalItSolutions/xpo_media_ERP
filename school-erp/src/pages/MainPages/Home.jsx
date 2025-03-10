@@ -8,10 +8,10 @@ import Earnings from "../../images/Dashboard/Earnings.png"
 function Home() {
   // Sample data for statistics
   const stats = {
-    students: 50000,
-    teachers: 1500,
-    parents: 60000,
-    earnings: 200000,
+    students: 5004,
+    teachers: 322,
+    parents: 4643,
+    earnings: 250000,
   }
 
   return (
