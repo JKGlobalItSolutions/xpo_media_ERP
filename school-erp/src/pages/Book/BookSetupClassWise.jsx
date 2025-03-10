@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import MainContentPage from "../../../components/MainContent/MainContentPage"
+import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
-import { db, auth } from "../../../Firebase/config"
+import { db, auth } from "../../Firebase/config"
 import { collection, addDoc, getDocs, deleteDoc, doc, query, limit, updateDoc, where } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"

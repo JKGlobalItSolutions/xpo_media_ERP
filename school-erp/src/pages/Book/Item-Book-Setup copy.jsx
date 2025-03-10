@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import MainContentPage from '../../../components/MainContent/MainContentPage';
+import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container } from 'react-bootstrap';
 
-const CategoryHead = () => {
+const ItemBookSetup = () => {
   const [className, setClassName] = useState('');
   const location = useLocation();
 
@@ -28,14 +28,15 @@ const CategoryHead = () => {
                 <span className="separator">&gt;</span>
                 <span>Administration</span>
                 <span className="separator">&gt;</span>
-                <span className="current col-12">Category Head</span>
+                <span className="current col-12">Item / Book Master
+                </span>
               </nav>
 
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3">
-                  <h2 className="m-0 d-none d-lg-block">Category Head</h2>
-                  <h6 className="m-0 d-lg-none">Category Head</h6>
+                  <h2 className="m-0 d-none d-lg-block">Item / Book Setup</h2>
+                  <h6 className="m-0 d-lg-none">Item / Book Setup</h6>
                 </div>
 
                 {/* Form Content */}
@@ -43,12 +44,12 @@ const CategoryHead = () => {
                   <Form onSubmit={handleSubmit}>
                     <Row className="mb-4 align-items-center">
                       <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">Enter New Category</Form.Label>
+                        <Form.Label className="mb-0 ms-lg-5">Enter Item Code</Form.Label>
                       </Col>
                       <Col xs={12} lg={8}>
                         <Form.Control
                           type="text"
-                          placeholder="Add Class"
+                          placeholder="Enter Your User Name"
                           value={className}
                           onChange={(e) => setClassName(e.target.value)}
                           className="custom-input py-2"
@@ -57,18 +58,77 @@ const CategoryHead = () => {
                     </Row>
                     <Row className="mb-4 align-items-center">
                       <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">Enter Account Head</Form.Label>
+                        <Form.Label className="mb-0 ms-lg-5">Enter Item Name</Form.Label>
                       </Col>
                       <Col xs={12} lg={8}>
                         <Form.Control
-                          type="text"
-                          placeholder="Add Class"
+                          type="password"
+                          placeholder="Enter Your Supplier Name"
                           value={className}
                           onChange={(e) => setClassName(e.target.value)}
                           className="custom-input py-2"
                         />
                       </Col>
                     </Row>
+                    <Row className="mb-4 align-items-center">
+                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
+                        <Form.Label className="mb-0 ms-lg-5">Enter Purchase Rate</Form.Label>
+                      </Col>
+                      <Col xs={12} lg={8}>
+                        <Form.Control
+                          type="password"
+                          placeholder="Enter Your Address"
+                          value={className}
+                          onChange={(e) => setClassName(e.target.value)}
+                          className="custom-input py-2"
+                        />
+                      </Col>
+                    </Row>
+                    <Row className="mb-4 align-items-center">
+                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
+                        <Form.Label className="mb-0 ms-lg-5">Group</Form.Label>
+                      </Col>
+                      <Col xs={12} lg={8}>
+                        <Form.Control
+                          type="password"
+                          placeholder="Enter Your Address"
+                          value={className}
+                          onChange={(e) => setClassName(e.target.value)}
+                          className="custom-input py-2"
+                        />
+                      </Col>
+                    </Row>
+                    <Row className="mb-4 align-items-center">
+                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
+                        <Form.Label className="mb-0 ms-lg-5">Enter Unit</Form.Label>
+                      </Col>
+                      <Col xs={12} lg={8}>
+                        <Form.Control
+                          type="password"
+                          placeholder="Enter Your Address"
+                          value={className}
+                          onChange={(e) => setClassName(e.target.value)}
+                          className="custom-input py-2"
+                        />
+                      </Col>
+                    </Row>
+                    <Row className="mb-4 align-items-center">
+                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
+                        <Form.Label className="mb-0 ms-lg-5">GST Type</Form.Label>
+                      </Col>
+                      <Col xs={12} lg={8}>
+                        <Form.Control
+                          type="password"
+                          placeholder="Enter Your Address"
+                          value={className}
+                          onChange={(e) => setClassName(e.target.value)}
+                          className="custom-input py-2"
+                        />
+                      </Col>
+                    </Row>
+               
+                    
+                    
 
                     <Row>
                       <Col xs={12}>
@@ -78,7 +138,7 @@ const CategoryHead = () => {
                             type="submit"
                             className="custom-btn-clr px-4 py-2"
                           >
-                            Insert
+                            New
                           </Button>
                           <Button 
                           style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
@@ -123,4 +183,4 @@ const CategoryHead = () => {
   );
 };
 
-export default CategoryHead;
+export default ItemBookSetup;
