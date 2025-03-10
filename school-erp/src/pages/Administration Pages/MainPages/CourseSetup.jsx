@@ -10,6 +10,7 @@ import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } 
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import * as XLSX from "xlsx"
 
 // Add Course Modal Component
 const AddCourseModal = ({ isOpen, onClose, onConfirm }) => {
@@ -154,12 +155,25 @@ const CourseSetup = () => {
   const [newStandard, setNewStandard] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [courses, setCourses] = useState([])
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
   const [administrationId, setAdministrationId] = useState(null)
   const { user } = useAuthContext()
 
+  // Reset state and fetch data when user changes
   useEffect(() => {
+    const resetState = () => {
+      setCourses([])
+      setAdministrationId(null)
+      setSearchTerm("")
+      setSelectedCourse(null)
+      setNewStandard("")
+      setIsAddModalOpen(false)
+      setIsEditModalOpen(false)
+      setIsDeleteModalOpen(false)
+      setIsConfirmEditModalOpen(false)
+    }
+
+    resetState()
+
     const checkAuthAndFetchData = async () => {
       if (auth.currentUser) {
         console.log("User is authenticated:", auth.currentUser.uid)
@@ -179,31 +193,36 @@ const CourseSetup = () => {
     }
 
     checkAuthAndFetchData()
-  }, [])
+
+    return () => resetState()
+  }, [auth.currentUser?.uid]) // Re-run on user change
 
   useEffect(() => {
-    if (administrationId) {
+    if (administrationId && auth.currentUser) {
       fetchCourses()
     }
   }, [administrationId])
 
   const fetchAdministrationId = async () => {
+    if (!auth.currentUser) return
+
     try {
       const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
       const q = query(adminRef, limit(1))
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
-        // If no Administration document exists, create one
         const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
         setAdministrationId(newAdminRef.id)
+        console.log("New Administration ID created:", newAdminRef.id)
       } else {
-        // Use the ID of the first (and presumably only) Administration document
-        setAdministrationId(querySnapshot.docs[0].id)
+        const adminId = querySnapshot.docs[0].id
+        setAdministrationId(adminId)
+        console.log("Existing Administration ID fetched:", adminId)
       }
     } catch (error) {
       console.error("Error fetching/creating Administration ID:", error)
-      toast.error("Failed to initialize. Please try again.", {
+      toast.error("Failed to initialize administration data. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -216,15 +235,14 @@ const CourseSetup = () => {
   }
 
   const fetchCourses = async () => {
-    if (!administrationId) return
+    if (!administrationId || !auth.currentUser) return
 
-    setError(null)
     try {
       const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
       const querySnapshot = await getDocs(coursesRef)
       const coursesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log("Fetched courses:", coursesData)
-      setCourses(coursesData)
+      console.log("Fetched courses for user", auth.currentUser.uid, ":", coursesData)
+      setCourses(coursesData) // Update state with fetched data
     } catch (error) {
       console.error("Error fetching courses:", error)
       toast.error("Failed to fetch courses. Please try again.", {
@@ -236,12 +254,13 @@ const CourseSetup = () => {
         draggable: true,
         progress: undefined,
       })
+      setCourses([]) // Reset on error
     }
   }
 
   const handleAddCourse = async (standard) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -253,7 +272,19 @@ const CourseSetup = () => {
       return
     }
 
-    // Check for duplicate course name
+    if (!standard.trim()) {
+      toast.error("Course name cannot be empty.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     const isDuplicate = courses.some((course) => course.standard.toLowerCase() === standard.toLowerCase())
     if (isDuplicate) {
       toast.error("A course with this name already exists. Please choose a different name.", {
@@ -270,8 +301,13 @@ const CourseSetup = () => {
 
     try {
       const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
-      const docRef = await addDoc(coursesRef, { standard: standard })
-      console.log("Course added with ID:", docRef.id)
+      const docRef = await addDoc(coursesRef, { standard })
+      console.log("Course added with ID:", docRef.id, "for user:", auth.currentUser.uid)
+
+      // Immediately update UI
+      const newCourse = { id: docRef.id, standard }
+      setCourses((prevCourses) => [...prevCourses, newCourse])
+
       setIsAddModalOpen(false)
       toast.success("Course added successfully!", {
         position: "top-right",
@@ -283,6 +319,8 @@ const CourseSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data to ensure consistency
       await fetchCourses()
     } catch (error) {
       console.error("Error adding course:", error)
@@ -299,8 +337,8 @@ const CourseSetup = () => {
   }
 
   const handleEditCourse = async (courseId, newStandard) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -312,7 +350,19 @@ const CourseSetup = () => {
       return
     }
 
-    // Check for duplicate course name
+    if (!newStandard.trim()) {
+      toast.error("Course name cannot be empty.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     const isDuplicate = courses.some(
       (course) => course.id !== courseId && course.standard.toLowerCase() === newStandard.toLowerCase(),
     )
@@ -335,6 +385,19 @@ const CourseSetup = () => {
   }
 
   const confirmEditCourse = async () => {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     try {
       const courseRef = doc(
         db,
@@ -346,7 +409,15 @@ const CourseSetup = () => {
         selectedCourse.id,
       )
       await updateDoc(courseRef, { standard: newStandard })
-      console.log("Course updated:", selectedCourse.id)
+      console.log("Course updated:", selectedCourse.id, "for user:", auth.currentUser.uid)
+
+      // Immediately update UI
+      setCourses((prevCourses) =>
+        prevCourses.map((course) =>
+          course.id === selectedCourse.id ? { ...course, standard: newStandard } : course
+        )
+      )
+
       setIsConfirmEditModalOpen(false)
       setSelectedCourse(null)
       setNewStandard("")
@@ -360,6 +431,8 @@ const CourseSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data
       await fetchCourses()
     } catch (error) {
       console.error("Error updating course:", error)
@@ -376,8 +449,8 @@ const CourseSetup = () => {
   }
 
   const handleDeleteCourse = async (courseId) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -400,7 +473,11 @@ const CourseSetup = () => {
         courseId,
       )
       await deleteDoc(courseRef)
-      console.log("Course deleted:", courseId)
+      console.log("Course deleted:", courseId, "for user:", auth.currentUser.uid)
+
+      // Immediately update UI
+      setCourses((prevCourses) => prevCourses.filter((course) => course.id !== courseId))
+
       setIsDeleteModalOpen(false)
       setSelectedCourse(null)
       toast.success("Course deleted successfully!", {
@@ -412,6 +489,8 @@ const CourseSetup = () => {
         draggable: true,
         progress: undefined,
       })
+
+      // Fetch fresh data
       await fetchCourses()
     } catch (error) {
       console.error("Error deleting course:", error)
@@ -427,6 +506,99 @@ const CourseSetup = () => {
     }
   }
 
+  const handleImport = async (event) => {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    const file = event.target.files[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const data = new Uint8Array(e.target.result)
+      const workbook = XLSX.read(data, { type: "array" })
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const jsonData = XLSX.utils.sheet_to_json(sheet)
+
+      if (jsonData.length === 0) {
+        toast.error("No data found in the imported file.")
+        return
+      }
+
+      try {
+        const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
+        const newCourses = []
+        for (const row of jsonData) {
+          const standard = row["Course Name"] || row["standard"]
+          if (standard && standard.trim()) {
+            const isDuplicate = courses.some((course) => course.standard.toLowerCase() === standard.toLowerCase())
+            if (!isDuplicate) {
+              const docRef = await addDoc(coursesRef, { standard })
+              newCourses.push({ id: docRef.id, standard })
+              console.log("Imported course:", standard, "for user:", auth.currentUser.uid)
+            }
+          }
+        }
+
+        // Update UI
+        setCourses((prevCourses) => [...prevCourses, ...newCourses])
+
+        toast.success("Courses imported successfully!", {
+          style: { background: "#0B3D7B", color: "white" },
+        })
+
+        // Fetch fresh data
+        await fetchCourses()
+      } catch (error) {
+        console.error("Error importing courses:", error)
+        toast.error("Failed to import courses. Please try again.")
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
+  const handleExport = () => {
+    if (!administrationId || !auth.currentUser) {
+      toast.error("Administration not initialized or user not logged in. Please try again.", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    if (courses.length === 0) {
+      toast.error("No data available to export.")
+      return
+    }
+
+    const exportData = courses.map((course) => ({
+      "Course Name": course.standard,
+    }))
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Courses")
+    XLSX.writeFile(workbook, `Courses_Export_${auth.currentUser.uid}.xlsx`)
+    toast.success("Courses exported successfully!", {
+      style: { background: "#0B3D7B", color: "white" },
+    })
+  }
+
   const openEditModal = (course) => {
     setSelectedCourse(course)
     setIsEditModalOpen(true)
@@ -437,7 +609,9 @@ const CourseSetup = () => {
     setIsDeleteModalOpen(true)
   }
 
-  const filteredCourses = courses.filter((course) => course.standard.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredCourses = courses.filter((course) =>
+    course.standard && course.standard.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   return (
     <MainContentPage>
@@ -445,9 +619,9 @@ const CourseSetup = () => {
         {/* Breadcrumb Navigation */}
         <nav className="custom-breadcrumb py-1 py-lg-3">
           <Link to="/home">Home</Link>
-          <span className="separator">&gt;</span>
+          <span className="separator"></span>
           <span>Administration</span>
-          <span className="separator">&gt;</span>
+          <span className="separator"></span>
           <span className="current col-12">Standard/Course Setup</span>
         </nav>
         <Row>
@@ -456,11 +630,31 @@ const CourseSetup = () => {
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Create Standard/Course Name Setup</h2>
-                  <h6 className="m-0 d-lg-none">Create Standard/Course Name Setup</h6>
-                  <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
-                    + Add Course
-                  </Button>
+                  <div>
+                    <h2 className="m-0 d-none d-lg-block">Create Standard/Course Name Setup</h2>
+                    <h6 className="m-0 d-lg-none">Create Standard/Course Name Setup</h6>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleImport}
+                      style={{ display: "none" }}
+                      id="import-file"
+                    />
+                    <Button
+                      onClick={() => document.getElementById("import-file").click()}
+                      className="btn btn-light text-dark"
+                    >
+                      Import
+                    </Button>
+                    <Button onClick={handleExport} className="btn btn-light text-dark">
+                      Export
+                    </Button>
+                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                      + Add Course
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Content */}
@@ -484,27 +678,41 @@ const CourseSetup = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredCourses.map((course) => (
-                          <tr key={course.id}>
-                            <td>{course.standard}</td>
-                            <td>
-                              <Button
-                                variant="link"
-                                className="action-button edit-button me-2"
-                                onClick={() => openEditModal(course)}
-                              >
-                                <FaEdit />
-                              </Button>
-                              <Button
-                                variant="link"
-                                className="action-button delete-button"
-                                onClick={() => openDeleteModal(course)}
-                              >
-                                <FaTrash />
-                              </Button>
+                        {courses.length === 0 ? (
+                          <tr>
+                            <td colSpan="2" className="text-center">
+                              No data available
                             </td>
                           </tr>
-                        ))}
+                        ) : filteredCourses.length === 0 && searchTerm ? (
+                          <tr>
+                            <td colSpan="2" className="text-center">
+                              No matching courses found
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredCourses.map((course) => (
+                            <tr key={course.id}>
+                              <td>{course.standard}</td>
+                              <td>
+                                <Button
+                                  variant="link"
+                                  className="action-button edit-button me-2"
+                                  onClick={() => openEditModal(course)}
+                                >
+                                  <FaEdit />
+                                </Button>
+                                <Button
+                                  variant="link"
+                                  className="action-button delete-button"
+                                  onClick={() => openDeleteModal(course)}
+                                >
+                                  <FaTrash />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </Table>
                   </div>
@@ -720,6 +928,10 @@ const CourseSetup = () => {
           .Toastify__progress-bar {
             background-color: rgba(255, 255, 255, 0.7);
           }
+
+          .gap-2 {
+            gap: 0.5rem;
+          }
         `}
       </style>
     </MainContentPage>
@@ -727,4 +939,3 @@ const CourseSetup = () => {
 }
 
 export default CourseSetup
-
