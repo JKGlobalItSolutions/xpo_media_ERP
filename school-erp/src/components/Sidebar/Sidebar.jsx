@@ -196,7 +196,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
     },
     {
       id: 4,
-      title: "Book",
+      title: "Store",
       icon: admissionIcon,
       path: "/book",
       subItems: [

@@ -1,31 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import MainContentPage from "../../components/MainContent/MainContentPage";
-import { Form, Button, Row, Col, Container, Table } from 'react-bootstrap';
-import { db, auth } from "../../Firebase/config";
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
+"use client"
+
+import { useState, useEffect } from "react"
+import { Link, useLocation } from "react-router-dom"
+import MainContentPage from "../../components/MainContent/MainContentPage"
+import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { db, auth } from "../../Firebase/config"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import { FaEdit, FaTrash, FaEye } from "react-icons/fa"
 
 // Add Item Modal Component
 const AddItemModal = ({ isOpen, onClose, onConfirm, nextItemCode }) => {
-  const [itemName, setItemName] = useState("");
-  const [purchaseRate, setPurchaseRate] = useState("");
-  const [group, setGroup] = useState("");
-  const [unit, setUnit] = useState("");
-  const [gstType, setGstType] = useState("");
+  const [itemName, setItemName] = useState("")
+  const [purchaseRate, setPurchaseRate] = useState("")
+  const [group, setGroup] = useState("")
+  const [unit, setUnit] = useState("")
+  const [gstType, setGstType] = useState("")
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(nextItemCode, itemName, purchaseRate, group, unit, gstType);
-    setItemName("");
-    setPurchaseRate("");
-    setGroup("");
-    setUnit("");
-    setGstType("");
-  };
+    onConfirm(nextItemCode, itemName, purchaseRate, group, unit, gstType)
+    setItemName("")
+    setPurchaseRate("")
+    setGroup("")
+    setUnit("")
+    setGstType("")
+  }
 
   return (
     <div className="modal-overlay">
@@ -34,15 +36,8 @@ const AddItemModal = ({ isOpen, onClose, onConfirm, nextItemCode }) => {
         <div className="modal-body">
           <Form.Group className="mb-3">
             <Form.Label>Item Code</Form.Label>
-            <Form.Control
-              type="text"
-              value={nextItemCode}
-              readOnly
-              className="custom-input bg-light"
-            />
-            <Form.Text className="text-muted">
-              Item code is auto-generated
-            </Form.Text>
+            <Form.Control type="text" value={nextItemCode} readOnly className="custom-input bg-light" />
+            <Form.Text className="text-muted">Item code is auto-generated</Form.Text>
           </Form.Group>
           <Form.Control
             type="text"
@@ -90,32 +85,32 @@ const AddItemModal = ({ isOpen, onClose, onConfirm, nextItemCode }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Edit Item Modal Component
 const EditItemModal = ({ isOpen, onClose, onConfirm, item }) => {
-  const [itemName, setItemName] = useState(item?.itemName || "");
-  const [purchaseRate, setPurchaseRate] = useState(item?.purchaseRate || "");
-  const [group, setGroup] = useState(item?.group || "");
-  const [unit, setUnit] = useState(item?.unit || "");
-  const [gstType, setGstType] = useState(item?.gstType || "");
+  const [itemName, setItemName] = useState(item?.itemName || "")
+  const [purchaseRate, setPurchaseRate] = useState(item?.purchaseRate || "")
+  const [group, setGroup] = useState(item?.group || "")
+  const [unit, setUnit] = useState(item?.unit || "")
+  const [gstType, setGstType] = useState(item?.gstType || "")
 
   useEffect(() => {
     if (item) {
-      setItemName(item.itemName);
-      setPurchaseRate(item.purchaseRate);
-      setGroup(item.group);
-      setUnit(item.unit);
-      setGstType(item.gstType);
+      setItemName(item.itemName)
+      setPurchaseRate(item.purchaseRate)
+      setGroup(item.group)
+      setUnit(item.unit)
+      setGstType(item.gstType)
     }
-  }, [item]);
+  }, [item])
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(item.id, item.itemCode, itemName, purchaseRate, group, unit, gstType);
-  };
+    onConfirm(item.id, item.itemCode, itemName, purchaseRate, group, unit, gstType)
+  }
 
   return (
     <div className="modal-overlay">
@@ -124,15 +119,8 @@ const EditItemModal = ({ isOpen, onClose, onConfirm, item }) => {
         <div className="modal-body">
           <Form.Group className="mb-3">
             <Form.Label>Item Code</Form.Label>
-            <Form.Control
-              type="text"
-              value={item?.itemCode || ""}
-              readOnly
-              className="custom-input bg-light"
-            />
-            <Form.Text className="text-muted">
-              Item code cannot be changed
-            </Form.Text>
+            <Form.Control type="text" value={item?.itemCode || ""} readOnly className="custom-input bg-light" />
+            <Form.Text className="text-muted">Item code cannot be changed</Form.Text>
           </Form.Group>
           <Form.Control
             type="text"
@@ -180,12 +168,12 @@ const EditItemModal = ({ isOpen, onClose, onConfirm, item }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // View Item Modal Component
 const ViewItemModal = ({ isOpen, onClose, item }) => {
-  if (!isOpen || !item) return null;
+  if (!isOpen || !item) return null
 
   return (
     <div className="modal-overlay">
@@ -221,12 +209,12 @@ const ViewItemModal = ({ isOpen, onClose, item }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Delete Item Modal Component
 const DeleteItemModal = ({ isOpen, onClose, onConfirm, item }) => {
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="modal-overlay">
@@ -246,12 +234,12 @@ const DeleteItemModal = ({ isOpen, onClose, onConfirm, item }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Confirm Edit Modal Component
 const ConfirmEditModal = ({ isOpen, onClose, onConfirm, item, newItem }) => {
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="modal-overlay">
@@ -259,9 +247,15 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, item, newItem }) => {
         <h2 className="modal-title">Confirm Edit</h2>
         <div className="modal-body">
           <p>Are you sure you want to edit this item? This may affect related data.</p>
-          <p><strong>Item Code:</strong> {item?.itemCode}</p>
-          <p><strong>Current Item Name:</strong> {item?.itemName}</p>
-          <p><strong>New Item Name:</strong> {newItem?.itemName}</p>
+          <p>
+            <strong>Item Code:</strong> {item?.itemCode}
+          </p>
+          <p>
+            <strong>Current Item Name:</strong> {item?.itemName}
+          </p>
+          <p>
+            <strong>New Item Name:</strong> {newItem?.itemName}
+          </p>
         </div>
         <div className="modal-buttons">
           <Button className="modal-button confirm" onClick={onConfirm}>
@@ -273,202 +267,203 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, item, newItem }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 const ItemBookMaster = () => {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [newItemData, setNewItemData] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [items, setItems] = useState([]);
-  const [storeId, setStoreId] = useState(null);
-  const [nextItemCode, setNextItemCode] = useState("ITEM-1");
-  const location = useLocation();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState(null)
+  const [newItemData, setNewItemData] = useState(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [items, setItems] = useState([])
+  const [storeId, setStoreId] = useState(null)
+  const [nextItemCode, setNextItemCode] = useState("ITEM-1")
+  const location = useLocation()
 
   // Fetch or create Store ID
   useEffect(() => {
     const fetchStoreId = async () => {
       try {
-        const storeRef = collection(db, "Schools", auth.currentUser.uid, "Store");
-        const q = query(storeRef, limit(1));
-        const querySnapshot = await getDocs(q);
+        const storeRef = collection(db, "Schools", auth.currentUser.uid, "Store")
+        const q = query(storeRef, limit(1))
+        const querySnapshot = await getDocs(q)
 
         if (querySnapshot.empty) {
-          const newStoreRef = await addDoc(storeRef, { createdAt: new Date() });
-          setStoreId(newStoreRef.id);
+          const newStoreRef = await addDoc(storeRef, { createdAt: new Date() })
+          setStoreId(newStoreRef.id)
         } else {
-          setStoreId(querySnapshot.docs[0].id);
+          setStoreId(querySnapshot.docs[0].id)
         }
       } catch (error) {
-        console.error("Error fetching/creating Store ID:", error);
-        toast.error("Failed to initialize store. Please try again.");
+        console.error("Error fetching/creating Store ID:", error)
+        toast.error("Failed to initialize store. Please try again.")
       }
-    };
+    }
 
-    fetchStoreId();
-  }, []);
+    fetchStoreId()
+  }, [])
 
   useEffect(() => {
     if (storeId) {
-      fetchItems();
+      fetchItems()
     }
-  }, [storeId]);
+  }, [storeId])
 
   const fetchItems = async () => {
-    if (!storeId) return;
+    if (!storeId) return
 
     try {
-      const itemsRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "Item-Book-Master");
-      const querySnapshot = await getDocs(itemsRef);
-      const itemsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setItems(itemsData);
-      
+      const itemsRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "Item-Book-Master")
+      const querySnapshot = await getDocs(itemsRef)
+      const itemsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setItems(itemsData)
+
       // Generate next item code
-      generateNextItemCode(itemsData);
+      generateNextItemCode(itemsData)
     } catch (error) {
-      console.error("Error fetching items:", error);
-      toast.error("Failed to fetch items. Please try again.");
+      console.error("Error fetching items:", error)
+      toast.error("Failed to fetch items. Please try again.")
     }
-  };
+  }
 
   // Generate the next item code based on existing items
   const generateNextItemCode = (itemsData) => {
     if (!itemsData || itemsData.length === 0) {
-      setNextItemCode("ITEM-1");
-      return;
+      setNextItemCode("ITEM-1")
+      return
     }
 
     // Extract numbers from existing item codes
-    const itemNumbers = itemsData.map(item => {
-      const match = item.itemCode.match(/ITEM-(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    });
+    const itemNumbers = itemsData.map((item) => {
+      const match = item.itemCode.match(/ITEM-(\d+)/)
+      return match ? Number.parseInt(match[1], 10) : 0
+    })
 
     // Find the highest number and increment by 1
-    const nextNumber = Math.max(...itemNumbers) + 1;
-    setNextItemCode(`ITEM-${nextNumber}`);
-  };
+    const nextNumber = Math.max(...itemNumbers) + 1
+    setNextItemCode(`ITEM-${nextNumber}`)
+  }
 
   const handleAddItem = async (itemCode, itemName, purchaseRate, group, unit, gstType) => {
     if (!storeId) {
-      toast.error("Store not initialized. Please try again.");
-      return;
+      toast.error("Store not initialized. Please try again.")
+      return
     }
 
     if (!itemName) {
-      toast.error("Item Name is a required field.");
-      return;
+      toast.error("Item Name is a required field.")
+      return
     }
 
     try {
-      const itemsRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "Item-Book-Master");
-      await addDoc(itemsRef, { 
-        itemCode, 
-        itemName, 
-        purchaseRate, 
-        group, 
-        unit, 
-        gstType, 
-        createdAt: new Date() 
-      });
-      setIsAddModalOpen(false);
+      const itemsRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "Item-Book-Master")
+      await addDoc(itemsRef, {
+        itemCode,
+        itemName,
+        purchaseRate,
+        group,
+        unit,
+        gstType,
+        createdAt: new Date(),
+      })
+      setIsAddModalOpen(false)
       toast.success("Item added successfully!", {
         style: { background: "#0B3D7B", color: "white" },
-      });
-      await fetchItems();
+      })
+      await fetchItems()
     } catch (error) {
-      console.error("Error adding item:", error);
-      toast.error("Failed to add item. Please try again.");
+      console.error("Error adding item:", error)
+      toast.error("Failed to add item. Please try again.")
     }
-  };
+  }
 
   const handleEditItem = async (itemId, itemCode, itemName, purchaseRate, group, unit, gstType) => {
     if (!storeId) {
-      toast.error("Store not initialized. Please try again.");
-      return;
+      toast.error("Store not initialized. Please try again.")
+      return
     }
 
     if (!itemName) {
-      toast.error("Item Name is a required field.");
-      return;
+      toast.error("Item Name is a required field.")
+      return
     }
 
-    setIsEditModalOpen(false);
-    setIsConfirmEditModalOpen(true);
-    setNewItemData({ itemId, itemCode, itemName, purchaseRate, group, unit, gstType });
-  };
+    setIsEditModalOpen(false)
+    setIsConfirmEditModalOpen(true)
+    setNewItemData({ itemId, itemCode, itemName, purchaseRate, group, unit, gstType })
+  }
 
   const confirmEditItem = async () => {
     try {
-      const itemRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "Item-Book-Master", newItemData.itemId);
-      await updateDoc(itemRef, { 
-        itemName: newItemData.itemName, 
-        purchaseRate: newItemData.purchaseRate, 
-        group: newItemData.group, 
-        unit: newItemData.unit, 
+      const itemRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "Item-Book-Master", newItemData.itemId)
+      await updateDoc(itemRef, {
+        itemName: newItemData.itemName,
+        purchaseRate: newItemData.purchaseRate,
+        group: newItemData.group,
+        unit: newItemData.unit,
         gstType: newItemData.gstType,
-        updatedAt: new Date()
-      });
-      setIsConfirmEditModalOpen(false);
-      setSelectedItem(null);
-      setNewItemData(null);
+        updatedAt: new Date(),
+      })
+      setIsConfirmEditModalOpen(false)
+      setSelectedItem(null)
+      setNewItemData(null)
       toast.success("Item updated successfully!", {
         style: { background: "#0B3D7B", color: "white" },
-      });
-      await fetchItems();
+      })
+      await fetchItems()
     } catch (error) {
-      console.error("Error updating item:", error);
-      toast.error("Failed to update item. Please try again.");
+      console.error("Error updating item:", error)
+      toast.error("Failed to update item. Please try again.")
     }
-  };
+  }
 
   const handleDeleteItem = async (itemId) => {
     if (!storeId) {
-      toast.error("Store not initialized. Please try again.");
-      return;
+      toast.error("Store not initialized. Please try again.")
+      return
     }
 
     try {
-      const itemRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "Item-Book-Master", itemId);
-      await deleteDoc(itemRef);
-      setIsDeleteModalOpen(false);
-      setSelectedItem(null);
-      toast.success("Item deleted successfully!");
-      await fetchItems();
+      const itemRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "Item-Book-Master", itemId)
+      await deleteDoc(itemRef)
+      setIsDeleteModalOpen(false)
+      setSelectedItem(null)
+      toast.success("Item deleted successfully!")
+      await fetchItems()
     } catch (error) {
-      console.error("Error deleting item:", error);
-      toast.error("Failed to delete item. Please try again.");
+      console.error("Error deleting item:", error)
+      toast.error("Failed to delete item. Please try again.")
     }
-  };
+  }
 
   const openEditModal = (item) => {
-    setSelectedItem(item);
-    setIsEditModalOpen(true);
-  };
+    setSelectedItem(item)
+    setIsEditModalOpen(true)
+  }
 
   const openViewModal = (item) => {
-    setSelectedItem(item);
-    setIsViewModalOpen(true);
-  };
+    setSelectedItem(item)
+    setIsViewModalOpen(true)
+  }
 
   const openDeleteModal = (item) => {
-    setSelectedItem(item);
-    setIsDeleteModalOpen(true);
-  };
+    setSelectedItem(item)
+    setIsDeleteModalOpen(true)
+  }
 
   const handleReset = () => {
-    setSearchTerm("");
-  };
+    setSearchTerm("")
+  }
 
-  const filteredItems = items.filter((item) =>
-    item.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.itemName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredItems = items.filter(
+    (item) =>
+      item.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.itemName.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   return (
     <MainContentPage>
@@ -556,26 +551,6 @@ const ItemBookMaster = () => {
                       </tbody>
                     </Table>
                   </div>
-
-                  {/* Button Group */}
-                  <div className="button-group mt-4">
-                    <Button 
-                      style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
-                      type="button"
-                      className="custom-btn-clr px-4 py-2"
-                      onClick={() => setIsAddModalOpen(true)}
-                    >
-                      New
-                    </Button>
-                    <Button 
-                      variant="danger" 
-                      type="button"
-                      className="reset-btn px-4 py-2"
-                      onClick={handleReset}
-                    >
-                      Reset
-                    </Button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -593,8 +568,8 @@ const ItemBookMaster = () => {
       <EditItemModal
         isOpen={isEditModalOpen}
         onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedItem(null);
+          setIsEditModalOpen(false)
+          setSelectedItem(null)
         }}
         onConfirm={handleEditItem}
         item={selectedItem}
@@ -602,16 +577,16 @@ const ItemBookMaster = () => {
       <ViewItemModal
         isOpen={isViewModalOpen}
         onClose={() => {
-          setIsViewModalOpen(false);
-          setSelectedItem(null);
+          setIsViewModalOpen(false)
+          setSelectedItem(null)
         }}
         item={selectedItem}
       />
       <DeleteItemModal
         isOpen={isDeleteModalOpen}
         onClose={() => {
-          setIsDeleteModalOpen(false);
-          setSelectedItem(null);
+          setIsDeleteModalOpen(false)
+          setSelectedItem(null)
         }}
         onConfirm={handleDeleteItem}
         item={selectedItem}
@@ -619,9 +594,9 @@ const ItemBookMaster = () => {
       <ConfirmEditModal
         isOpen={isConfirmEditModalOpen}
         onClose={() => {
-          setIsConfirmEditModalOpen(false);
-          setSelectedItem(null);
-          setNewItemData(null);
+          setIsConfirmEditModalOpen(false)
+          setSelectedItem(null)
+          setNewItemData(null)
         }}
         onConfirm={confirmEditItem}
         item={selectedItem}
@@ -840,7 +815,8 @@ const ItemBookMaster = () => {
         `}
       </style>
     </MainContentPage>
-  );
-};
+  )
+}
 
-export default ItemBookMaster;
+export default ItemBookMaster
+

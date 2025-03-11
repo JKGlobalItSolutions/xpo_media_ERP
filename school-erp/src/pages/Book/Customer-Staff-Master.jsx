@@ -912,51 +912,6 @@ const CustomerStaffMaster = () => {
                       </tbody>
                     </Table>
                   </div>
-
-                  {/* Button Group */}
-                  <div className="button-group mt-4">
-                    <Button 
-                      style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
-                      type="button"
-                      className="custom-btn-clr px-4 py-2"
-                      onClick={() => setIsAddModalOpen(true)}
-                    >
-                      Add
-                    </Button>
-                    <Button 
-                      style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
-                      type="button"
-                      className="custom-btn-clr px-4 py-2"
-                      onClick={() => {
-                        if (selectedCustomerStaff) {
-                          openEditModal(selectedCustomerStaff);
-                        } else {
-                          toast.info("Please select a customer/staff to edit");
-                        }
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="danger" 
-                      type="button"
-                      className="reset-btn px-4 py-2"
-                      onClick={handleReset}
-                    >
-                      Reset
-                    </Button>
-                    <Button 
-                      variant="secondary" 
-                      type="button"
-                      className="cancel-btn px-4 py-2"
-                      onClick={() => {
-                        setSearchTerm("");
-                        setSelectedCustomerStaff(null);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
                 </div>
               </div>
             </div>

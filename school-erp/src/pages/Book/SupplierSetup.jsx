@@ -1,33 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import MainContentPage from "../../components/MainContent/MainContentPage";
-import { Form, Button, Row, Col, Container, Table } from 'react-bootstrap';
-import { db, auth } from "../../Firebase/config";
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
+"use client"
+
+import { useState, useEffect } from "react"
+import { Link, useLocation } from "react-router-dom"
+import MainContentPage from "../../components/MainContent/MainContentPage"
+import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { db, auth } from "../../Firebase/config"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import { FaEdit, FaTrash, FaEye } from "react-icons/fa"
 
 // Add Supplier Modal Component
 const AddSupplierModal = ({ isOpen, onClose, onConfirm, nextSupplierCode }) => {
-  const [supplierName, setSupplierName] = useState("");
-  const [address, setAddress] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [email, setEmail] = useState("");
-  const [contactPerson, setContactPerson] = useState("");
-  const [otherDetails, setOtherDetails] = useState("");
+  const [supplierName, setSupplierName] = useState("")
+  const [address, setAddress] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [email, setEmail] = useState("")
+  const [contactPerson, setContactPerson] = useState("")
+  const [otherDetails, setOtherDetails] = useState("")
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(nextSupplierCode, supplierName, address, phoneNumber, email, contactPerson, otherDetails);
-    setSupplierName("");
-    setAddress("");
-    setPhoneNumber("");
-    setEmail("");
-    setContactPerson("");
-    setOtherDetails("");
-  };
+    onConfirm(nextSupplierCode, supplierName, address, phoneNumber, email, contactPerson, otherDetails)
+    setSupplierName("")
+    setAddress("")
+    setPhoneNumber("")
+    setEmail("")
+    setContactPerson("")
+    setOtherDetails("")
+  }
 
   return (
     <div className="modal-overlay">
@@ -36,15 +38,8 @@ const AddSupplierModal = ({ isOpen, onClose, onConfirm, nextSupplierCode }) => {
         <div className="modal-body">
           <Form.Group className="mb-3">
             <Form.Label>Supplier Code</Form.Label>
-            <Form.Control
-              type="text"
-              value={nextSupplierCode}
-              readOnly
-              className="custom-input bg-light"
-            />
-            <Form.Text className="text-muted">
-              Supplier code is auto-generated
-            </Form.Text>
+            <Form.Control type="text" value={nextSupplierCode} readOnly className="custom-input bg-light" />
+            <Form.Text className="text-muted">Supplier code is auto-generated</Form.Text>
           </Form.Group>
           <Form.Control
             type="text"
@@ -99,34 +94,43 @@ const AddSupplierModal = ({ isOpen, onClose, onConfirm, nextSupplierCode }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Edit Supplier Modal Component
 const EditSupplierModal = ({ isOpen, onClose, onConfirm, supplier }) => {
-  const [supplierName, setSupplierName] = useState(supplier?.supplierName || "");
-  const [address, setAddress] = useState(supplier?.address || "");
-  const [phoneNumber, setPhoneNumber] = useState(supplier?.phoneNumber || "");
-  const [email, setEmail] = useState(supplier?.email || "");
-  const [contactPerson, setContactPerson] = useState(supplier?.contactPerson || "");
-  const [otherDetails, setOtherDetails] = useState(supplier?.otherDetails || "");
+  const [supplierName, setSupplierName] = useState(supplier?.supplierName || "")
+  const [address, setAddress] = useState(supplier?.address || "")
+  const [phoneNumber, setPhoneNumber] = useState(supplier?.phoneNumber || "")
+  const [email, setEmail] = useState(supplier?.email || "")
+  const [contactPerson, setContactPerson] = useState(supplier?.contactPerson || "")
+  const [otherDetails, setOtherDetails] = useState(supplier?.otherDetails || "")
 
   useEffect(() => {
     if (supplier) {
-      setSupplierName(supplier.supplierName);
-      setAddress(supplier.address);
-      setPhoneNumber(supplier.phoneNumber);
-      setEmail(supplier.email);
-      setContactPerson(supplier.contactPerson);
-      setOtherDetails(supplier.otherDetails);
+      setSupplierName(supplier.supplierName)
+      setAddress(supplier.address)
+      setPhoneNumber(supplier.phoneNumber)
+      setEmail(supplier.email)
+      setContactPerson(supplier.contactPerson)
+      setOtherDetails(supplier.otherDetails)
     }
-  }, [supplier]);
+  }, [supplier])
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(supplier.id, supplier.supplierCode, supplierName, address, phoneNumber, email, contactPerson, otherDetails);
-  };
+    onConfirm(
+      supplier.id,
+      supplier.supplierCode,
+      supplierName,
+      address,
+      phoneNumber,
+      email,
+      contactPerson,
+      otherDetails,
+    )
+  }
 
   return (
     <div className="modal-overlay">
@@ -135,15 +139,8 @@ const EditSupplierModal = ({ isOpen, onClose, onConfirm, supplier }) => {
         <div className="modal-body">
           <Form.Group className="mb-3">
             <Form.Label>Supplier Code</Form.Label>
-            <Form.Control
-              type="text"
-              value={supplier?.supplierCode || ""}
-              readOnly
-              className="custom-input bg-light"
-            />
-            <Form.Text className="text-muted">
-              Supplier code cannot be changed
-            </Form.Text>
+            <Form.Control type="text" value={supplier?.supplierCode || ""} readOnly className="custom-input bg-light" />
+            <Form.Text className="text-muted">Supplier code cannot be changed</Form.Text>
           </Form.Group>
           <Form.Control
             type="text"
@@ -198,12 +195,12 @@ const EditSupplierModal = ({ isOpen, onClose, onConfirm, supplier }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // View Supplier Modal Component
 const ViewSupplierModal = ({ isOpen, onClose, supplier }) => {
-  if (!isOpen || !supplier) return null;
+  if (!isOpen || !supplier) return null
 
   return (
     <div className="modal-overlay">
@@ -242,12 +239,12 @@ const ViewSupplierModal = ({ isOpen, onClose, supplier }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Delete Supplier Modal Component
 const DeleteSupplierModal = ({ isOpen, onClose, onConfirm, supplier }) => {
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="modal-overlay">
@@ -267,12 +264,12 @@ const DeleteSupplierModal = ({ isOpen, onClose, onConfirm, supplier }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Confirm Edit Modal Component
 const ConfirmEditModal = ({ isOpen, onClose, onConfirm, supplier, newSupplier }) => {
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="modal-overlay">
@@ -280,9 +277,15 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, supplier, newSupplier })
         <h2 className="modal-title">Confirm Edit</h2>
         <div className="modal-body">
           <p>Are you sure you want to edit this supplier? This may affect related data.</p>
-          <p><strong>Supplier Code:</strong> {supplier?.supplierCode}</p>
-          <p><strong>Current Supplier Name:</strong> {supplier?.supplierName}</p>
-          <p><strong>New Supplier Name:</strong> {newSupplier?.supplierName}</p>
+          <p>
+            <strong>Supplier Code:</strong> {supplier?.supplierCode}
+          </p>
+          <p>
+            <strong>Current Supplier Name:</strong> {supplier?.supplierName}
+          </p>
+          <p>
+            <strong>New Supplier Name:</strong> {newSupplier?.supplierName}
+          </p>
         </div>
         <div className="modal-buttons">
           <Button className="modal-button confirm" onClick={onConfirm}>
@@ -294,204 +297,239 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, supplier, newSupplier })
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 const SupplierSetup = () => {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [newSupplierData, setNewSupplierData] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [suppliers, setSuppliers] = useState([]);
-  const [storeId, setStoreId] = useState(null);
-  const [nextSupplierCode, setNextSupplierCode] = useState("SUP-1");
-  const location = useLocation();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
+  const [selectedSupplier, setSelectedSupplier] = useState(null)
+  const [newSupplierData, setNewSupplierData] = useState(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [suppliers, setSuppliers] = useState([])
+  const [storeId, setStoreId] = useState(null)
+  const [nextSupplierCode, setNextSupplierCode] = useState("SUP-1")
+  const location = useLocation()
 
   // Fetch or create Store ID
   useEffect(() => {
     const fetchStoreId = async () => {
       try {
-        const storeRef = collection(db, "Schools", auth.currentUser.uid, "Store");
-        const q = query(storeRef, limit(1));
-        const querySnapshot = await getDocs(q);
+        const storeRef = collection(db, "Schools", auth.currentUser.uid, "Store")
+        const q = query(storeRef, limit(1))
+        const querySnapshot = await getDocs(q)
 
         if (querySnapshot.empty) {
-          const newStoreRef = await addDoc(storeRef, { createdAt: new Date() });
-          setStoreId(newStoreRef.id);
+          const newStoreRef = await addDoc(storeRef, { createdAt: new Date() })
+          setStoreId(newStoreRef.id)
         } else {
-          setStoreId(querySnapshot.docs[0].id);
+          setStoreId(querySnapshot.docs[0].id)
         }
       } catch (error) {
-        console.error("Error fetching/creating Store ID:", error);
-        toast.error("Failed to initialize store. Please try again.");
+        console.error("Error fetching/creating Store ID:", error)
+        toast.error("Failed to initialize store. Please try again.")
       }
-    };
+    }
 
-    fetchStoreId();
-  }, []);
+    fetchStoreId()
+  }, [])
 
   useEffect(() => {
     if (storeId) {
-      fetchSuppliers();
+      fetchSuppliers()
     }
-  }, [storeId]);
+  }, [storeId])
 
   const fetchSuppliers = async () => {
-    if (!storeId) return;
+    if (!storeId) return
 
     try {
-      const suppliersRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "SupplierSetup");
-      const querySnapshot = await getDocs(suppliersRef);
-      const suppliersData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setSuppliers(suppliersData);
-      
+      const suppliersRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "SupplierSetup")
+      const querySnapshot = await getDocs(suppliersRef)
+      const suppliersData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setSuppliers(suppliersData)
+
       // Generate next supplier code
-      generateNextSupplierCode(suppliersData);
+      generateNextSupplierCode(suppliersData)
     } catch (error) {
-      console.error("Error fetching suppliers:", error);
-      toast.error("Failed to fetch suppliers. Please try again.");
+      console.error("Error fetching suppliers:", error)
+      toast.error("Failed to fetch suppliers. Please try again.")
     }
-  };
+  }
 
   // Generate the next supplier code based on existing suppliers
   const generateNextSupplierCode = (suppliersData) => {
     if (!suppliersData || suppliersData.length === 0) {
-      setNextSupplierCode("SUP-1");
-      return;
+      setNextSupplierCode("SUP-1")
+      return
     }
 
     // Extract numbers from existing supplier codes
-    const supplierNumbers = suppliersData.map(supplier => {
-      const match = supplier.supplierCode.match(/SUP-(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    });
+    const supplierNumbers = suppliersData.map((supplier) => {
+      const match = supplier.supplierCode.match(/SUP-(\d+)/)
+      return match ? Number.parseInt(match[1], 10) : 0
+    })
 
     // Find the highest number and increment by 1
-    const nextNumber = Math.max(...supplierNumbers) + 1;
-    setNextSupplierCode(`SUP-${nextNumber}`);
-  };
+    const nextNumber = Math.max(...supplierNumbers) + 1
+    setNextSupplierCode(`SUP-${nextNumber}`)
+  }
 
-  const handleAddSupplier = async (supplierCode, supplierName, address, phoneNumber, email, contactPerson, otherDetails) => {
+  const handleAddSupplier = async (
+    supplierCode,
+    supplierName,
+    address,
+    phoneNumber,
+    email,
+    contactPerson,
+    otherDetails,
+  ) => {
     if (!storeId) {
-      toast.error("Store not initialized. Please try again.");
-      return;
+      toast.error("Store not initialized. Please try again.")
+      return
     }
 
     if (!supplierName) {
-      toast.error("Supplier Name is a required field.");
-      return;
+      toast.error("Supplier Name is a required field.")
+      return
     }
 
     try {
-      const suppliersRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "SupplierSetup");
-      await addDoc(suppliersRef, { 
-        supplierCode, 
-        supplierName, 
-        address, 
-        phoneNumber, 
-        email, 
-        contactPerson, 
-        otherDetails, 
-        createdAt: new Date() 
-      });
-      setIsAddModalOpen(false);
+      const suppliersRef = collection(db, "Schools", auth.currentUser.uid, "Store", storeId, "SupplierSetup")
+      await addDoc(suppliersRef, {
+        supplierCode,
+        supplierName,
+        address,
+        phoneNumber,
+        email,
+        contactPerson,
+        otherDetails,
+        createdAt: new Date(),
+      })
+      setIsAddModalOpen(false)
       toast.success("Supplier added successfully!", {
         style: { background: "#0B3D7B", color: "white" },
-      });
-      await fetchSuppliers();
+      })
+      await fetchSuppliers()
     } catch (error) {
-      console.error("Error adding supplier:", error);
-      toast.error("Failed to add supplier. Please try again.");
+      console.error("Error adding supplier:", error)
+      toast.error("Failed to add supplier. Please try again.")
     }
-  };
+  }
 
-  const handleEditSupplier = async (supplierId, supplierCode, supplierName, address, phoneNumber, email, contactPerson, otherDetails) => {
+  const handleEditSupplier = async (
+    supplierId,
+    supplierCode,
+    supplierName,
+    address,
+    phoneNumber,
+    email,
+    contactPerson,
+    otherDetails,
+  ) => {
     if (!storeId) {
-      toast.error("Store not initialized. Please try again.");
-      return;
+      toast.error("Store not initialized. Please try again.")
+      return
     }
 
     if (!supplierName) {
-      toast.error("Supplier Name is a required field.");
-      return;
+      toast.error("Supplier Name is a required field.")
+      return
     }
 
-    setIsEditModalOpen(false);
-    setIsConfirmEditModalOpen(true);
-    setNewSupplierData({ supplierId, supplierCode, supplierName, address, phoneNumber, email, contactPerson, otherDetails });
-  };
+    setIsEditModalOpen(false)
+    setIsConfirmEditModalOpen(true)
+    setNewSupplierData({
+      supplierId,
+      supplierCode,
+      supplierName,
+      address,
+      phoneNumber,
+      email,
+      contactPerson,
+      otherDetails,
+    })
+  }
 
   const confirmEditSupplier = async () => {
     try {
-      const supplierRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "SupplierSetup", newSupplierData.supplierId);
-      await updateDoc(supplierRef, { 
-        supplierName: newSupplierData.supplierName, 
-        address: newSupplierData.address, 
-        phoneNumber: newSupplierData.phoneNumber, 
-        email: newSupplierData.email, 
-        contactPerson: newSupplierData.contactPerson, 
+      const supplierRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Store",
+        storeId,
+        "SupplierSetup",
+        newSupplierData.supplierId,
+      )
+      await updateDoc(supplierRef, {
+        supplierName: newSupplierData.supplierName,
+        address: newSupplierData.address,
+        phoneNumber: newSupplierData.phoneNumber,
+        email: newSupplierData.email,
+        contactPerson: newSupplierData.contactPerson,
         otherDetails: newSupplierData.otherDetails,
-        updatedAt: new Date()
-      });
-      setIsConfirmEditModalOpen(false);
-      setSelectedSupplier(null);
-      setNewSupplierData(null);
+        updatedAt: new Date(),
+      })
+      setIsConfirmEditModalOpen(false)
+      setSelectedSupplier(null)
+      setNewSupplierData(null)
       toast.success("Supplier updated successfully!", {
         style: { background: "#0B3D7B", color: "white" },
-      });
-      await fetchSuppliers();
+      })
+      await fetchSuppliers()
     } catch (error) {
-      console.error("Error updating supplier:", error);
-      toast.error("Failed to update supplier. Please try again.");
+      console.error("Error updating supplier:", error)
+      toast.error("Failed to update supplier. Please try again.")
     }
-  };
+  }
 
   const handleDeleteSupplier = async (supplierId) => {
     if (!storeId) {
-      toast.error("Store not initialized. Please try again.");
-      return;
+      toast.error("Store not initialized. Please try again.")
+      return
     }
 
     try {
-      const supplierRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "SupplierSetup", supplierId);
-      await deleteDoc(supplierRef);
-      setIsDeleteModalOpen(false);
-      setSelectedSupplier(null);
-      toast.success("Supplier deleted successfully!");
-      await fetchSuppliers();
+      const supplierRef = doc(db, "Schools", auth.currentUser.uid, "Store", storeId, "SupplierSetup", supplierId)
+      await deleteDoc(supplierRef)
+      setIsDeleteModalOpen(false)
+      setSelectedSupplier(null)
+      toast.success("Supplier deleted successfully!")
+      await fetchSuppliers()
     } catch (error) {
-      console.error("Error deleting supplier:", error);
-      toast.error("Failed to delete supplier. Please try again.");
+      console.error("Error deleting supplier:", error)
+      toast.error("Failed to delete supplier. Please try again.")
     }
-  };
+  }
 
   const openEditModal = (supplier) => {
-    setSelectedSupplier(supplier);
-    setIsEditModalOpen(true);
-  };
+    setSelectedSupplier(supplier)
+    setIsEditModalOpen(true)
+  }
 
   const openViewModal = (supplier) => {
-    setSelectedSupplier(supplier);
-    setIsViewModalOpen(true);
-  };
+    setSelectedSupplier(supplier)
+    setIsViewModalOpen(true)
+  }
 
   const openDeleteModal = (supplier) => {
-    setSelectedSupplier(supplier);
-    setIsDeleteModalOpen(true);
-  };
+    setSelectedSupplier(supplier)
+    setIsDeleteModalOpen(true)
+  }
 
   const handleReset = () => {
-    setSearchTerm("");
-  };
+    setSearchTerm("")
+  }
 
-  const filteredSuppliers = suppliers.filter((supplier) =>
-    supplier.supplierCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSuppliers = suppliers.filter(
+    (supplier) =>
+      supplier.supplierCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.supplierName.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   return (
     <MainContentPage>
@@ -577,51 +615,6 @@ const SupplierSetup = () => {
                       </tbody>
                     </Table>
                   </div>
-
-                  {/* Button Group */}
-                  <div className="button-group mt-4">
-                    <Button 
-                      style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
-                      type="button"
-                      className="custom-btn-clr px-4 py-2"
-                      onClick={() => setIsAddModalOpen(true)}
-                    >
-                      Insert
-                    </Button>
-                    <Button 
-                      style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
-                      type="button"
-                      className="custom-btn-clr px-4 py-2"
-                      onClick={() => {
-                        if (selectedSupplier) {
-                          openEditModal(selectedSupplier);
-                        } else {
-                          toast.info("Please select a supplier to edit");
-                        }
-                      }}
-                    >
-                      Save
-                    </Button>
-                    <Button 
-                      variant="danger" 
-                      type="button"
-                      className="reset-btn px-4 py-2"
-                      onClick={handleReset}
-                    >
-                      Reset
-                    </Button>
-                    <Button 
-                      variant="secondary" 
-                      type="button"
-                      className="cancel-btn px-4 py-2"
-                      onClick={() => {
-                        setSearchTerm("");
-                        setSelectedSupplier(null);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -639,8 +632,8 @@ const SupplierSetup = () => {
       <EditSupplierModal
         isOpen={isEditModalOpen}
         onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedSupplier(null);
+          setIsEditModalOpen(false)
+          setSelectedSupplier(null)
         }}
         onConfirm={handleEditSupplier}
         supplier={selectedSupplier}
@@ -648,16 +641,16 @@ const SupplierSetup = () => {
       <ViewSupplierModal
         isOpen={isViewModalOpen}
         onClose={() => {
-          setIsViewModalOpen(false);
-          setSelectedSupplier(null);
+          setIsViewModalOpen(false)
+          setSelectedSupplier(null)
         }}
         supplier={selectedSupplier}
       />
       <DeleteSupplierModal
         isOpen={isDeleteModalOpen}
         onClose={() => {
-          setIsDeleteModalOpen(false);
-          setSelectedSupplier(null);
+          setIsDeleteModalOpen(false)
+          setSelectedSupplier(null)
         }}
         onConfirm={handleDeleteSupplier}
         supplier={selectedSupplier}
@@ -665,9 +658,9 @@ const SupplierSetup = () => {
       <ConfirmEditModal
         isOpen={isConfirmEditModalOpen}
         onClose={() => {
-          setIsConfirmEditModalOpen(false);
-          setSelectedSupplier(null);
-          setNewSupplierData(null);
+          setIsConfirmEditModalOpen(false)
+          setSelectedSupplier(null)
+          setNewSupplierData(null)
         }}
         onConfirm={confirmEditSupplier}
         supplier={selectedSupplier}
@@ -886,7 +879,8 @@ const SupplierSetup = () => {
         `}
       </style>
     </MainContentPage>
-  );
-};
+  )
+}
 
-export default SupplierSetup;
+export default SupplierSetup
+
