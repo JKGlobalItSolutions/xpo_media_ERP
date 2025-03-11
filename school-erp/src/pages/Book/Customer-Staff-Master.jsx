@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import MainContentPage from "../../components/MainContent/MainContentPage";
-import { Form, Button, Row, Col, Container, Table } from 'react-bootstrap';
+import { Form, Button, Row, Col, Container, Table, Dropdown, InputGroup } from 'react-bootstrap';
 import { db, auth } from "../../Firebase/config";
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, limit, orderBy, where } from "firebase/firestore";
 import { ToastContainer, toast } from "react-toastify";
@@ -9,7 +9,8 @@ import "react-toastify/dist/ReactToastify.css";
 import { FaEdit, FaTrash, FaEye, FaSearch } from "react-icons/fa";
 
 // Add Customer/Staff Modal Component
-const AddCustomerStaffModal = ({ isOpen, onClose, onConfirm, nextCustomerStaffCode, states, districts }) => {
+const AddCustomerStaffModal = ({ isOpen, onClose, onConfirm, states, districts, staffList }) => {
+  const [customerStaffCode, setCustomerStaffCode] = useState("");
   const [customerStaffName, setCustomerStaffName] = useState("");
   const [numberStreetName, setNumberStreetName] = useState("");
   const [placePinCode, setPlacePinCode] = useState("");
@@ -20,6 +21,7 @@ const AddCustomerStaffModal = ({ isOpen, onClose, onConfirm, nextCustomerStaffCo
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
   const [contactPerson, setContactPerson] = useState("");
+  const [staffSearchTerm, setStaffSearchTerm] = useState("");
 
   if (!isOpen) return null;
 
@@ -35,9 +37,24 @@ const AddCustomerStaffModal = ({ isOpen, onClose, onConfirm, nextCustomerStaffCo
     setDistrict(name);
   };
 
+  const handleStaffSelect = (staff) => {
+    setCustomerStaffCode(staff.staffCode);
+    setCustomerStaffName(staff.name);
+    setNumberStreetName(staff.numberStreetName || "");
+    setPlacePinCode(staff.placePinCode || "");
+    setStateId(staff.stateId || "");
+    setState(staff.state || "");
+    setDistrictId(staff.districtId || "");
+    setDistrict(staff.district || "");
+    setPhoneNumber(staff.mobileNumber || "");
+    setEmail(staff.emailBankAcId || "");
+    setContactPerson(staff.familyHeadName || "");
+    setStaffSearchTerm("");
+  };
+
   const handleSubmit = () => {
     onConfirm(
-      nextCustomerStaffCode, 
+      customerStaffCode,
       customerStaffName, 
       numberStreetName, 
       placePinCode, 
@@ -49,6 +66,7 @@ const AddCustomerStaffModal = ({ isOpen, onClose, onConfirm, nextCustomerStaffCo
       email, 
       contactPerson
     );
+    setCustomerStaffCode("");
     setCustomerStaffName("");
     setNumberStreetName("");
     setPlacePinCode("");
@@ -61,6 +79,11 @@ const AddCustomerStaffModal = ({ isOpen, onClose, onConfirm, nextCustomerStaffCo
     setContactPerson("");
   };
 
+  const filteredStaff = staffList.filter(staff => 
+    staff.staffCode?.toLowerCase().includes(staffSearchTerm.toLowerCase()) || 
+    staff.name?.toLowerCase().includes(staffSearchTerm.toLowerCase())
+  );
+
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -68,15 +91,41 @@ const AddCustomerStaffModal = ({ isOpen, onClose, onConfirm, nextCustomerStaffCo
         <div className="modal-body">
           <Form.Group className="mb-3">
             <Form.Label>Customer/Staff Code</Form.Label>
-            <Form.Control
-              type="text"
-              value={nextCustomerStaffCode}
-              readOnly
-              className="custom-input bg-light"
-            />
-            <Form.Text className="text-muted">
-              Customer/Staff code is auto-generated
-            </Form.Text>
+            <Dropdown>
+              <Dropdown.Toggle as={CustomToggle} id="dropdown-staff-code">
+                <InputGroup>
+                  <Form.Control
+                    type="text"
+                    placeholder="Search staff code or name"
+                    value={staffSearchTerm}
+                    onChange={(e) => setStaffSearchTerm(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <InputGroup.Text>
+                    <FaSearch />
+                  </InputGroup.Text>
+                </InputGroup>
+              </Dropdown.Toggle>
+
+              <Dropdown.Menu className="staff-dropdown-menu">
+                {filteredStaff.length > 0 ? (
+                  filteredStaff.map((staff) => (
+                    <Dropdown.Item 
+                      key={staff.id} 
+                      onClick={() => handleStaffSelect(staff)}
+                      className="staff-dropdown-item"
+                    >
+                      <div className="d-flex justify-content-between">
+                        <span>{staff.staffCode}</span>
+                        <span>{staff.name}</span>
+                      </div>
+                    </Dropdown.Item>
+                  ))
+                ) : (
+                  <Dropdown.Item disabled>No staff found</Dropdown.Item>
+                )}
+              </Dropdown.Menu>
+            </Dropdown>
           </Form.Group>
           <Form.Control
             type="text"
@@ -158,6 +207,19 @@ const AddCustomerStaffModal = ({ isOpen, onClose, onConfirm, nextCustomerStaffCo
     </div>
   );
 };
+
+// Custom Dropdown Toggle to prevent closing on input click
+const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
+  <div
+    ref={ref}
+    onClick={(e) => {
+      e.preventDefault();
+      onClick(e);
+    }}
+  >
+    {children}
+  </div>
+));
 
 // Edit Customer/Staff Modal Component
 const EditCustomerStaffModal = ({ isOpen, onClose, onConfirm, customerStaff, states, districts }) => {
@@ -418,75 +480,12 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, customerStaff, newCustom
   );
 };
 
-// Search Staff Modal Component
-const SearchStaffModal = ({ isOpen, onClose, onSelect, staffList }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  
-  if (!isOpen) return null;
-
-  const filteredStaff = staffList.filter(staff => 
-    staff.staffCode?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    staff.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2 className="modal-title">Search Staff</h2>
-        <div className="modal-body">
-          <Form.Control
-            type="text"
-            placeholder="Search by Staff Code or Name"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="custom-input mb-3"
-          />
-          <div className="table-responsive" style={{ maxHeight: "400px", overflowY: "auto" }}>
-            <Table bordered hover>
-              <thead>
-                <tr>
-                  <th>Staff Code</th>
-                  <th>Name</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStaff.map((staff) => (
-                  <tr key={staff.id}>
-                    <td>{staff.staffCode}</td>
-                    <td>{staff.name}</td>
-                    <td>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => onSelect(staff)}
-                      >
-                        Select
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-        </div>
-        <div className="modal-buttons">
-          <Button className="modal-button cancel" onClick={onClose}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const CustomerStaffMaster = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false);
-  const [isSearchStaffModalOpen, setIsSearchStaffModalOpen] = useState(false);
   const [selectedCustomerStaff, setSelectedCustomerStaff] = useState(null);
   const [newCustomerStaffData, setNewCustomerStaffData] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -494,25 +493,9 @@ const CustomerStaffMaster = () => {
   const [staffList, setStaffList] = useState([]);
   const [storeId, setStoreId] = useState(null);
   const [administrationId, setAdministrationId] = useState(null);
-  const [nextCustomerStaffCode, setNextCustomerStaffCode] = useState("CS-1");
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   const location = useLocation();
-
-  // Form state for the main form
-  const [formData, setFormData] = useState({
-    customerStaffCode: "",
-    customerStaffName: "",
-    numberStreetName: "",
-    placePinCode: "",
-    stateId: "",
-    state: "",
-    districtId: "",
-    district: "",
-    phoneNumber: "",
-    email: "",
-    contactPerson: ""
-  });
 
   // Fetch or create Store ID
   useEffect(() => {
@@ -589,9 +572,6 @@ const CustomerStaffMaster = () => {
       const querySnapshot = await getDocs(customerStaffRef);
       const customerStaffData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setCustomerStaffList(customerStaffData);
-      
-      // Generate next customer/staff code
-      generateNextCustomerStaffCode(customerStaffData);
     } catch (error) {
       console.error("Error fetching customer/staff list:", error);
       toast.error("Failed to fetch customer/staff list. Please try again.");
@@ -661,26 +641,8 @@ const CustomerStaffMaster = () => {
     }
   };
 
-  // Generate the next customer/staff code based on existing entries
-  const generateNextCustomerStaffCode = (customerStaffData) => {
-    if (!customerStaffData || customerStaffData.length === 0) {
-      setNextCustomerStaffCode("CS-1");
-      return;
-    }
-
-    // Extract numbers from existing customer/staff codes
-    const customerStaffNumbers = customerStaffData.map(cs => {
-      const match = cs.customerStaffCode.match(/CS-(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    });
-
-    // Find the highest number and increment by 1
-    const nextNumber = Math.max(...customerStaffNumbers) + 1;
-    setNextCustomerStaffCode(`CS-${nextNumber}`);
-  };
-
   const handleAddCustomerStaff = async (
-    customerStaffCode, 
+    customerStaffCode,
     customerStaffName, 
     numberStreetName, 
     placePinCode, 
@@ -712,7 +674,7 @@ const CustomerStaffMaster = () => {
         "CustomerStaffMaster"
       );
       await addDoc(customerStaffRef, { 
-        customerStaffCode, 
+        customerStaffCode,
         customerStaffName, 
         numberStreetName, 
         placePinCode, 
@@ -730,7 +692,6 @@ const CustomerStaffMaster = () => {
         style: { background: "#0B3D7B", color: "white" },
       });
       await fetchCustomerStaffList();
-      resetForm();
     } catch (error) {
       console.error("Error adding customer/staff:", error);
       toast.error("Failed to add customer/staff. Please try again.");
@@ -810,7 +771,6 @@ const CustomerStaffMaster = () => {
         style: { background: "#0B3D7B", color: "white" },
       });
       await fetchCustomerStaffList();
-      resetForm();
     } catch (error) {
       console.error("Error updating customer/staff:", error);
       toast.error("Failed to update customer/staff. Please try again.");
@@ -838,33 +798,10 @@ const CustomerStaffMaster = () => {
       setSelectedCustomerStaff(null);
       toast.success("Customer/Staff deleted successfully!");
       await fetchCustomerStaffList();
-      resetForm();
     } catch (error) {
       console.error("Error deleting customer/staff:", error);
       toast.error("Failed to delete customer/staff. Please try again.");
     }
-  };
-
-  const handleStaffCodeSearch = () => {
-    setIsSearchStaffModalOpen(true);
-  };
-
-  const handleStaffSelect = (staff) => {
-    // Map staff data to customer/staff form
-    setFormData({
-      customerStaffCode: staff.staffCode,
-      customerStaffName: staff.name,
-      numberStreetName: staff.numberStreetName || "",
-      placePinCode: staff.placePinCode || "",
-      stateId: staff.stateId || "",
-      state: staff.state || "",
-      districtId: staff.districtId || "",
-      district: staff.district || "",
-      phoneNumber: staff.mobileNumber || "",
-      email: staff.emailBankAcId || "",
-      contactPerson: staff.familyHeadName || ""
-    });
-    setIsSearchStaffModalOpen(false);
   };
 
   const openEditModal = (customerStaff) => {
@@ -882,83 +819,7 @@ const CustomerStaffMaster = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  const handleSelectChange = (e) => {
-    const { name, value } = e.target;
-    const [id, displayValue] = value.split("|");
-    setFormData({
-      ...formData,
-      [`${name}Id`]: id,
-      [name]: displayValue
-    });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // Check if we're adding a new record or updating an existing one
-    if (selectedCustomerStaff) {
-      handleEditCustomerStaff(
-        selectedCustomerStaff.id,
-        formData.customerStaffCode,
-        formData.customerStaffName,
-        formData.numberStreetName,
-        formData.placePinCode,
-        formData.stateId,
-        formData.state,
-        formData.districtId,
-        formData.district,
-        formData.phoneNumber,
-        formData.email,
-        formData.contactPerson
-      );
-    } else {
-      handleAddCustomerStaff(
-        nextCustomerStaffCode,
-        formData.customerStaffName,
-        formData.numberStreetName,
-        formData.placePinCode,
-        formData.stateId,
-        formData.state,
-        formData.districtId,
-        formData.district,
-        formData.phoneNumber,
-        formData.email,
-        formData.contactPerson
-      );
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      customerStaffCode: "",
-      customerStaffName: "",
-      numberStreetName: "",
-      placePinCode: "",
-      stateId: "",
-      state: "",
-      districtId: "",
-      district: "",
-      phoneNumber: "",
-      email: "",
-      contactPerson: ""
-    });
-    setSelectedCustomerStaff(null);
-  };
-
-  const handleNew = () => {
-    resetForm();
-  };
-
-  const handleCancel = () => {
-    resetForm();
+  const handleReset = () => {
     setSearchTerm("");
   };
 
@@ -970,291 +831,131 @@ const CustomerStaffMaster = () => {
   return (
     <MainContentPage>
       <Container fluid className="px-0 px-lg-0">
+        {/* Breadcrumb Navigation */}
+        <nav className="custom-breadcrumb py-1 py-lg-3">
+          <Link to="/home">Home</Link>
+          <span className="separator">&gt;</span>
+          <span>Administration</span>
+          <span className="separator">&gt;</span>
+          <span className="current col-12">Customer / Staff Master</span>
+        </nav>
         <Row>
           <Col xs={12}>
             <div className="customer-staff-container">
-              {/* Breadcrumb Navigation */}
-              <nav className="custom-breadcrumb py-1 py-lg-3">
-                <Link to="/home">Home</Link>
-                <span className="separator">&gt;</span>
-                <span>Administration</span>
-                <span className="separator">&gt;</span>
-                <span className="current col-12">Customer / Staff Master</span>
-              </nav>
-
               <div className="form-card mt-3">
                 {/* Header */}
-                <div className="header p-3" style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                <div className="header p-3 d-flex justify-content-between align-items-center" style={{ backgroundColor: "#0B3D7B", color: "white" }}>
                   <h2 className="m-0 d-none d-lg-block">Customer / Staff Master</h2>
                   <h6 className="m-0 d-lg-none">Customer / Staff Master</h6>
+                  <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                    + Add Customer/Staff
+                  </Button>
                 </div>
 
-                {/* Form Content */}
+                {/* Content */}
                 <div className="content-wrapper p-4">
-                  <Form onSubmit={handleSubmit}>
-                    <Row className="mb-4 align-items-center">
-                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">Customer / Staff Code</Form.Label>
-                      </Col>
-                      <Col xs={12} lg={8} className="d-flex">
-                        <Form.Control
-                          type="text"
-                          name="customerStaffCode"
-                          placeholder="Enter Customer/Staff Code"
-                          value={formData.customerStaffCode}
-                          onChange={handleInputChange}
-                          className="custom-input py-2"
-                        />
-                        <Button 
-                          variant="outline-secondary" 
-                          className="ms-2" 
-                          onClick={handleStaffCodeSearch}
-                        >
-                          <FaSearch />
-                        </Button>
-                      </Col>
-                    </Row>
-                    <Row className="mb-4 align-items-center">
-                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">Customer / Staff Name</Form.Label>
-                      </Col>
-                      <Col xs={12} lg={8}>
-                        <Form.Control
-                          type="text"
-                          name="customerStaffName"
-                          placeholder="Enter Customer/Staff Name"
-                          value={formData.customerStaffName}
-                          onChange={handleInputChange}
-                          className="custom-input py-2"
-                          required
-                        />
-                      </Col>
-                    </Row>
-                    <Row className="mb-4 align-items-center">
-                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">Number & Street Name</Form.Label>
-                      </Col>
-                      <Col xs={12} lg={8}>
-                        <Form.Control
-                          type="text"
-                          name="numberStreetName"
-                          placeholder="Enter street address"
-                          value={formData.numberStreetName}
-                          onChange={handleInputChange}
-                          className="custom-input py-2"
-                        />
-                      </Col>
-                    </Row>
-                    <Row className="mb-4 align-items-center">
-                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">Place/Pin Code</Form.Label>
-                      </Col>
-                      <Col xs={12} lg={8}>
-                        <Form.Control
-                          type="text"
-                          name="placePinCode"
-                          placeholder="Enter place and pin code"
-                          value={formData.placePinCode}
-                          onChange={handleInputChange}
-                          className="custom-input py-2"
-                        />
-                      </Col>
-                    </Row>
-                    <Row className="mb-4 align-items-center">
-                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">State</Form.Label>
-                      </Col>
-                      <Col xs={12} lg={8}>
-                        <Form.Select
-                          name="state"
-                          value={formData.stateId && formData.state ? `${formData.stateId}|${formData.state}` : ""}
-                          onChange={handleSelectChange}
-                          className="custom-input py-2"
-                        >
-                          <option value="">Select State</option>
-                          {states.map((stateItem) => (
-                            <option key={stateItem.id} value={`${stateItem.id}|${stateItem.state}`}>
-                              {stateItem.state}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </Col>
-                    </Row>
-                    <Row className="mb-4 align-items-center">
-                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">District</Form.Label>
-                      </Col>
-                      <Col xs={12} lg={8}>
-                        <Form.Select
-                          name="district"
-                          value={formData.districtId && formData.district ? `${formData.districtId}|${formData.district}` : ""}
-                          onChange={handleSelectChange}
-                          className="custom-input py-2"
-                        >
-                          <option value="">Select District</option>
-                          {districts.map((districtItem) => (
-                            <option key={districtItem.id} value={`${districtItem.id}|${districtItem.district}`}>
-                              {districtItem.district}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </Col>
-                    </Row>
-                    <Row className="mb-4 align-items-center">
-                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">Phone Number</Form.Label>
-                      </Col>
-                      <Col xs={12} lg={8}>
-                        <Form.Control
-                          type="text"
-                          name="phoneNumber"
-                          placeholder="Enter Phone Number"
-                          value={formData.phoneNumber}
-                          onChange={handleInputChange}
-                          className="custom-input py-2"
-                        />
-                      </Col>
-                    </Row>
-                    <Row className="mb-4 align-items-center">
-                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">E-Mail</Form.Label>
-                      </Col>
-                      <Col xs={12} lg={8}>
-                        <Form.Control
-                          type="email"
-                          name="email"
-                          placeholder="Enter E-Mail"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          className="custom-input py-2"
-                        />
-                      </Col>
-                    </Row>
-                    <Row className="mb-4 align-items-center">
-                      <Col xs={12} lg={4} className="label-col mb-2 mb-lg-0">
-                        <Form.Label className="mb-0 ms-lg-5">Contact Person</Form.Label>
-                      </Col>
-                      <Col xs={12} lg={8}>
-                        <Form.Control
-                          type="text"
-                          name="contactPerson"
-                          placeholder="Enter Contact Person"
-                          value={formData.contactPerson}
-                          onChange={handleInputChange}
-                          className="custom-input py-2"
-                        />
-                      </Col>
-                    </Row>
-
-                    <Row>
-                      <Col xs={12}>
-                        <div className="button-group mt-4">
-                          <Button 
-                            style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
-                            type="button"
-                            className="custom-btn-clr px-4 py-2"
-                            onClick={handleNew}
-                          >
-                            New
-                          </Button>
-                          <Button 
-                            style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
-                            type="submit"
-                            className="custom-btn-clr px-4 py-2"
-                          >
-                            Save
-                          </Button>
-                          <Button 
-                            style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
-                            type="button"
-                            className="custom-btn-clr px-4 py-2"
-                            onClick={() => setIsAddModalOpen(true)}
-                          >
-                            View
-                          </Button>
-                          <Button 
-                            variant="danger" 
-                            type="button"
-                            className="reset-btn px-4 py-2"
-                            onClick={() => {
-                              if (selectedCustomerStaff) {
-                                openDeleteModal(selectedCustomerStaff);
-                              } else {
-                                toast.info("Please select a customer/staff to delete");
-                              }
-                            }}
-                          >
-                            Delete
-                          </Button>
-                          <Button 
-                            variant="secondary" 
-                            type="button"
-                            className="cancel-btn px-4 py-2"
-                            onClick={handleCancel}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </Col>
-                    </Row>
-                  </Form>
+                  {/* Search Bar */}
+                  <Form.Control
+                    type="text"
+                    placeholder="Search by Customer/Staff Code or Name"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="custom-search mb-3"
+                  />
 
                   {/* Customer/Staff Table */}
-                  <div className="mt-5">
-                    <h4>Customer/Staff List</h4>
-                    <Form.Control
-                      type="text"
-                      placeholder="Search by Code or Name"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="custom-search mb-3"
-                    />
-                    <div className="table-responsive">
-                      <Table bordered hover>
-                        <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                          <tr>
-                            <th>Code</th>
-                            <th>Name</th>
-                            <th>Phone Number</th>
-                            <th>Email</th>
-                            <th>Action</th>
+                  <div className="table-responsive">
+                    <Table bordered hover>
+                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                        <tr>
+                          <th>Code</th>
+                          <th>Name</th>
+                          <th>Phone Number</th>
+                          <th>Email</th>
+                          <th>Contact Person</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredCustomerStaff.map((cs) => (
+                          <tr key={cs.id}>
+                            <td>{cs.customerStaffCode}</td>
+                            <td>{cs.customerStaffName}</td>
+                            <td>{cs.phoneNumber}</td>
+                            <td>{cs.email}</td>
+                            <td>{cs.contactPerson}</td>
+                            <td>
+                              <Button
+                                variant="link"
+                                className="action-button view-button me-2"
+                                onClick={() => openViewModal(cs)}
+                              >
+                                <FaEye />
+                              </Button>
+                              <Button
+                                variant="link"
+                                className="action-button edit-button me-2"
+                                onClick={() => openEditModal(cs)}
+                              >
+                                <FaEdit />
+                              </Button>
+                              <Button
+                                variant="link"
+                                className="action-button delete-button"
+                                onClick={() => openDeleteModal(cs)}
+                              >
+                                <FaTrash />
+                              </Button>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {filteredCustomerStaff.map((cs) => (
-                            <tr key={cs.id}>
-                              <td>{cs.customerStaffCode}</td>
-                              <td>{cs.customerStaffName}</td>
-                              <td>{cs.phoneNumber}</td>
-                              <td>{cs.email}</td>
-                              <td>
-                                <Button
-                                  variant="link"
-                                  className="action-button view-button me-2"
-                                  onClick={() => openViewModal(cs)}
-                                >
-                                  <FaEye />
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  className="action-button edit-button me-2"
-                                  onClick={() => openEditModal(cs)}
-                                >
-                                  <FaEdit />
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  className="action-button delete-button"
-                                  onClick={() => openDeleteModal(cs)}
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
+
+                  {/* Button Group */}
+                  <div className="button-group mt-4">
+                    <Button 
+                      style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
+                      type="button"
+                      className="custom-btn-clr px-4 py-2"
+                      onClick={() => setIsAddModalOpen(true)}
+                    >
+                      Add
+                    </Button>
+                    <Button 
+                      style={{backgroundColor:"#0B3D7B",borderColor:"#0B3D7B"}}
+                      type="button"
+                      className="custom-btn-clr px-4 py-2"
+                      onClick={() => {
+                        if (selectedCustomerStaff) {
+                          openEditModal(selectedCustomerStaff);
+                        } else {
+                          toast.info("Please select a customer/staff to edit");
+                        }
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button 
+                      variant="danger" 
+                      type="button"
+                      className="reset-btn px-4 py-2"
+                      onClick={handleReset}
+                    >
+                      Reset
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      type="button"
+                      className="cancel-btn px-4 py-2"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setSelectedCustomerStaff(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1268,9 +969,9 @@ const CustomerStaffMaster = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onConfirm={handleAddCustomerStaff}
-        nextCustomerStaffCode={nextCustomerStaffCode}
         states={states}
         districts={districts}
+        staffList={staffList}
       />
       <EditCustomerStaffModal
         isOpen={isEditModalOpen}
@@ -1310,12 +1011,6 @@ const CustomerStaffMaster = () => {
         onConfirm={confirmEditCustomerStaff}
         customerStaff={selectedCustomerStaff}
         newCustomerStaff={newCustomerStaffData}
-      />
-      <SearchStaffModal
-        isOpen={isSearchStaffModalOpen}
-        onClose={() => setIsSearchStaffModalOpen(false)}
-        onSelect={handleStaffSelect}
-        staffList={staffList}
       />
 
       {/* Toastify Container */}
@@ -1504,6 +1199,28 @@ const CustomerStaffMaster = () => {
             padding: 0.5rem;
             border: 1px solid #ced4da;
             border-radius: 4px;
+          }
+
+          /* Staff Code Dropdown Styles */
+          .staff-code-dropdown {
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 10px;
+          }
+
+          .staff-dropdown-menu {
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+          }
+
+          .staff-dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+          }
+
+          .staff-dropdown-item:hover {
+            background-color: #f8f9fa;
           }
 
           /* Toastify custom styles */
