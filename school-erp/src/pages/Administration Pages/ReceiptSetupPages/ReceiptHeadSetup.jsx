@@ -480,15 +480,16 @@ const ReceiptHeadSetup = () => {
     <MainContentPage>
       <Container fluid className="px-0 px-lg-0">
         {/* Breadcrumb Navigation */}
-        <nav className="custom-breadcrumb py-1 py-lg-3">
-          <Link to="/home">Home</Link>
-          <span className="separator"> &gt; </span>
-          <span>Administration</span>
-          <span className="separator"> &gt; </span>
-          <Link to="/admin/receipt-setup">Receipt Setup</Link>
-          <span className="separator"> &gt; </span>
-          <span className="current">Receipt Head Setup</span>
-        </nav>
+        <nav className="custom-breadcrumb d-flex align-items-center py-1 py-lg-3">
+  <Link to="/home" className="text-decoration-none text-primary">Home</Link>
+  <span className="mx-2">&gt;</span>
+  <span>Administration</span>
+  <span className="mx-2">&gt;</span>
+  <Link to="/admin/receipt-setup" className="text-decoration-none text-primary">Receipt Setup</Link>
+  <span className="mx-2">&gt;</span>
+  <span className="fw-bold">Receipt Head Setup</span>
+</nav>
+
         <Row>
           <Col xs={12}>
             <div className="course-setup-container">
