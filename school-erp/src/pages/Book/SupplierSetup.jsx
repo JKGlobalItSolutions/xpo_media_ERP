@@ -17,17 +17,19 @@ const AddSupplierModal = ({ isOpen, onClose, onConfirm, nextSupplierCode }) => {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [email, setEmail] = useState("")
   const [contactPerson, setContactPerson] = useState("")
+  const [gst, setGst] = useState("")
   const [otherDetails, setOtherDetails] = useState("")
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(nextSupplierCode, supplierName, address, phoneNumber, email, contactPerson, otherDetails)
+    onConfirm(nextSupplierCode, supplierName, address, phoneNumber, email, contactPerson, gst, otherDetails)
     setSupplierName("")
     setAddress("")
     setPhoneNumber("")
     setEmail("")
     setContactPerson("")
+    setGst("")
     setOtherDetails("")
   }
 
@@ -78,6 +80,13 @@ const AddSupplierModal = ({ isOpen, onClose, onConfirm, nextSupplierCode }) => {
           />
           <Form.Control
             type="text"
+            placeholder="Enter GST Number"
+            value={gst}
+            onChange={(e) => setGst(e.target.value)}
+            className="custom-input mb-3"
+          />
+          <Form.Control
+            type="text"
             placeholder="Enter Other Details"
             value={otherDetails}
             onChange={(e) => setOtherDetails(e.target.value)}
@@ -104,6 +113,7 @@ const EditSupplierModal = ({ isOpen, onClose, onConfirm, supplier }) => {
   const [phoneNumber, setPhoneNumber] = useState(supplier?.phoneNumber || "")
   const [email, setEmail] = useState(supplier?.email || "")
   const [contactPerson, setContactPerson] = useState(supplier?.contactPerson || "")
+  const [gst, setGst] = useState(supplier?.gst || "")
   const [otherDetails, setOtherDetails] = useState(supplier?.otherDetails || "")
 
   useEffect(() => {
@@ -113,6 +123,7 @@ const EditSupplierModal = ({ isOpen, onClose, onConfirm, supplier }) => {
       setPhoneNumber(supplier.phoneNumber)
       setEmail(supplier.email)
       setContactPerson(supplier.contactPerson)
+      setGst(supplier.gst || "")
       setOtherDetails(supplier.otherDetails)
     }
   }, [supplier])
@@ -128,6 +139,7 @@ const EditSupplierModal = ({ isOpen, onClose, onConfirm, supplier }) => {
       phoneNumber,
       email,
       contactPerson,
+      gst,
       otherDetails,
     )
   }
@@ -179,6 +191,13 @@ const EditSupplierModal = ({ isOpen, onClose, onConfirm, supplier }) => {
           />
           <Form.Control
             type="text"
+            placeholder="Enter GST Number"
+            value={gst}
+            onChange={(e) => setGst(e.target.value)}
+            className="custom-input mb-3"
+          />
+          <Form.Control
+            type="text"
             placeholder="Enter Other Details"
             value={otherDetails}
             onChange={(e) => setOtherDetails(e.target.value)}
@@ -224,6 +243,9 @@ const ViewSupplierModal = ({ isOpen, onClose, supplier }) => {
           </div>
           <div className="supplier-detail">
             <strong>Contact Person:</strong> {supplier.contactPerson}
+          </div>
+          <div className="supplier-detail">
+            <strong>GST Number:</strong> {supplier.gst || "N/A"}
           </div>
           <div className="supplier-detail">
             <strong>Other Details:</strong> {supplier.otherDetails}
@@ -385,6 +407,7 @@ const SupplierSetup = () => {
     phoneNumber,
     email,
     contactPerson,
+    gst,
     otherDetails,
   ) => {
     if (!storeId) {
@@ -406,6 +429,7 @@ const SupplierSetup = () => {
         phoneNumber,
         email,
         contactPerson,
+        gst,
         otherDetails,
         createdAt: new Date(),
       })
@@ -428,6 +452,7 @@ const SupplierSetup = () => {
     phoneNumber,
     email,
     contactPerson,
+    gst,
     otherDetails,
   ) => {
     if (!storeId) {
@@ -450,6 +475,7 @@ const SupplierSetup = () => {
       phoneNumber,
       email,
       contactPerson,
+      gst,
       otherDetails,
     })
   }
@@ -471,6 +497,7 @@ const SupplierSetup = () => {
         phoneNumber: newSupplierData.phoneNumber,
         email: newSupplierData.email,
         contactPerson: newSupplierData.contactPerson,
+        gst: newSupplierData.gst,
         otherDetails: newSupplierData.otherDetails,
         updatedAt: new Date(),
       })
@@ -576,6 +603,7 @@ const SupplierSetup = () => {
                           <th>Phone Number</th>
                           <th>Email</th>
                           <th>Contact Person</th>
+                          <th>GST Number</th>
                           <th>Action</th>
                         </tr>
                       </thead>
@@ -587,6 +615,7 @@ const SupplierSetup = () => {
                             <td>{supplier.phoneNumber}</td>
                             <td>{supplier.email}</td>
                             <td>{supplier.contactPerson}</td>
+                            <td>{supplier.gst || "N/A"}</td>
                             <td>
                               <Button
                                 variant="link"
@@ -883,4 +912,3 @@ const SupplierSetup = () => {
 }
 
 export default SupplierSetup
-
