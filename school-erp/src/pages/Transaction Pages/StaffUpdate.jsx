@@ -218,7 +218,7 @@ const StaffUpdate = () => {
           {/* New Phone */}
           <div className="col-md-6">
             <div className="form-group">
-              <label className="form-label">New Phone</label>
+              <label className="form-label">Update Phone Number</label>
               <input
                 className="form-control"
                 value={formData.newPhone}
