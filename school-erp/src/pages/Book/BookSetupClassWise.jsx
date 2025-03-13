@@ -490,7 +490,7 @@ const BookSetupClassWise = () => {
         <Row>
           <Col xs={12}>
             <div className="course-setup-container">
-              <nav className="custom-breadcrumb py-1 py-lg-3">
+              <nav className="d-flex custom-breadcrumb py-1 py-lg-3">
                 <Link to="/home">Home</Link>
                 <span className="separator">&gt;</span>
                 <div to="/store">Store</div>

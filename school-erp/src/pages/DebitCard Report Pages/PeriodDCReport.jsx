@@ -21,7 +21,7 @@ const PeriodDCReport = () => {
       <div className="container-fluid p-0">
         {/* Breadcrumb */}
         <div className="mb-4">
-          <nav className="custom-breadcrumb py-1 py-lg-3">
+          <nav className="d-flex custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
             <div to="/library">Debit / Credit Card Report

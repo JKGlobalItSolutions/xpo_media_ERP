@@ -12,7 +12,7 @@ const ConsolidatedStrength = () => {
         {/* Breadcrumb */}
         <div className="mb-4">
           <h2 className="mb-2">Promotion Higher</h2>
-          <nav className="custom-breadcrumb py-1 py-lg-3">
+          <nav className="d-flex custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
             <div to="/admission">Debit/Credit Report</div>
