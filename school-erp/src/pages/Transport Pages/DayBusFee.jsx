@@ -138,14 +138,16 @@ const DayCollectionReport = () => {
 
     setLoading(true)
     try {
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", adminId, "BusFeeLog")
+      // Changed from BusFeeLog to BusBillEntries
+      const billEntriesRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", adminId, "BusBillEntries")
 
       const startDate = new Date(reportDate)
       startDate.setHours(0, 0, 0, 0)
       const endDate = new Date(reportDate)
       endDate.setHours(23, 59, 59, 999)
 
-      const q = query(feeLogRef, where("billDate", ">=", startDate), where("billDate", "<=", endDate))
+      // Query using timestamp field instead of billDate
+      const q = query(billEntriesRef, where("timestamp", ">=", startDate), where("timestamp", "<=", endDate))
 
       const snapshot = await getDocs(q)
       const rawCollections = []
@@ -156,9 +158,9 @@ const DayCollectionReport = () => {
           billNumber: data.billNumber,
           admissionNumber: data.admissionNumber,
           studentName: data.studentName,
-          standard: data.standard,
+          standard: data.course, // Changed from standard to course to match BusBillEntries schema
           section: data.section,
-          description: data.feePayments?.map((fee) => fee.feeHead).join(", ") || "",
+          description: data.feeDetails?.map((fee) => fee.feeHead).join(", ") || "",
           amount: Number.parseFloat(data.totalPaidAmount) || 0,
           concession: Number.parseFloat(data.totalConcessionAmount) || 0,
         })

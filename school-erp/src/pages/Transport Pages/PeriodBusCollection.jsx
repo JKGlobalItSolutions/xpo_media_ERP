@@ -77,7 +77,8 @@ const PeriodicalCollectionReport = () => {
 
   const processCollectionData = (rawData) => {
     const groupedData = rawData.reduce((acc, item) => {
-      const date = item.billDate.toDate().toLocaleDateString()
+      // Use timestamp instead of billDate
+      const date = item.timestamp.toDate().toLocaleDateString()
       if (!acc[date]) {
         acc[date] = []
       }
@@ -152,14 +153,16 @@ const PeriodicalCollectionReport = () => {
 
     setLoading(true)
     try {
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", adminId, "BusFeeLog")
+      // Changed from BusFeeLog to BusBillEntries
+      const billEntriesRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", adminId, "BusBillEntries")
 
       const start = new Date(startDate)
       start.setHours(0, 0, 0, 0)
       const end = new Date(endDate)
       end.setHours(23, 59, 59, 999)
 
-      const q = query(feeLogRef, where("billDate", ">=", start), where("billDate", "<=", end))
+      // Query using timestamp field instead of billDate
+      const q = query(billEntriesRef, where("timestamp", ">=", start), where("timestamp", "<=", end))
 
       const snapshot = await getDocs(q)
       const rawCollections = []
@@ -170,12 +173,12 @@ const PeriodicalCollectionReport = () => {
           billNumber: data.billNumber,
           admissionNumber: data.admissionNumber,
           studentName: data.studentName,
-          standard: data.standard,
+          standard: data.course, // Changed from standard to course to match BusBillEntries schema
           section: data.section,
-          description: data.feePayments?.map((fee) => fee.feeHead).join(", ") || "",
+          description: data.feeDetails?.map((fee) => fee.feeHead).join(", ") || "",
           amount: Number.parseFloat(data.totalPaidAmount) || 0,
           concession: Number.parseFloat(data.totalConcessionAmount) || 0,
-          billDate: data.billDate,
+          timestamp: data.timestamp, // Use timestamp instead of billDate
         })
       })
 
