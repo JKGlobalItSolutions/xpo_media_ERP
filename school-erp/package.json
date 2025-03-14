@@ -16,6 +16,7 @@
     "cra-template": "^1.2.0",
     "crypto-js": "^4.2.0",
     "firebase": "^11.2.0",
+    "html2canvas": "^1.4.1",
     "jsbarcode": "^3.11.6",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",

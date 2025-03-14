@@ -1,851 +1,975 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Link } from "react-router-dom"
+import MainContentPage from "../../components/MainContent/MainContentPage"
 import { db, auth } from "../../Firebase/config"
-import { collection, getDocs, query, where, limit, doc, getDoc } from "firebase/firestore"
+import { collection, getDocs, query, limit, where } from "firebase/firestore"
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
-import MainContentPage from "../../components/MainContent/MainContentPage"
-import TenthCertificate from "./TC-View-Wise/TenthCertificate"
-import TwelfthCertificate from "./TC-View-Wise/TwelfthCertificate"
-import CBSECertificate1 from "./TC-View-Wise/CBSECertificate1"
-import CBSECertificate2 from "./TC-View-Wise/CBSECertificate2"
 
 const TransferCertificate = () => {
+  const [currentPage, setCurrentPage] = useState(1)
+  const certificateRef = useRef(null)
+  const page1Ref = useRef(null)
+  const page2Ref = useRef(null)
+  const [admissionNumbers, setAdmissionNumbers] = useState([])
+  const [selectedAdmissionNumber, setSelectedAdmissionNumber] = useState("")
   const [formData, setFormData] = useState({
-    admissionNumber: "",
+    aadharNo: "",
+    emisNo: "",
+    serialNo: "",
+    admissionNo: "",
+    schoolName: "",
+    educationalDistrict: "Tiruvannamalai",
+    revenueDistrict: "Tiruvannamalai",
     studentName: "",
-    fatherName: "",
-    motherName: "",
-    dateOfBirth: "",
+    fatherOrMotherName: "",
+    nationality: "",
     religion: "",
     caste: "",
-    nationality: "",
-    monthAndYearOfAdmission: "",
-    classOfAdmission: "",
-    classStudying: "",
-    mediumOfInstruction: "",
-    scholarshipParticulars: "",
-    dateOfLeaving: "",
-    classAtTimeOfLeaving: "",
-    reasonForLeaving: "",
-    noOfSchoolDays: "",
-    noOfSchoolDaysAttended: "",
-    characterAndConduct: "",
-    dateOfTransferCertificateIssue: "",
+    community: "",
     gender: "",
-    identificationMarks: "",
+    dateOfBirth: "",
+    dateOfAdmission: "",
+    standardStudied: "",
     qualifiedForPromotion: "",
     feesPaid: "",
+    scholarship: "",
     medicalInspection: "",
-    feesPaidUpto: "",
-    dateOfTCApplication: "",
-    subjects: "",
-    result: "",
-    lastAttendanceDate: "",
-    schoolName: "",
-    schoolAddress: "",
-    districtName: "TIRUVANAMALAI",
-    affiliationNo: "",
-    schoolCode: "",
-    bookNo: "",
-    slNo: "",
+    dateLeftSchool: "",
+    conductAndCharacter: "",
+    applicationDate: "",
+    issueDate: "",
+    courseOfStudy: {
+      nameOfSchool: "",
+      academicYears: "",
+      standardsStudied: "",
+      firstLanguage: "",
+      mediumOfInstruction: "",
+    },
+    identificationMark1: "",
+    identificationMark2: "",
+    remarks: "",
   })
 
-  const [loading, setLoading] = useState(false)
-  const [processing, setProcessing] = useState(false)
-  const [error, setError] = useState("")
-  const [administrationId, setAdministrationId] = useState(null)
-  const [admissionData, setAdmissionData] = useState([])
-  const [filteredAdmissionData, setFilteredAdmissionData] = useState([])
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [certificateType, setCertificateType] = useState("")
-  const [showCertificate, setShowCertificate] = useState(false)
+  const handlePrint = async () => {
+    try {
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      })
 
-  const componentRef = useRef(null)
-  const dropdownRef = useRef(null)
-  const inputRef = useRef(null)
+      const a4Width = 210 // A4 width in mm
+      const a4Height = 297 // A4 height in mm
 
+      // Capture Page 1
+      if (page1Ref.current) {
+        const canvas1 = await html2canvas(page1Ref.current, {
+          scale: 2,
+          width: a4Width * 3.78, // Convert mm to pixels (1mm = ~3.78px at 96dpi)
+          height: a4Height * 3.78,
+          useCORS: true,
+        })
+        const imgData1 = canvas1.toDataURL("image/png")
+        const imgHeight1 = (canvas1.height * a4Width) / canvas1.width
+        pdf.addImage(imgData1, "PNG", 0, 0, a4Width, imgHeight1)
+      }
+
+      // Add a new page for Page 2
+      pdf.addPage()
+
+      // Capture Page 2
+      if (page2Ref.current) {
+        const canvas2 = await html2canvas(page2Ref.current, {
+          scale: 2,
+          width: a4Width * 3.78,
+          height: a4Height * 3.78,
+          useCORS: true,
+        })
+        const imgData2 = canvas2.toDataURL("image/png")
+        const imgHeight2 = (canvas2.height * a4Width) / canvas2.width
+        pdf.addImage(imgData2, "PNG", 0, 0, a4Width, imgHeight2)
+      }
+
+      // Save the PDF
+      pdf.save("TransferCertificate.pdf")
+    } catch (error) {
+      console.error("Error generating PDF:", error)
+    }
+  }
+
+  // Fetch admission numbers from Firestore
   useEffect(() => {
-    const fetchAdministrationId = async () => {
+    const fetchAdmissionNumbers = async () => {
       try {
-        if (!auth.currentUser) {
-          console.warn("No authenticated user. Using mock data for development.")
-          setAdministrationId("mock-admin-id")
-          return
-        }
-
         const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
         const q = query(adminRef, limit(1))
         const querySnapshot = await getDocs(q)
 
         if (!querySnapshot.empty) {
-          setAdministrationId(querySnapshot.docs[0].id)
+          const administrationId = querySnapshot.docs[0]?.id || ""
+          if (administrationId) {
+            const admissionsRef = collection(
+              db,
+              "Schools",
+              auth.currentUser.uid,
+              "AdmissionMaster",
+              administrationId,
+              "AdmissionSetup"
+            )
+            const snapshot = await getDocs(admissionsRef)
+            const numbers = snapshot.docs
+              .map((doc) => doc.data().admissionNumber)
+              .filter((num) => num && num.startsWith("ADM"))
+            setAdmissionNumbers(numbers)
+          } else {
+            console.error("No administration ID found")
+          }
         } else {
-          console.error("No Administration document found")
-          setError("Error initializing. Please contact administrator.")
+          console.error("No administration documents found")
         }
       } catch (error) {
-        console.error("Error fetching Administration ID:", error)
-        setError("Error initializing. Please try again.")
+        console.error("Error fetching admission numbers:", error)
       }
     }
-
-    fetchAdministrationId()
-    fetchSchoolDetails()
+    fetchAdmissionNumbers()
   }, [])
 
+  // Fetch student data when admission number changes
   useEffect(() => {
-    if (administrationId) {
-      fetchAdmissionData()
-    }
-  }, [administrationId])
+    const fetchStudentData = async () => {
+      if (selectedAdmissionNumber) {
+        try {
+          const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
+          const q = query(adminRef, limit(1))
+          const querySnapshot = await getDocs(q)
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target) &&
-        inputRef.current &&
-        !inputRef.current.contains(event.target)
-      ) {
-        setShowDropdown(false)
-      }
-    }
+          if (!querySnapshot.empty) {
+            const administrationId = querySnapshot.docs[0]?.id || ""
+            if (administrationId) {
+              const admissionsRef = collection(
+                db,
+                "Schools",
+                auth.currentUser.uid,
+                "AdmissionMaster",
+                administrationId,
+                "AdmissionSetup"
+              )
+              // Query to find the document where admissionNumber matches
+              const admissionQuery = query(
+                admissionsRef,
+                where("admissionNumber", "==", selectedAdmissionNumber)
+              )
+              const admissionSnapshot = await getDocs(admissionQuery)
 
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
-
-  const fetchSchoolDetails = async () => {
-    try {
-      if (!auth.currentUser) {
-        // Mock data for development
-        setFormData((prevState) => ({
-          ...prevState,
-          schoolName: "XPOMEDIA MATRIC. HR. SEC. SCHOOL",
-          schoolAddress: "TIRUVANAMALAI 606601",
-        }))
-        return
-      }
-
-      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
-      const schoolDocSnap = await getDoc(schoolDocRef)
-
-      if (schoolDocSnap.exists()) {
-        const schoolData = schoolDocSnap.data()
-        setFormData((prevState) => ({
-          ...prevState,
-          schoolName: schoolData.SchoolName || "",
-          schoolAddress: schoolData.SchoolAddres || "", // Corrected field name
-        }))
-      } else {
-        console.error("No school document found")
-        setError("Error fetching school details. Please contact administrator.")
-      }
-    } catch (error) {
-      console.error("Error fetching school details:", error)
-      setError("Error fetching school details. Please try again.")
-    }
-  }
-
-  const fetchAdmissionData = async () => {
-    try {
-      if (!auth.currentUser) {
-        // Mock data for development
-        const mockData = [
-          { admissionNumber: "19/858016", studentName: "RAHUL E" },
-          { admissionNumber: "19/858017", studentName: "PRIYA S" },
-          { admissionNumber: "19/858018", studentName: "KUMAR M" },
-          { admissionNumber: "19/858019", studentName: "DIVYA P" },
-          { admissionNumber: "19/858020", studentName: "SURESH K" },
-        ]
-        setAdmissionData(mockData)
-        setFilteredAdmissionData(mockData)
-        return
-      }
-
-      const admissionsRef = collection(
-        db,
-        `Schools/${auth.currentUser.uid}/AdmissionMaster/${administrationId}/AdmissionSetup`,
-      )
-      const admissionsSnapshot = await getDocs(admissionsRef)
-
-      const data = admissionsSnapshot.docs
-        .map((doc) => {
-          const { admissionNumber, studentName } = doc.data()
-          return { admissionNumber, studentName }
-        })
-        .filter((item) => item.admissionNumber && item.studentName)
-        .sort((a, b) => a.admissionNumber.localeCompare(b.admissionNumber))
-
-      setAdmissionData(data)
-      setFilteredAdmissionData(data)
-    } catch (error) {
-      console.error("Error fetching admission data:", error)
-      setError("Failed to fetch admission data. Please try again.")
-    }
-  }
-
-  const fetchStudentData = async (admissionNum) => {
-    try {
-      setLoading(true)
-      setError("")
-
-      if (!auth.currentUser) {
-        // Mock data for development
-        setTimeout(() => {
-          setFormData((prevState) => ({
-            ...prevState,
-            admissionNumber: admissionNum,
-            studentName: "RAHUL E",
-            fatherName: "Elamathi",
-            motherName: "Saranya",
-            dateOfBirth: "01/04/2000",
-            religion: "Hindu",
-            caste: "Vaniyar",
-            nationality: "Indian",
-            monthAndYearOfAdmission: "June 2010",
-            classOfAdmission: "LKG",
-            classStudying: "X",
-            mediumOfInstruction: "English",
-            scholarshipParticulars: "NIL",
-            dateOfLeaving: "31/03/2024",
-            classAtTimeOfLeaving: "X",
-            reasonForLeaving: "Completed Studies",
-            noOfSchoolDays: "220",
-            noOfSchoolDaysAttended: "210",
-            characterAndConduct: "Good",
-            dateOfTransferCertificateIssue: "01/04/2024",
-            gender: "Male",
-            identificationMarks: "Mole on right cheek",
-            qualifiedForPromotion: "Yes",
-            feesPaid: "Yes",
-            medicalInspection: "Done",
-            feesPaidUpto: "March 2024",
-            dateOfTCApplication: "25/03/2024",
-            subjects: "English, Tamil, Mathematics, Science, Social Science",
-            result: "Pass",
-            lastAttendanceDate: "31/03/2024",
-          }))
-          setLoading(false)
-          setShowCertificate(true)
-        }, 500)
-        return true
-      }
-
-      const admissionSetupRef = collection(
-        db,
-        `Schools/${auth.currentUser.uid}/AdmissionMaster/${administrationId}/AdmissionSetup`,
-      )
-      const q = query(admissionSetupRef, where("admissionNumber", "==", admissionNum))
-      const admissionSetupSnapshot = await getDocs(q)
-
-      if (!admissionSetupSnapshot.empty) {
-        const studentDoc = admissionSetupSnapshot.docs[0]
-        const data = studentDoc.data()
-
-        setFormData((prevState) => ({
-          ...prevState,
-          ...data,
-        }))
-        setShowCertificate(true)
-        return true
-      } else {
-        setError("No student found with this admission number")
-        resetForm()
-        return false
-      }
-    } catch (error) {
-      console.error("Error fetching student data:", error)
-      setError("Error fetching student data")
-      resetForm()
-      return false
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const resetForm = () => {
-    setFormData((prevState) => ({
-      ...prevState,
-      admissionNumber: "",
-      studentName: "",
-      fatherName: "",
-      motherName: "",
-      dateOfBirth: "",
-      religion: "",
-      caste: "",
-      nationality: "",
-      monthAndYearOfAdmission: "",
-      classOfAdmission: "",
-      classStudying: "",
-      mediumOfInstruction: "",
-      scholarshipParticulars: "",
-      dateOfLeaving: "",
-      classAtTimeOfLeaving: "",
-      reasonForLeaving: "",
-      noOfSchoolDays: "",
-      noOfSchoolDaysAttended: "",
-      characterAndConduct: "",
-      dateOfTransferCertificateIssue: "",
-      gender: "",
-      identificationMarks: "",
-      qualifiedForPromotion: "",
-      feesPaid: "",
-      medicalInspection: "",
-      feesPaidUpto: "",
-      dateOfTCApplication: "",
-      subjects: "",
-      result: "",
-      lastAttendanceDate: "",
-    }))
-    setShowCertificate(false)
-  }
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
-
-    if (name === "admissionNumber") {
-      const filtered = admissionData.filter(
-        (item) =>
-          item.admissionNumber.toLowerCase().includes(value.toLowerCase()) ||
-          item.studentName.toLowerCase().includes(value.toLowerCase()),
-      )
-      setFilteredAdmissionData(filtered)
-      setShowDropdown(true)
-    }
-  }
-
-  const handleAdmissionSelect = (admissionNum) => {
-    setFormData((prev) => ({
-      ...prev,
-      admissionNumber: admissionNum,
-    }))
-    setShowDropdown(false)
-    fetchStudentData(admissionNum)
-  }
-
-  const handleSave = () => {
-    setIsEditing(false)
-    toast.success("Changes saved successfully!")
-  }
-
-  const handlePrintCertificate = async () => {
-    setIsEditing(false)
-    setProcessing(true)
-
-    setTimeout(async () => {
-      const input = componentRef.current
-
-      try {
-        const canvas = await html2canvas(input, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-        })
-
-        const printFrame = document.createElement("iframe")
-        printFrame.style.position = "fixed"
-        printFrame.style.right = "0"
-        printFrame.style.bottom = "0"
-        printFrame.style.width = "0"
-        printFrame.style.height = "0"
-        printFrame.style.border = "0"
-        document.body.appendChild(printFrame)
-
-        const frameDoc = printFrame.contentWindow.document
-        frameDoc.open()
-        frameDoc.write(`
-          <html>
-            <head>
-              <title>Transfer Certificate</title>
-              <style>
-                @media print {
-                  body {
-                    margin: 0;
-                    padding: 0;
-                  }
-                  img {
-                    width: 100%;
-                    height: auto;
-                  }
-                  @page {
-                    size: A4;
-                    margin: 0;
-                  }
-                }
-              </style>
-            </head>
-            <body>
-              <img src="${canvas.toDataURL("image/png")}" />
-            </body>
-          </html>
-        `)
-        frameDoc.close()
-
-        printFrame.onload = () => {
-          setTimeout(() => {
-            printFrame.contentWindow.focus()
-            printFrame.contentWindow.print()
-
-            setTimeout(() => {
-              document.body.removeChild(printFrame)
-              setProcessing(false)
-            }, 1000)
-          }, 500)
+              if (!admissionSnapshot.empty) {
+                const data = admissionSnapshot.docs[0].data()
+                setFormData({
+                  aadharNo: data.aadharNumber || "",
+                  emisNo: data.emis || "",
+                  serialNo: "1/2022", // Default or dynamic if needed
+                  admissionNo: data.admissionNumber || "",
+                  schoolName: data.nameOfSchool || "",
+                  educationalDistrict: "Tiruvannamalai",
+                  revenueDistrict: "Tiruvannamalai",
+                  studentName: data.studentName || "",
+                  fatherOrMotherName: data.fatherName || data.motherName || "",
+                  nationality: data.nationality || "",
+                  religion: data.religion || "",
+                  caste: data.caste || "",
+                  community: data.community || "",
+                  gender: data.gender || "",
+                  dateOfBirth: data.dateOfBirth || "",
+                  dateOfAdmission: data.dateOfAdmission || "",
+                  standardStudied: data.classLastStudied || "",
+                  qualifiedForPromotion: data.qualifiedForPromotion || "Yes. Promoted to higher studies",
+                  feesPaid: data.feesPaid || "Yes",
+                  scholarship: data.scholarship || "",
+                  medicalInspection: data.medicalInspection || "Repeat",
+                  dateLeftSchool: "19/03/2022", // Default or dynamic if needed
+                  conductAndCharacter: "",
+                  applicationDate: "19/03/2022", // Default or dynamic if needed
+                  issueDate: "19/03/2022", // Default or dynamic if needed
+                  courseOfStudy: {
+                    nameOfSchool: data.nameOfSchool || "",
+                    academicYears: data.studiedYear || "220",
+                    standardsStudied: data.classLastStudied || "200",
+                    firstLanguage: "Tamil",
+                    mediumOfInstruction: "English",
+                  },
+                  identificationMark1: data.identificationMark1 || "",
+                  identificationMark2: data.identificationMark2 || "",
+                  remarks: data.remarks || "",
+                })
+              } else {
+                console.error("No admission document found for admission number:", selectedAdmissionNumber)
+              }
+            } else {
+              console.error("No administration ID found")
+            }
+          } else {
+            console.error("No administration documents found")
+          }
+        } catch (error) {
+          console.error("Error fetching student data:", error)
         }
-
-        const img = frameDoc.body.querySelector("img")
-        if (img.complete) {
-          printFrame.onload()
-        } else {
-          img.onload = printFrame.onload
-        }
-      } catch (error) {
-        console.error("Error during print preparation:", error)
-        toast.error("Failed to prepare document for printing")
-        window.print()
-        setProcessing(false)
       }
-    }, 100)
-  }
-
-  const handleDownloadPDF = async () => {
-    setIsEditing(false)
-    setProcessing(true)
-
-    setTimeout(async () => {
-      try {
-        const input = componentRef.current
-        const canvas = await html2canvas(input, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-        })
-        const imgData = canvas.toDataURL("image/png")
-        const pdf = new jsPDF("p", "mm", "a4")
-        const pdfWidth = pdf.internal.pageSize.getWidth()
-        const pdfHeight = pdf.internal.pageSize.getHeight()
-        const imgWidth = canvas.width
-        const imgHeight = canvas.height
-        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-        const imgX = (pdfWidth - imgWidth * ratio) / 2
-        const imgY = 0
-        pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio)
-        pdf.save("transfer_certificate.pdf")
-        toast.success("PDF downloaded successfully!")
-      } catch (error) {
-        console.error("Error generating PDF:", error)
-        toast.error("Failed to generate PDF")
-      } finally {
-        setProcessing(false)
-      }
-    }, 100)
-  }
-
-  const renderField = (fieldName, label, defaultValue = "") => {
-    return (
-      <div className="detail-row">
-        <div className="label">{label}</div>
-        <div className="value">
-          :{" "}
-          {isEditing ? (
-            <input
-              type="text"
-              name={fieldName}
-              value={formData[fieldName] || ""}
-              onChange={handleInputChange}
-              className="form-control form-control-sm"
-            />
-          ) : (
-            formData[fieldName] || defaultValue
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  const handleCertificateSelect = (type) => {
-    setCertificateType(type)
-    setShowCertificate(true)
-  }
-
-  const handleBack = () => {
-    setCertificateType("")
-    setShowCertificate(false)
-    resetForm()
-  }
-
-  const renderCertificateContent = () => {
-    switch (certificateType) {
-      case "10th":
-        return <TenthCertificate formData={formData} renderField={renderField} />
-      case "12th":
-        return <TwelfthCertificate formData={formData} renderField={renderField} />
-      case "CBSE1":
-        return <CBSECertificate1 formData={formData} renderField={renderField} />
-      case "CBSE2":
-        return <CBSECertificate2 formData={formData} renderField={renderField} />
-      default:
-        return null
     }
+    fetchStudentData()
+  }, [selectedAdmissionNumber])
+
+  const handleAdmissionNumberChange = (e) => {
+    setSelectedAdmissionNumber(e.target.value)
   }
 
   return (
-    <MainContentPage className="container-fluid px-0">
-      <div className="row mb-4">
-        <div className="col-12">
-          <h4 className="fw-bold">Transfer Certificate</h4>
-        </div>
-      </div>
-
-      <div className="row mb-4">
-        <div className="col-12">
-          <nav aria-label="breadcrumb">
-            <ol className="breadcrumb m-0">
-              <li className="breadcrumb-item">
-                <Link to="/home" className="text-decoration-none">
-                  Home
-                </Link>
-              </li>
-              <li className="breadcrumb-item">
-                <Link to="/admission" className="text-decoration-none">
-                  Admission
-                </Link>
-              </li>
-              <li className="breadcrumb-item active" aria-current="page">
-                Transfer Certificate
-              </li>
-            </ol>
-          </nav>
-        </div>
-      </div>
-
-      {!showCertificate && (
+    <MainContentPage>
+      <div className="container-fluid">
         <div className="row mb-4">
           <div className="col-12">
-            <h5 className="mb-3">Choose the View for the Transfer Certificate:</h5>
-            <div className="row g-4">
-              <div className="col-12 col-md-6 col-lg-3">
-                <div className="card fee-setup-card h-100" onClick={() => handleCertificateSelect("10th")}>
-                  <div className="card-body d-flex align-items-center justify-content-center">
-                    <h5 className="card-title text-white m-0">10th Standard</h5>
-                  </div>
+            <div className="d-flex justify-content-between align-items-center">
+              <div className="btn-group border">
+                <button
+                  className={`btn ${currentPage === 1 ? "bg-white" : "bg-light"} `}
+                  onClick={() => setCurrentPage(1)}
+                >
+                  Page 1
+                </button>
+                <button
+                  className={`btn border-start ${currentPage === 2 ? "bg-white" : "bg-light"} `}
+                  onClick={() => setCurrentPage(2)}
+                >
+                  Page 2
+                </button>
+              </div>
+              <div className="d-flex align-items-center">
+                <select
+                  value={selectedAdmissionNumber}
+                  onChange={handleAdmissionNumberChange}
+                  className="form-select custom-select me-2"
+                >
+                  <option value="">Select Admission Number</option>
+                  {admissionNumbers.map((number) => (
+                    <option key={number} value={number}>
+                      {number}
+                    </option>
+                  ))}
+                </select>
+                <button onClick={handlePrint} className="btn btn-primary custom-btn">
+                  Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Hidden div for PDF generation, positioned off-screen */}
+        <div style={{ position: "absolute", left: "-9999px" }}>
+          {/* Page 1 */}
+          <div ref={page1Ref} className="page">
+            <div className="p-4">
+              <div className="text-center mb-4">
+                <h1 className="fw-bold fs-1">TRANSFER CERTIFICATE</h1>
+                <p className="fs-4 mt-1">Government of Tamil Nadu</p>
+                <p className="mt-1">Department of School Education</p>
+                <p className="small">(Recognized by the Director of School Education)</p>
+              </div>
+
+              <div className="row mt-4">
+                <div className="col-6">
+                  <p>Aadhar No: {formData.aadharNo}</p>
+                </div>
+                <div className="col-6 text-end">
+                  <p>EMIS No: {formData.emisNo}</p>
                 </div>
               </div>
-              <div className="col-12 col-md-6 col-lg-3">
-                <div className="card fee-setup-card h-100" onClick={() => handleCertificateSelect("12th")}>
-                  <div className="card-body d-flex align-items-center justify-content-center">
-                    <h5 className="card-title text-white m-0">12th Standard</h5>
-                  </div>
+
+              <div className="row mt-2">
+                <div className="col-6">
+                  <p>Serial No: {formData.serialNo}</p>
+                </div>
+                <div className="col-6 text-end">
+                  <p>Admission No: {formData.admissionNo}</p>
                 </div>
               </div>
-              <div className="col-12 col-md-6 col-lg-3">
-                <div className="card fee-setup-card h-100" onClick={() => handleCertificateSelect("CBSE1")}>
-                  <div className="card-body d-flex align-items-center justify-content-center">
-                    <h5 className="card-title text-white m-0">CBSE (Format 1)</h5>
-                  </div>
+
+              <div className="mt-4">
+                <div className="row mb-2">
+                  <div className="col-8">1. (a) Name of the School</div>
+                  <div className="col-4">: {formData.schoolName}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">(b) Name of the Educational District</div>
+                  <div className="col-4">: {formData.educationalDistrict}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">(c) Name of the Revenue District</div>
+                  <div className="col-4">: {formData.revenueDistrict}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">2. Name of the Pupil (in block letters)</div>
+                  <div className="col-4">: {formData.studentName}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">3. Name of the Father or Mother of the Pupil</div>
+                  <div className="col-4">: {formData.fatherOrMotherName}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">4. Nationality, Religion & Caste</div>
+                  <div className="col-4">: {formData.nationality} - {formData.religion} - {formData.caste}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">5. Community</div>
+                  <div className="col-4">: {formData.community}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">Whether He/She belongs to</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(a) Adi Dravidar (S. C.) or (S. T.)</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(b) Backward Class</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(c) Most Backward Class</div>
+                  <div className="col-4">: {formData.community === "MBC" ? "MBC" : "-"}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(d) Converted to Christianity from Scheduled Caste</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(e) Denotified Communities</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(f) Other Caste</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">6. Sex</div>
+                  <div className="col-4">: {formData.gender}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">7. Date of Birth as entered in the Admission Register</div>
+                  <div className="col-4">: {formData.dateOfBirth}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">(in figures and words)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">8. Date of admission and standard in which admitted</div>
+                  <div className="col-4">: {formData.dateOfAdmission}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">(the year to be entered in words)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">9. Standard in which the pupil was studying at the time of</div>
+                  <div className="col-4">: {formData.standardStudied}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">leaving (in words)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">10. Whether Qualified for Promotion</div>
+                  <div className="col-4">: {formData.qualifiedForPromotion}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">11. Whether the Pupil has paid all the fees due to the School</div>
+                  <div className="col-4">: {formData.feesPaid}</div>
                 </div>
               </div>
-              <div className="col-12 col-md-6 col-lg-3">
-                <div className="card fee-setup-card h-100" onClick={() => handleCertificateSelect("CBSE2")}>
-                  <div className="card-body d-flex align-items-center justify-content-center">
-                    <h5 className="card-title text-white m-0">CBSE (Format 2)</h5>
+            </div>
+          </div>
+
+          {/* Page 2 */}
+          <div ref={page2Ref} className="page">
+            <div className="p-4">
+              <div className="mb-4">
+                <div className="row mb-2">
+                  <div className="col-8">12. Whether the pupil was in receipt of any scholarship</div>
+                  <div className="col-4">: {formData.scholarship}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">(Nature of the scholarship to be specified)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">13. Whether the pupil has undergone Medical Inspection during</div>
+                  <div className="col-4">: {formData.medicalInspection}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">the last academic year? (First or Repeat to be specified)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">14. Date on which the pupil actually left the School</div>
+                  <div className="col-4">: {formData.dateLeftSchool}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">15. The pupil's Conduct and Character</div>
+                  <div className="col-4">: {formData.conductAndCharacter}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">16. Date on which application for Transfer Certificate</div>
+                  <div className="col-4">: {formData.applicationDate}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">was made on behalf of the pupil by the parent or guardian</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">17. Date of issue of Transfer Certificate</div>
+                  <div className="col-4">: {formData.issueDate}</div>
+                </div>
+
+                <div className="row mt-3">
+                  <div className="col-12">18. Course of Study :-</div>
+                </div>
+
+                <div className="row mt-2">
+                  <div className="col-12">
+                    <div style={{ maxWidth: "100%", overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                        <thead>
+                          <tr>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "25%" }}>
+                              Name of the School
+                            </th>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "15%" }}>
+                              Academic Year(s)
+                            </th>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "20%" }}>
+                              Standard(s) Studied
+                            </th>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "20%" }}>
+                              First Language
+                            </th>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "20%" }}>
+                              Medium of Instruction
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.nameOfSchool}
+                            </td>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.academicYears}
+                            </td>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.standardsStudied}
+                            </td>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.firstLanguage}
+                            </td>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.mediumOfInstruction}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row mt-3">
+                  <div className="col-12">20. Signature of the H.M. with date and school seal</div>
+                </div>
+
+                <div className="border-top border-dark my-4 pt-4">
+                  <div className="fw-bold">Note :</div>
+                  <ol className="ms-4 mt-2">
+                    <li className="mb-2">
+                      Erasures and unauthorized or Fraudulent alterations in the Certificate will lead to its
+                      Cancellation.
+                    </li>
+                    <li className="mb-2">
+                      Should be signed in ink by the Head of the institution, who will be held responsible for the
+                      correctness of the entries.
+                    </li>
+                  </ol>
+
+                  <div className="text-center fw-bold mt-4">Declaration by the Parent or Guardian</div>
+                  <p className="mt-2">
+                    I hereby declare that the particulars recorded against items 2 to 7 are correct and that no change
+                    will be demanded by me in future.
+                  </p>
+
+                  <div className="row mt-5">
+                    <div className="col-6">Signature of the Candidate</div>
+                    <div className="col-6 text-end">Signature of the Parent/Guardian</div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      )}
 
-      {showCertificate && (
-        <div className="transfer-form bg-white rounded shadow-sm">
-          <div className="header p-3 d-flex justify-content-between align-items-center custom-btn-clr">
-            <h4 className="m-0 text-white">Transfer Certificate - {certificateType}</h4>
-            <div className="d-flex align-items-center">
-              <div className="position-relative">
-                <input
-                  type="text"
-                  placeholder="Enter Admission Number"
-                  value={formData.admissionNumber}
-                  onChange={handleInputChange}
-                  name="admissionNumber"
-                  className="form-control w-auto"
-                  style={{ maxWidth: "300px" }}
-                  disabled={loading}
-                  autoComplete="off"
-                  onFocus={() => setShowDropdown(true)}
-                  ref={inputRef}
-                />
-                {showDropdown && (
-                  <div className="admission-dropdown" ref={dropdownRef}>
-                    {filteredAdmissionData.map((item, index) => (
-                      <div
-                        key={index}
-                        className="admission-dropdown-item"
-                        onClick={() => handleAdmissionSelect(item.admissionNumber)}
-                      >
-                        {`${item.admissionNumber}-${item.studentName}`}
-                      </div>
-                    ))}
-                  </div>
-                )}
+        {/* Visible content for UI */}
+        <div
+          id="certificate-content"
+          ref={certificateRef}
+          className="border bg-white shadow-sm"
+          style={{ width: "210mm", height: "297mm", overflow: "hidden" }}
+        >
+          {currentPage === 1 ? (
+            <div className="p-4">
+              <div className="text-center mb-4">
+                <h1 className="fw-bold fs-1">TRANSFER CERTIFICATE</h1>
+                <p className="fs-4 mt-1">Government of Tamil Nadu</p>
+                <p className="mt-1">Department of School Education</p>
+                <p className="small">(Recognized by the Director of School Education)</p>
+              </div>
+
+              <div className="row mt-4">
+                <div className="col-6">
+                  <p>Aadhar No: {formData.aadharNo}</p>
+                </div>
+                <div className="col-6 text-end">
+                  <p>EMIS No: {formData.emisNo}</p>
+                </div>
+              </div>
+
+              <div className="row mt-2">
+                <div className="col-6">
+                  <p>Serial No: {formData.serialNo}</p>
+                </div>
+                <div className="col-6 text-end">
+                  <p>Admission No: {formData.admissionNo}</p>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="row mb-2">
+                  <div className="col-8">1. (a) Name of the School</div>
+                  <div className="col-4">: {formData.schoolName}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">(b) Name of the Educational District</div>
+                  <div className="col-4">: {formData.educationalDistrict}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">(c) Name of the Revenue District</div>
+                  <div className="col-4">: {formData.revenueDistrict}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">2. Name of the Pupil (in block letters)</div>
+                  <div className="col-4">: {formData.studentName}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">3. Name of the Father or Mother of the Pupil</div>
+                  <div className="col-4">: {formData.fatherOrMotherName}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">4. Nationality, Religion & Caste</div>
+                  <div className="col-4">: {formData.nationality} - {formData.religion} - {formData.caste}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">5. Community</div>
+                  <div className="col-4">: {formData.community}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">Whether He/She belongs to</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(a) Adi Dravidar (S. C.) or (S. T.)</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(b) Backward Class</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(c) Most Backward Class</div>
+                  <div className="col-4">: {formData.community === "MBC" ? "MBC" : "-"}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(d) Converted to Christianity from Scheduled Caste</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(e) Denotified Communities</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-5">(f) Other Caste</div>
+                  <div className="col-4">: -</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">6. Sex</div>
+                  <div className="col-4">: {formData.gender}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">7. Date of Birth as entered in the Admission Register</div>
+                  <div className="col-4">: {formData.dateOfBirth}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">(in figures and words)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">8. Date of admission and standard in which admitted</div>
+                  <div className="col-4">: {formData.dateOfAdmission}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">(the year to be entered in words)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">9. Standard in which the pupil was studying at the time of</div>
+                  <div className="col-4">: {formData.standardStudied}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">leaving (in words)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">10. Whether Qualified for Promotion</div>
+                  <div className="col-4">: {formData.qualifiedForPromotion}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">11. Whether the Pupil has paid all the fees due to the School</div>
+                  <div className="col-4">: {formData.feesPaid}</div>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-4">
+              <div className="mb-4">
+                <div className="row mb-2">
+                  <div className="col-8">12. Whether the pupil was in receipt of any scholarship</div>
+                  <div className="col-4">: {formData.scholarship}</div>
+                </div>
 
-          <div className="p-4">
-            {showCertificate && (
-              <div className="d-flex justify-content-between align-items-center mb-4 no-print">
-                <h2 style={{ color: "#0B3D7B" }}>Transfer Certificate</h2>
-                <div>
-                  <button className="btn btn-secondary me-2" onClick={handleBack}>
-                    Back
-                  </button>
-                  {isEditing ? (
-                    <button className="btn btn-success me-2" onClick={handleSave}>
-                      Save Changes
-                    </button>
-                  ) : (
-                    <button className="btn btn-primary me-2" onClick={() => setIsEditing(true)}>
-                      Edit
-                    </button>
-                  )}
-                  <button className="btn btn-primary me-2" onClick={handlePrintCertificate} disabled={processing}>
-                    {processing ? "Processing..." : "Print"}
-                  </button>
-                  <button className="btn btn-success" onClick={handleDownloadPDF} disabled={processing}>
-                    {processing ? "Processing..." : "Download PDF"}
-                  </button>
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">(Nature of the scholarship to be specified)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">13. Whether the pupil has undergone Medical Inspection during</div>
+                  <div className="col-4">: {formData.medicalInspection}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">the last academic year? (First or Repeat to be specified)</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">14. Date on which the pupil actually left the School</div>
+                  <div className="col-4">: {formData.dateLeftSchool}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">15. The pupil's Conduct and Character</div>
+                  <div className="col-4">: {formData.conductAndCharacter}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">16. Date on which application for Transfer Certificate</div>
+                  <div className="col-4">: {formData.applicationDate}</div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8 ps-4">was made on behalf of the pupil by the parent or guardian</div>
+                  <div className="col-4"></div>
+                </div>
+
+                <div className="row mb-2">
+                  <div className="col-8">17. Date of issue of Transfer Certificate</div>
+                  <div className="col-4">: {formData.issueDate}</div>
+                </div>
+
+                <div className="row mt-3">
+                  <div className="col-12">18. Course of Study :-</div>
+                </div>
+
+                <div className="row mt-2">
+                  <div className="col-12">
+                    <div style={{ maxWidth: "100%", overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                        <thead>
+                          <tr>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "25%" }}>
+                              Name of the School
+                            </th>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "15%" }}>
+                              Academic Year(s)
+                            </th>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "20%" }}>
+                              Standard(s) Studied
+                            </th>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "20%" }}>
+                              First Language
+                            </th>
+                            <th style={{ border: "1px solid #000", padding: "5px", textAlign: "center", width: "20%" }}>
+                              Medium of Instruction
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.nameOfSchool}
+                            </td>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.academicYears}
+                            </td>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.standardsStudied}
+                            </td>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.firstLanguage}
+                            </td>
+                            <td style={{ border: "1px solid #000", padding: "5px", textAlign: "center" }}>
+                              {formData.courseOfStudy.mediumOfInstruction}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row mt-3">
+                  <div className="col-12">20. Signature of the H.M. with date and school seal</div>
+                </div>
+
+                <div className="border-top border-dark my-4 pt-4">
+                  <div className="fw-bold">Note :</div>
+                  <ol className="ms-4 mt-2">
+                    <li className="mb-2">
+                      Erasures and unauthorized or Fraudulent alterations in the Certificate will lead to its
+                      Cancellation.
+                    </li>
+                    <li className="mb-2">
+                      Should be signed in ink by the Head of the institution, who will be held responsible for the
+                      correctness of the entries.
+                    </li>
+                  </ol>
+
+                  <div className="text-center fw-bold mt-4">Declaration by the Parent or Guardian</div>
+                  <p className="mt-2">
+                    I hereby declare that the particulars recorded against items 2 to 7 are correct and that no change
+                    will be demanded by me in future.
+                  </p>
+
+                  <div className="row mt-5">
+                    <div className="col-6">Signature of the Candidate</div>
+                    <div className="col-6 text-end">Signature of the Parent/Guardian</div>
+                  </div>
                 </div>
               </div>
-            )}
-
-            {processing && (
-              <div className="processing-overlay">
-                <div className="processing-content">
-                  <div className="spinner-border text-primary" role="status"></div>
-                  <p className="mt-2">Processing document...</p>
-                </div>
-              </div>
-            )}
-
-            {showCertificate && (
-              <div className="certificate-container" ref={componentRef}>
-                {renderCertificateContent()}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      <ToastContainer position="bottom-right" autoClose={3000} />
-
-      <style jsx>{`
-        .admission-dropdown {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          max-height: 200px;
-          overflow-y: auto;
-          background-color: white;
-          border: 1px solid #ced4da;
-          border-radius: 0.25rem;
-          z-index: 1000;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        .admission-dropdown-item {
-          padding: 8px 12px;
-          cursor: pointer;
-          color: black;
-        }
-        .admission-dropdown-item:hover {
-          background-color: #f8f9fa;
-        }
-        .custom-btn-clr {
-          background-color: #0B3D7B;
-          border-color: #0B3D7B;
-        }
-        .custom-btn-clr:hover {
-          background-color: #072a56;
-          border-color: #072a56;
-        }
-
-        .certificate-container {
-          background: white;
-          padding: 40px;
-          margin: 0 auto;
-          width: 210mm;
-          min-height: 297mm;
-          box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .certificate-content {
-          font-family: "Times New Roman", Times, serif;
-          color: black;
-          line-height: 1.6;
-        }
-
-        h1 {
-          font-size: 24px;
-          font-weight: bold;
-          margin-bottom: 8px;
-        }
-
-        h2 {
-          font-size: 20px;
-          font-weight: normal;
-        }
-
-        .small-text {
-          font-size: 14px;
-        }
-
-        .header-details {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 30px;
-          font-size: 14px;
-        }
-
-        .left-details, .right-details {
-          flex: 1;
-        }
-
-        .right-details {
-          text-align: right;
-        }
-
-        .certificate-body {
-          font-size: 14px;
-        }
-
-        .detail-row {
-          display: flex;
-          margin-bottom: 15px;
-          align-items: flex-start;
-        }
-
-        .label {
-          flex: 0 0 60%;
-          padding-right: 10px;
-        }
-
-        .value {
-          flex: 0 0 40%;
-        }
-
-        .sub-details {
-          margin-left: 20px;
-        }
-
-        .sub-details .detail-row {
-          margin-bottom: 8px;
-        }
-
-        .sub-text {
-          font-size: 12px;
-          font-style: italic;
-        }
-
-        .processing-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 9999;
-          background-color: rgba(255, 255, 255, 0.8);
-        }
-
-        .processing-content {
-          background-color: white;
-          padding: 30px;
-          border-radius: 10px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          text-align: center;
-        }
-
-        @media (max-width: 768px) {
-          .certificate-container {
-            width: 100%;
-            padding: 20px;
+      <style>
+        {`
+          .custom-btn {
+            padding: 5px 10px;
+            font-size: 14px;
           }
-
-          .header-details {
-            flex-direction: column;
+          .custom-select {
+            width: 200px;
+            padding: 5px;
+            font-size: 14px;
           }
-
-          .right-details {
-            text-align: left;
-            margin-top: 15px;
-          }
-
-          .detail-row {
-            flex-direction: column;
-          }
-
-          .label, .value {
-            width: 100%;
-          }
-        }
-
-        @media print {
-          @page {
-            size: A4;
-            margin: 20mm;
-          }
-          body * {
-            visibility: hidden;
-          }
-          .certificate-container,
-          .certificate-container * {
-            visibility: visible;
-          }
-          .certificate-container {
-            position: absolute;
-            left: 0;
-            top: 0;
+          .page {
             width: 210mm;
-            min-height: 297mm;
-            padding: 20mm;
+            height: 297mm;
+            box-sizing: border-box;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 20px;
+          }
+          .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+          }
+          table, th, td {
+            border: 1px solid #000;
+          }
+          th, td {
+            padding: 5px;
+            text-align: center;
+            font-size: 12px;
+          }
+          .row {
+            display: flex;
+            margin-bottom: 10px;
+          }
+          .label {
+            width: 60%;
+          }
+          .value {
+            width: 40%;
+          }
+          .indent {
+            margin-left: 20px;
+          }
+          .double-indent {
+            margin-left: 40px;
+          }
+          .footer {
+            margin-top: 30px;
+            border-top: 1px solid #000;
+            padding-top: 20px;
+          }
+          .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+          }
+          p {
             margin: 0;
-            background: white;
           }
-          .no-print, input, button {
-            display: none !important;
+          .text-center {
+            text-align: center;
           }
-        }
-        .fee-setup-card {
-          background-color: #0B3D7B;
-          color: white;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-        .fee-setup-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-      `}</style>
+          .fw-bold {
+            font-weight: bold;
+          }
+          .fs-1 {
+            font-size: 24px;
+          }
+          .fs-4 {
+            font-size: 18px;
+          }
+          .small {
+            font-size: 12px;
+          }
+          .mt-1 {
+            margin-top: 4px;
+          }
+          .mt-2 {
+            margin-top: 8px;
+          }
+          .mt-3 {
+            margin-top: 12px;
+          }
+          .mt-4 {
+            margin-top: 16px;
+          }
+          .mt-5 {
+            margin-top: 20px;
+          }
+          .mb-2 {
+            margin-bottom: 8px;
+          }
+          .mb-4 {
+            margin-bottom: 16px;
+          }
+          .my-4 {
+            margin-top: 16px;
+            margin-bottom: 16px;
+          }
+          .ps-4 {
+            padding-left: 16px;
+          }
+          .ps-5 {
+            padding-left: 20px;
+          }
+          .ms-4 {
+            margin-left: 16px;
+          }
+          .col-6 {
+            width: 50%;
+          }
+          .col-8 {
+            width: 66.67%;
+          }
+          .col-4 {
+            width: 33.33%;
+          }
+          .text-end {
+            text-align: right;
+          }
+          .border-top {
+            border-top: 1px solid #000;
+          }
+          .border-dark {
+            border-color: #000;
+          }
+          .pt-4 {
+            padding-top: 16px;
+          }
+        `}
+      </style>
     </MainContentPage>
   )
 }
 
-export default TransferCertificate
-
+export default TransferCertificate 
