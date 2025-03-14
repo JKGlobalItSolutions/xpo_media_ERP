@@ -622,8 +622,8 @@ const BusBill = () => {
         return
       }
 
-      // Add entries to BusFeeLog collection
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "BusFeeLog")
+      // Add entries to FeeLog collection (changed from BusFeeLog)
+      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
 
       // Add main entry
       await addDoc(feeLogRef, mainFeeLogEntry)
@@ -753,8 +753,13 @@ const BusBill = () => {
 
     setIsLoading(true)
     try {
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "BusFeeLog")
-      const q = query(feeLogRef, where("admissionNumber", "==", billData.admissionNumber))
+      // Changed from BusFeeLog to FeeLog
+      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
+      const q = query(
+        feeLogRef,
+        where("admissionNumber", "==", billData.admissionNumber),
+        where("feePayments.type", "==", "Bus Fee"), // Add filter for Bus Fee type
+      )
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {

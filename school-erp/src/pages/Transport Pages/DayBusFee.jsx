@@ -5,7 +5,7 @@ import { Link } from "react-router-dom"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import { Form, Button, Container, Spinner, Table, Card, Row, Col } from "react-bootstrap"
 import { db, auth } from "../../Firebase/config"
-import { collection, getDocs, query, where, doc, getDoc, limit } from "firebase/firestore"
+import { collection, query, where, doc, getDoc, limit, onSnapshot } from "firebase/firestore"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import jsPDF from "jspdf"
@@ -23,6 +23,7 @@ const DayCollectionReport = () => {
   const [collectionData, setCollectionData] = useState([])
   const [totalCollection, setTotalCollection] = useState(0)
   const componentRef = useRef(null)
+  const snapshotListenerRef = useRef(null)
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -34,6 +35,13 @@ const DayCollectionReport = () => {
     }
 
     fetchInitialData()
+
+    // Cleanup function to unsubscribe from snapshot listener
+    return () => {
+      if (snapshotListenerRef.current) {
+        snapshotListenerRef.current()
+      }
+    }
   }, [])
 
   const fetchSchoolInfo = async () => {
@@ -57,18 +65,29 @@ const DayCollectionReport = () => {
     try {
       const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
       const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
 
-      if (!querySnapshot.empty) {
-        const adminId = querySnapshot.docs[0].id
-        setAdministrationId(adminId)
-        return adminId
-      } else {
-        toast.error("No administration found")
-        return null
-      }
+      return new Promise((resolve) => {
+        const unsubscribe = onSnapshot(
+          q,
+          (querySnapshot) => {
+            if (!querySnapshot.empty) {
+              const adminId = querySnapshot.docs[0].id
+              setAdministrationId(adminId)
+              resolve(adminId)
+            } else {
+              toast.error("No administration found")
+              resolve(null)
+            }
+          },
+          (error) => {
+            console.error("Error fetching Administration ID:", error)
+            toast.error("Failed to initialize. Please try again.")
+            resolve(null)
+          },
+        )
+      })
     } catch (error) {
-      console.error("Error fetching Administration ID:", error)
+      console.error("Error setting up Administration ID listener:", error)
       toast.error("Failed to initialize. Please try again.")
       return null
     }
@@ -149,36 +168,52 @@ const DayCollectionReport = () => {
       // Query using timestamp field instead of billDate
       const q = query(billEntriesRef, where("timestamp", ">=", startDate), where("timestamp", "<=", endDate))
 
-      const snapshot = await getDocs(q)
-      const rawCollections = []
-
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data()
-        rawCollections.push({
-          billNumber: data.billNumber,
-          admissionNumber: data.admissionNumber,
-          studentName: data.studentName,
-          standard: data.course, // Changed from standard to course to match BusBillEntries schema
-          section: data.section,
-          description: data.feeDetails?.map((fee) => fee.feeHead).join(", ") || "",
-          amount: Number.parseFloat(data.totalPaidAmount) || 0,
-          concession: Number.parseFloat(data.totalConcessionAmount) || 0,
-        })
-      })
-
-      const { processedData, grandTotal } = processCollectionData(rawCollections)
-      setCollectionData(processedData)
-      setTotalCollection(grandTotal)
-
-      if (processedData.length === 0) {
-        toast.info("No bus fee collection data found for the selected date")
-      } else {
-        toast.success(`Successfully loaded bus fee collection records`)
+      // Unsubscribe from previous listener if exists
+      if (snapshotListenerRef.current) {
+        snapshotListenerRef.current()
       }
+
+      // Set up real-time listener
+      snapshotListenerRef.current = onSnapshot(
+        q,
+        (snapshot) => {
+          const rawCollections = []
+
+          snapshot.docs.forEach((doc) => {
+            const data = doc.data()
+            rawCollections.push({
+              billNumber: data.billNumber,
+              admissionNumber: data.admissionNumber,
+              studentName: data.studentName,
+              standard: data.course, // Changed from standard to course to match BusBillEntries schema
+              section: data.section,
+              description: data.feeDetails?.map((fee) => fee.feeHead).join(", ") || "",
+              amount: Number.parseFloat(data.totalPaidAmount) || 0,
+              concession: Number.parseFloat(data.totalConcessionAmount) || 0,
+            })
+          })
+
+          const { processedData, grandTotal } = processCollectionData(rawCollections)
+          setCollectionData(processedData)
+          setTotalCollection(grandTotal)
+
+          if (processedData.length === 0) {
+            toast.info("No bus fee collection data found for the selected date")
+          } else {
+            toast.success(`Successfully loaded bus fee collection records`)
+          }
+
+          setLoading(false)
+        },
+        (error) => {
+          console.error("Error fetching collection data:", error)
+          toast.error("Failed to fetch collection data")
+          setLoading(false)
+        },
+      )
     } catch (error) {
-      console.error("Error fetching collection data:", error)
+      console.error("Error setting up collection data listener:", error)
       toast.error("Failed to fetch collection data")
-    } finally {
       setLoading(false)
     }
   }
@@ -308,6 +343,12 @@ const DayCollectionReport = () => {
     setReportDate(new Date())
     setCollectionData([])
     setTotalCollection(0)
+
+    // Unsubscribe from current listener
+    if (snapshotListenerRef.current) {
+      snapshotListenerRef.current()
+      snapshotListenerRef.current = null
+    }
   }
 
   const renderTableBody = () => {
