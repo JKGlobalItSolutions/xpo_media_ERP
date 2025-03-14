@@ -502,7 +502,7 @@ const BusBill = () => {
     }
 
     feeItem.concessionAmount = value
-    feeItem.remainingBalance = (originalAmount - paidAmount - concessionAmount).toFixed(2)
+    feeItem.remainingBalance = (originalAmount - paidAmount).toFixed(2)
     feeItem.status = Number(feeItem.remainingBalance) === 0 ? "Settled" : "Pending"
     setFeeTableData(updatedFeeTableData)
 
@@ -514,7 +514,7 @@ const BusBill = () => {
   const updateTotals = (feeTableData) => {
     const totalPaid = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
     const totalConcession = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.concessionAmount || 0), 0)
-    const newBalance = totalBalance - totalPaid - totalConcession
+    const newBalance = totalBalance - totalPaid
 
     setBillData((prev) => ({
       ...prev,
@@ -622,8 +622,8 @@ const BusBill = () => {
         return
       }
 
-      // Add entries to BusFeeLog collection
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "BusFeeLog")
+      // Add entries to FeeLog collection (changed from BusFeeLog)
+      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
 
       // Add main entry
       await addDoc(feeLogRef, mainFeeLogEntry)
@@ -633,7 +633,26 @@ const BusBill = () => {
         await addDoc(feeLogRef, concessionFeeLogEntry)
       }
 
-      // Add to BusBillEntries collection
+      // Prepare all fee details including both paid and concession amounts
+      const allFeeDetails = [...mainFeeLogEntry.feePayments]
+
+      // Add concession details to feeDetails for BusBillEntries
+      if (totalConcessionAmount > 0) {
+        const concessionDetails = feeTableData
+          .filter((fee) => Number.parseFloat(fee.concessionAmount) > 0)
+          .map((fee) => ({
+            feeHead: fee.heading + " (Concession)",
+            feeAmount: fee.amount,
+            paidAmount: (-Number.parseFloat(fee.concessionAmount)).toFixed(2), // Negative amount for concession
+            concessionAmount: fee.concessionAmount,
+            type: "Bus Fee",
+            isConcesssion: true,
+          }))
+
+        allFeeDetails.push(...concessionDetails)
+      }
+
+      // Add to BusBillEntries collection with both payment and concession details
       const billEntryRef = collection(
         db,
         "Schools",
@@ -642,13 +661,31 @@ const BusBill = () => {
         administrationId,
         "BusBillEntries",
       )
+
+      // Add main payment entry
       await addDoc(billEntryRef, {
         ...billData,
-        feeDetails: [...mainFeeLogEntry.feePayments],
+        feeDetails: mainFeeLogEntry.feePayments,
         totalPaidAmount: totalPaidAmount.toFixed(2),
-        totalConcessionAmount: totalConcessionAmount.toFixed(2),
+        totalConcessionAmount: "0", // Set to 0 for main entry
         timestamp: serverTimestamp(),
+        billDate: formatDateForFirestore(billData.billDate),
       })
+
+      // Add separate concession entry if exists
+      if (concessionFeeLogEntry && concessionFeeLogEntry.feePayments.length > 0) {
+        await addDoc(billEntryRef, {
+          ...billData,
+          billNumber: billData.billNumber, // Use the same bill number (no suffix)
+          feeDetails: concessionFeeLogEntry.feePayments,
+          totalPaidAmount: (-totalConcessionAmount).toFixed(2), // Negative amount for concession
+          totalConcessionAmount: totalConcessionAmount.toFixed(2),
+          timestamp: serverTimestamp(),
+          billDate: formatDateForFirestore(billData.billDate),
+          transactionNarrative: "Concession", // Mark as concession
+          isConcession: true, // Flag to identify concession entries
+        })
+      }
 
       // Update student fee details
       const updatedFeeDetails = feeDetails.map((fee) => {
@@ -656,8 +693,7 @@ const BusBill = () => {
         if (paidFee) {
           const originalAmount = Number.parseFloat(fee.amount) || 0
           const paidAmount = Number.parseFloat(paidFee.paidAmount) || 0
-          const concessionAmount = Number.parseFloat(paidFee.concessionAmount) || 0
-          const newAmount = Math.max(0, originalAmount - paidAmount - concessionAmount).toFixed(2)
+          const newAmount = Math.max(0, originalAmount - paidAmount).toFixed(2)
 
           return {
             ...fee,
@@ -717,8 +753,13 @@ const BusBill = () => {
 
     setIsLoading(true)
     try {
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "BusFeeLog")
-      const q = query(feeLogRef, where("admissionNumber", "==", billData.admissionNumber))
+      // Changed from BusFeeLog to FeeLog
+      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", administrationId, "FeeLog")
+      const q = query(
+        feeLogRef,
+        where("admissionNumber", "==", billData.admissionNumber),
+        where("feePayments.type", "==", "Bus Fee"), // Add filter for Bus Fee type
+      )
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
