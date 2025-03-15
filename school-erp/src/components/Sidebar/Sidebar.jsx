@@ -241,7 +241,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "6-5", title: "• Day Bus Fee Collection", path: "/transport/day-bus-fee" },
         { id: "6-6", title: "• Period Bus Fee Collection Report", path: "/transport/period-bus-collection" },
         { id: "6-7", title: "• Bus Fee Balance Report", path: "/transport/bus-balance-report" },
-        { id: "6-8", title: "• Placewise List", path: "/transport/place-wise-report" },
+        { id: "6-8", title: "• Placewise List", path: "/admission/Student-Details-Report/stage-wise-report" },
       ],
     },
     {
