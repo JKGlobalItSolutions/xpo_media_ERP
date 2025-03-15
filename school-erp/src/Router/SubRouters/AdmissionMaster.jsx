@@ -5,7 +5,6 @@ import AdmissionForm from '../../pages/Admission Pages/AdmissionForm';
 import StudentDetails from '../../pages/Admission Pages/StudentDetails';
 import EditStudentDetails from '../../pages/Admission Pages/EditStudentDetails';
 import StudentDetailsReport from '../../pages/Admission Pages/StudentDetailsReport';
-import TransferCertificate from '../../pages/Admission Pages/TransferCertificate';
 import DemandReport from '../../pages/Admission Pages/DemandReport';
 import SectionReplace from '../../pages/Admission Pages/SectionReplace';
 import ArrearFeeUpdating from '../../pages/Admission Pages/ArrearFeeUpdating';
@@ -28,6 +27,11 @@ import FullViewReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/
 import HostelStatusReport from '../../pages/Admission Pages/StudentDetaisReport.jsx/HostelStatusReport';
 import StudentRegisterGrade from '../../pages/Admission Pages/StudentDetaisReport.jsx/StudentRegisterGrade';
 import PhoneNumberReplace from '../../pages/Admission Pages/PhoneNumberReplace';
+import TwelfthCertificate from '../../pages/Admission Pages/TC-View-Wise/TwelfthCertificate';
+import CBSECertificate1 from '../../pages/Admission Pages/TC-View-Wise/CBSECertificate1';
+import CBSECertificate2 from '../../pages/Admission Pages/TC-View-Wise/CBSECertificate2';
+import CertificateManagement from '../../pages/Admission Pages/CertificateManagement';
+import TenthCertificate from '../../pages/Admission Pages/TC-View-Wise/TenthCertificate';
 
 
 function AdmissionMaster() {
@@ -40,7 +44,7 @@ function AdmissionMaster() {
       <Route path="StudentDetails" element={<StudentDetails />} />
       <Route path="EditStudentDetails" element={<EditStudentDetails />} />
       <Route path="Student-Details-Report" element={<StudentDetailsReport />} />
-      <Route path="Transfer-Certificate" element={<TransferCertificate />} />
+      <Route path="Transfer-Certificate" element={<CertificateManagement />} />
       <Route path="Demand-Report" element={<DemandReport />} />
       <Route path="Section-Replace" element={<SectionReplace />} />
       <Route path="Arrear-FeeUpdating" element={<ArrearFeeUpdating />} />
@@ -63,6 +67,10 @@ function AdmissionMaster() {
       <Route path="Student-Details-Report/hostel-status-report" element={<HostelStatusReport />} />
       <Route path="Student-Details-Report/student-register-grade" element={<StudentRegisterGrade />} />
       <Route path="phone-number-replace" element={<PhoneNumberReplace />} />
+      <Route path="tenth-certificate" element={<TenthCertificate />} />
+      <Route path="twelth-certificate" element={<TwelfthCertificate />} />
+      <Route path="cbse-certificate-1" element={<CBSECertificate1 />} />
+      <Route path="cbse-certificate-2" element={<CBSECertificate2 />} />
     </Routes>
   );
 }
