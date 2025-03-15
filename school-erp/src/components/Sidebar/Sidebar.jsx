@@ -206,6 +206,7 @@ function Sidebar({ isOpen, toggleSidebar, isMobile }) {
         { id: "4-3", title: "• Customer / Staff Master", path: "/book/customer-staff-master" },
         { id: "4-5", title: "• Book Master", path: "/book/Book-Master" },
         { id: "4-6", title: "• Book Setup Class Wise", path: "/book/Book-setup-class-wise" },
+        { id: "4-6", title: "• Store Transaction", path: "/book/Book-transaction" },
       ],
     },
     {
