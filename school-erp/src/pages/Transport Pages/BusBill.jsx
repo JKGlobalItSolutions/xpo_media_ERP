@@ -18,6 +18,7 @@ import {
   updateDoc,
   serverTimestamp,
   Timestamp,
+  runTransaction,
 } from "firebase/firestore"
 import { ref, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
@@ -80,45 +81,71 @@ const BusBill = () => {
   // State for confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false)
 
+  // State to track if bill number is locked
+  const [billNumberLocked, setBillNumberLocked] = useState(false)
+
   // Generate bill number
   useEffect(() => {
     const generateBillNumber = async () => {
       if (!administrationId) return
 
       try {
-        const billsRef = collection(
-          db,
-          "Schools",
-          auth.currentUser.uid,
-          "Transactions",
-          administrationId,
-          "BusBillEntries",
-        )
-        const querySnapshot = await getDocs(billsRef)
+        // Use a transaction to safely get and update the next bill number
+        await runTransaction(db, async (transaction) => {
+          // Reference to the BillNumberSequence document in the BusBillEntries collection
+          const billSequenceRef = doc(
+            db,
+            "Schools",
+            auth.currentUser.uid,
+            "Transactions",
+            administrationId,
+            "BusBillEntries",
+            "BillNumberSequence",
+          )
 
-        const existingNumbers = querySnapshot.docs
-          .map((doc) => doc.data().billNumber)
-          .filter((num) => num && num.includes("/"))
-          .map((num) => Number.parseInt(num.split("/")[0], 10))
-          .sort((a, b) => a - b)
+          // Get the current sequence value
+          const billSequenceDoc = await transaction.get(billSequenceRef)
 
-        let nextNumber = 1
-        if (existingNumbers.length > 0) {
-          nextNumber = existingNumbers[existingNumbers.length - 1] + 1
-        }
+          const currentDate = new Date()
+          const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
 
-        const currentDate = new Date()
-        const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
-        const newBillNumber = `${nextNumber}/${financialYear}`
-        setBillData((prev) => ({ ...prev, billNumber: newBillNumber }))
+          let nextNumber = 1
+
+          // If sequence document exists, increment it
+          if (billSequenceDoc.exists()) {
+            const sequenceData = billSequenceDoc.data()
+            // Check if we're in a new financial year
+            if (sequenceData.financialYear === financialYear) {
+              nextNumber = sequenceData.currentNumber + 1
+            } else {
+              // Reset counter for new financial year
+              nextNumber = 1
+            }
+          }
+
+          // Update the sequence document
+          transaction.set(billSequenceRef, {
+            currentNumber: nextNumber,
+            financialYear: financialYear,
+            lastUpdated: serverTimestamp(),
+            module: "BusFee", // Identify which module this sequence is for
+          })
+
+          // Set the bill number
+          const newBillNumber = `${nextNumber}/${financialYear}`
+          setBillData((prev) => ({ ...prev, billNumber: newBillNumber }))
+          setBillNumberLocked(true)
+        })
       } catch (error) {
         console.error("Error generating bill number:", error)
         toast.error("Failed to generate bill number")
       }
     }
 
-    generateBillNumber()
-  }, [administrationId])
+    if (administrationId && !billNumberLocked) {
+      generateBillNumber()
+    }
+  }, [administrationId, billNumberLocked])
 
   // Fetch administration and transport IDs
   useEffect(() => {
@@ -792,14 +819,12 @@ const BusBill = () => {
 
   // Reset form after submission
   const resetForm = () => {
-    // Generate new bill number
-    const currentBillNumber = billData.billNumber
-    const [currentNumber, currentYear] = currentBillNumber.split("/")
-    const nextNumber = Number.parseInt(currentNumber, 10) + 1
-    const newBillNumber = `${nextNumber}/${currentYear}`
+    // Release the bill number lock
+    setBillNumberLocked(false)
 
+    // Reset all form fields
     setBillData({
-      billNumber: newBillNumber,
+      billNumber: "", // Will be regenerated when billNumberLocked is set to false
       admissionNumber: "ADM",
       studentName: "",
       fatherName: "",

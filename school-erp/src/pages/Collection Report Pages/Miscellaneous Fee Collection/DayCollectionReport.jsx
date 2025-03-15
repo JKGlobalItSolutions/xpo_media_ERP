@@ -5,7 +5,7 @@ import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
 import { Form, Button, Container, Spinner, Table, Card, Row, Col } from "react-bootstrap"
 import { db, auth } from "../../../Firebase/config"
-import { collection, getDocs, query, where, doc, getDoc, limit } from "firebase/firestore"
+import { collection, query, where, doc, getDoc, limit, onSnapshot } from "firebase/firestore"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import jsPDF from "jspdf"
@@ -23,6 +23,7 @@ const DayCollectionReport = () => {
   const [collectionData, setCollectionData] = useState([])
   const [totalCollection, setTotalCollection] = useState(0)
   const componentRef = useRef(null)
+  const snapshotListenerRef = useRef(null)
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -34,6 +35,13 @@ const DayCollectionReport = () => {
     }
 
     fetchInitialData()
+
+    // Cleanup function to unsubscribe from snapshot listener
+    return () => {
+      if (snapshotListenerRef.current) {
+        snapshotListenerRef.current()
+      }
+    }
   }, [])
 
   const fetchSchoolInfo = async () => {
@@ -57,18 +65,29 @@ const DayCollectionReport = () => {
     try {
       const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
       const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
 
-      if (!querySnapshot.empty) {
-        const adminId = querySnapshot.docs[0].id
-        setAdministrationId(adminId)
-        return adminId
-      } else {
-        toast.error("No administration found")
-        return null
-      }
+      return new Promise((resolve) => {
+        const unsubscribe = onSnapshot(
+          q,
+          (querySnapshot) => {
+            if (!querySnapshot.empty) {
+              const adminId = querySnapshot.docs[0].id
+              setAdministrationId(adminId)
+              resolve(adminId)
+            } else {
+              toast.error("No administration found")
+              resolve(null)
+            }
+          },
+          (error) => {
+            console.error("Error fetching Administration ID:", error)
+            toast.error("Failed to initialize. Please try again.")
+            resolve(null)
+          },
+        )
+      })
     } catch (error) {
-      console.error("Error fetching Administration ID:", error)
+      console.error("Error setting up Administration ID listener:", error)
       toast.error("Failed to initialize. Please try again.")
       return null
     }
@@ -138,45 +157,70 @@ const DayCollectionReport = () => {
 
     setLoading(true)
     try {
-      const feeLogRef = collection(db, "Schools", auth.currentUser.uid, "Transactions", adminId, "OtherFeeLog")
+      // Changed from BusBillEntries to OtherBillEntries
+      const billEntriesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Transactions",
+        adminId,
+        "OtherBillEntries",
+      )
 
       const startDate = new Date(reportDate)
       startDate.setHours(0, 0, 0, 0)
       const endDate = new Date(reportDate)
       endDate.setHours(23, 59, 59, 999)
 
-      const q = query(feeLogRef, where("billDate", ">=", startDate), where("billDate", "<=", endDate))
+      // Query using timestamp field instead of billDate
+      const q = query(billEntriesRef, where("timestamp", ">=", startDate), where("timestamp", "<=", endDate))
 
-      const snapshot = await getDocs(q)
-      const rawCollections = []
-
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data()
-        rawCollections.push({
-          billNumber: data.billNumber,
-          admissionNumber: data.admissionNumber,
-          studentName: data.studentName,
-          standard: data.standard,
-          section: data.section,
-          description: data.feePayments?.map((fee) => fee.feeHead).join(", ") || "",
-          amount: Number.parseFloat(data.totalPaidAmount) || 0,
-          concession: Number.parseFloat(data.totalConcessionAmount) || 0,
-        })
-      })
-
-      const { processedData, grandTotal } = processCollectionData(rawCollections)
-      setCollectionData(processedData)
-      setTotalCollection(grandTotal)
-
-      if (processedData.length === 0) {
-        toast.info("No collection data found for the selected date")
-      } else {
-        toast.success(`Successfully loaded collection records`)
+      // Unsubscribe from previous listener if exists
+      if (snapshotListenerRef.current) {
+        snapshotListenerRef.current()
       }
+
+      // Set up real-time listener
+      snapshotListenerRef.current = onSnapshot(
+        q,
+        (snapshot) => {
+          const rawCollections = []
+
+          snapshot.docs.forEach((doc) => {
+            const data = doc.data()
+            rawCollections.push({
+              billNumber: data.billNumber,
+              admissionNumber: data.admissionNumber,
+              studentName: data.studentName,
+              standard: data.course, // Changed from standard to course to match OtherBillEntries schema
+              section: data.section,
+              description: data.feeDetails?.map((fee) => fee.feeHead).join(", ") || "",
+              amount: Number.parseFloat(data.totalPaidAmount) || 0,
+              concession: Number.parseFloat(data.totalConcessionAmount) || 0,
+            })
+          })
+
+          const { processedData, grandTotal } = processCollectionData(rawCollections)
+          setCollectionData(processedData)
+          setTotalCollection(grandTotal)
+
+          if (processedData.length === 0) {
+            toast.info("No collection data found for the selected date")
+          } else {
+            toast.success(`Successfully loaded collection records`)
+          }
+
+          setLoading(false)
+        },
+        (error) => {
+          console.error("Error fetching collection data:", error)
+          toast.error("Failed to fetch collection data")
+          setLoading(false)
+        },
+      )
     } catch (error) {
-      console.error("Error fetching collection data:", error)
+      console.error("Error setting up collection data listener:", error)
       toast.error("Failed to fetch collection data")
-    } finally {
       setLoading(false)
     }
   }
@@ -199,7 +243,7 @@ const DayCollectionReport = () => {
     doc.setFontSize(12)
     doc.text(schoolInfo.address, 105, 30, { align: "center" })
     doc.setFontSize(14)
-    doc.text("DAY OTHER FEES COLLECTION REPORT", 105, 45, { align: "center" })
+    doc.text("DAY COLLECTION REPORT", 105, 45, { align: "center" })
     doc.setFontSize(10)
     doc.text(`Report As on: ${reportDate.toLocaleDateString()}`, 20, 55)
     doc.text(`Page 1 of 1`, 180, 55)
@@ -306,6 +350,12 @@ const DayCollectionReport = () => {
     setReportDate(new Date())
     setCollectionData([])
     setTotalCollection(0)
+
+    // Unsubscribe from current listener
+    if (snapshotListenerRef.current) {
+      snapshotListenerRef.current()
+      snapshotListenerRef.current = null
+    }
   }
 
   const renderTableBody = () => {
@@ -370,10 +420,10 @@ const DayCollectionReport = () => {
     <MainContentPage>
       <Container fluid className="px-0">
         <div className="mb-4">
-          <nav className="d-flex custom-breadcrumb py-1 py-lg-3">
+          <nav className=" d-flex custom-breadcrumb py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
-            <div>Other Fee Collection Report</div>
+            <div>Collection Report</div>
             <span className="separator mx-2">&gt;</span>
             <span>Day Collection Report</span>
           </nav>
@@ -381,7 +431,7 @@ const DayCollectionReport = () => {
 
         <Card className="shadow-sm">
           <Card.Header className="bg-primary text-white py-3">
-            <h2 className="mb-0">Day Other Fee Collection Report</h2>
+            <h2 className="mb-0">Day Collection Report</h2>
           </Card.Header>
           <Card.Body className="p-4">
             <Form className="mb-4">
@@ -431,7 +481,7 @@ const DayCollectionReport = () => {
               <div className="text-center mb-4">
                 <h3 className="school-name">{schoolInfo.name}</h3>
                 <p className="school-address">{schoolInfo.address}</p>
-                <h4 className="report-title">DAY OTHER FEES COLLECTION REPORT</h4>
+                <h4 className="report-title">DAY COLLECTION REPORT</h4>
                 <div className="d-flex justify-content-between mt-3">
                   <p>Report As on: {reportDate.toLocaleDateString()}</p>
                   <p>Page 1 of 1</p>

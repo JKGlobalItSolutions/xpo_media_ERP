@@ -18,6 +18,7 @@ import {
   updateDoc,
   serverTimestamp,
   Timestamp,
+  runTransaction,
 } from "firebase/firestore"
 import { ref, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
@@ -28,7 +29,7 @@ import PaymentHistoryModal from "./PaymentHistoryModal"
 // Import the static profile image
 import defaultProfileImage from "../../images/StudentProfileIcon/studentProfile.jpeg"
 
-const BillEntry = () => {
+const BillingEntry = () => {
   const navigate = useNavigate()
   const dropdownRef = useRef(null)
   const confirmYesButtonRef = useRef(null)
@@ -80,45 +81,71 @@ const BillEntry = () => {
   // State for confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false)
 
+  // State to track if bill number is locked
+  const [billNumberLocked, setBillNumberLocked] = useState(false)
+
   // Generate bill number
   useEffect(() => {
     const generateBillNumber = async () => {
       if (!administrationId) return
 
       try {
-        const billsRef = collection(
-          db,
-          "Schools",
-          auth.currentUser.uid,
-          "Transactions",
-          administrationId,
-          "BillEntries",
-        )
-        const querySnapshot = await getDocs(billsRef)
+        // Use a transaction to safely get and update the next bill number
+        await runTransaction(db, async (transaction) => {
+          // Reference to the BillNumberSequence document in the BillEntries collection
+          const billSequenceRef = doc(
+            db,
+            "Schools",
+            auth.currentUser.uid,
+            "Transactions",
+            administrationId,
+            "BillEntries",
+            "BillNumberSequence",
+          )
 
-        const existingNumbers = querySnapshot.docs
-          .map((doc) => doc.data().billNumber)
-          .filter((num) => num && num.includes("/"))
-          .map((num) => Number.parseInt(num.split("/")[0], 10))
-          .sort((a, b) => a - b)
+          // Get the current sequence value
+          const billSequenceDoc = await transaction.get(billSequenceRef)
 
-        let nextNumber = 1
-        if (existingNumbers.length > 0) {
-          nextNumber = existingNumbers[existingNumbers.length - 1] + 1
-        }
+          const currentDate = new Date()
+          const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
 
-        const currentDate = new Date()
-        const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
-        const newBillNumber = `${nextNumber}/${financialYear}`
-        setBillData((prev) => ({ ...prev, billNumber: newBillNumber }))
+          let nextNumber = 1
+
+          // If sequence document exists, increment it
+          if (billSequenceDoc.exists()) {
+            const sequenceData = billSequenceDoc.data()
+            // Check if we're in a new financial year
+            if (sequenceData.financialYear === financialYear) {
+              nextNumber = sequenceData.currentNumber + 1
+            } else {
+              // Reset counter for new financial year
+              nextNumber = 1
+            }
+          }
+
+          // Update the sequence document
+          transaction.set(billSequenceRef, {
+            currentNumber: nextNumber,
+            financialYear: financialYear,
+            lastUpdated: serverTimestamp(),
+            module: "Fee", // Identify which module this sequence is for
+          })
+
+          // Set the bill number
+          const newBillNumber = `${nextNumber}/${financialYear}`
+          setBillData((prev) => ({ ...prev, billNumber: newBillNumber }))
+          setBillNumberLocked(true)
+        })
       } catch (error) {
         console.error("Error generating bill number:", error)
         toast.error("Failed to generate bill number")
       }
     }
 
-    generateBillNumber()
-  }, [administrationId])
+    if (administrationId && !billNumberLocked) {
+      generateBillNumber()
+    }
+  }, [administrationId, billNumberLocked])
 
   // Fetch administration and transport IDs
   useEffect(() => {
@@ -177,7 +204,10 @@ const BillEntry = () => {
           "FeeHeadSetup",
         )
         const snapshot = await getDocs(feeHeadRef)
+
+        // Get all fee heads without filtering
         const feeHeadData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+
         setFeeHeads(feeHeadData)
       } catch (error) {
         console.error("Error fetching fee heads:", error)
@@ -360,11 +390,18 @@ const BillEntry = () => {
       }
 
       const feeData = feeSnapshot.data()
-      const feeDetails = feeData.feeDetails || []
+      // Get all fee details without filtering
+      const allFeeDetails = feeData.feeDetails || []
 
-      // Calculate total balance
+      if (allFeeDetails.length === 0) {
+        toast.error("No fee details found for this student")
+        setIsLoading(false)
+        return
+      }
+
+      // Calculate total balance for all fees
       let totalBalance = 0
-      feeDetails.forEach((fee) => {
+      allFeeDetails.forEach((fee) => {
         totalBalance += Number.parseFloat(fee.amount) || 0
       })
 
@@ -399,9 +436,9 @@ const BillEntry = () => {
         ...student,
       })
 
-      setFeeDetails(feeDetails)
+      setFeeDetails(allFeeDetails)
       setFeeTableData(
-        feeDetails.map((fee) => ({
+        allFeeDetails.map((fee) => ({
           ...fee,
           paidAmount: "0",
           concessionAmount: "0", // Initialize concession amount
@@ -423,7 +460,7 @@ const BillEntry = () => {
       }))
 
       setStudentLoaded(true)
-      toast.success("Student data loaded successfully")
+      toast.success("Student fee data loaded successfully")
     } catch (error) {
       console.error("Error fetching student data:", error)
       toast.error("Failed to fetch student data")
@@ -475,7 +512,7 @@ const BillEntry = () => {
     }
 
     feeItem.concessionAmount = value
-    feeItem.remainingBalance = (originalAmount - paidAmount - concessionAmount).toFixed(2)
+    feeItem.remainingBalance = (originalAmount - paidAmount).toFixed(2)
     feeItem.status = Number(feeItem.remainingBalance) === 0 ? "Settled" : "Pending"
     setFeeTableData(updatedFeeTableData)
 
@@ -487,7 +524,7 @@ const BillEntry = () => {
   const updateTotals = (feeTableData) => {
     const totalPaid = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
     const totalConcession = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.concessionAmount || 0), 0)
-    const newBalance = totalBalance - totalPaid - totalConcession
+    const newBalance = totalBalance - totalPaid
 
     setBillData((prev) => ({
       ...prev,
@@ -566,7 +603,7 @@ const BillEntry = () => {
             feeAmount: fee.amount,
             paidAmount: fee.paidAmount,
             concessionAmount: "0", // Set to 0 for main entry
-            type: fee.type || "Other Fee", // Add the fee type
+            type: fee.type || "Other Fee", // Keep the original fee type
           })),
       }
 
@@ -585,7 +622,7 @@ const BillEntry = () => {
                   feeAmount: fee.amount,
                   paidAmount: (-Number.parseFloat(fee.concessionAmount)).toFixed(2), // Negative amount
                   concessionAmount: fee.concessionAmount,
-                  type: fee.type || "Other Fee", // Add the fee type
+                  type: fee.type || "Other Fee", // Keep the original fee type
                 })),
             }
           : null
@@ -606,7 +643,26 @@ const BillEntry = () => {
         await addDoc(feeLogRef, concessionFeeLogEntry)
       }
 
-      // Add to BillEntries collection
+      // Prepare all fee details including both paid and concession amounts
+      const allFeeDetails = [...mainFeeLogEntry.feePayments]
+
+      // Add concession details to feeDetails for BillEntries
+      if (totalConcessionAmount > 0) {
+        const concessionDetails = feeTableData
+          .filter((fee) => Number.parseFloat(fee.concessionAmount) > 0)
+          .map((fee) => ({
+            feeHead: fee.heading + " (Concession)",
+            feeAmount: fee.amount,
+            paidAmount: (-Number.parseFloat(fee.concessionAmount)).toFixed(2), // Negative amount for concession
+            concessionAmount: fee.concessionAmount,
+            type: fee.type || "Other Fee",
+            isConcesssion: true,
+          }))
+
+        allFeeDetails.push(...concessionDetails)
+      }
+
+      // Add to BillEntries collection with both payment and concession details
       const billEntryRef = collection(
         db,
         "Schools",
@@ -615,13 +671,31 @@ const BillEntry = () => {
         administrationId,
         "BillEntries",
       )
+
+      // Add main payment entry
       await addDoc(billEntryRef, {
         ...billData,
-        feeDetails: [...mainFeeLogEntry.feePayments],
+        feeDetails: mainFeeLogEntry.feePayments,
         totalPaidAmount: totalPaidAmount.toFixed(2),
-        totalConcessionAmount: totalConcessionAmount.toFixed(2),
+        totalConcessionAmount: "0", // Set to 0 for main entry
         timestamp: serverTimestamp(),
+        billDate: formatDateForFirestore(billData.billDate),
       })
+
+      // Add separate concession entry if exists
+      if (concessionFeeLogEntry && concessionFeeLogEntry.feePayments.length > 0) {
+        await addDoc(billEntryRef, {
+          ...billData,
+          billNumber: billData.billNumber, // Use the same bill number (no suffix)
+          feeDetails: concessionFeeLogEntry.feePayments,
+          totalPaidAmount: (-totalConcessionAmount).toFixed(2), // Negative amount for concession
+          totalConcessionAmount: totalConcessionAmount.toFixed(2),
+          timestamp: serverTimestamp(),
+          billDate: formatDateForFirestore(billData.billDate),
+          transactionNarrative: "Concession", // Mark as concession
+          isConcession: true, // Flag to identify concession entries
+        })
+      }
 
       // Update student fee details
       const updatedFeeDetails = feeDetails.map((fee) => {
@@ -629,8 +703,7 @@ const BillEntry = () => {
         if (paidFee) {
           const originalAmount = Number.parseFloat(fee.amount) || 0
           const paidAmount = Number.parseFloat(paidFee.paidAmount) || 0
-          const concessionAmount = Number.parseFloat(paidFee.concessionAmount) || 0
-          const newAmount = Math.max(0, originalAmount - paidAmount - concessionAmount).toFixed(2)
+          const newAmount = Math.max(0, originalAmount - paidAmount).toFixed(2)
 
           return {
             ...fee,
@@ -656,7 +729,7 @@ const BillEntry = () => {
         feeDetails: updatedFeeDetails,
       })
 
-      toast.success("Payment processed successfully!")
+      toast.success("Fee payment processed successfully!")
 
       // Reset form for next entry
       resetForm()
@@ -709,14 +782,12 @@ const BillEntry = () => {
 
   // Reset form after submission
   const resetForm = () => {
-    // Generate new bill number
-    const currentBillNumber = billData.billNumber
-    const [currentNumber, currentYear] = currentBillNumber.split("/")
-    const nextNumber = Number.parseInt(currentNumber, 10) + 1
-    const newBillNumber = `${nextNumber}/${currentYear}`
+    // Release the bill number lock
+    setBillNumberLocked(false)
 
+    // Reset all form fields
     setBillData({
-      billNumber: newBillNumber,
+      billNumber: "", // Will be regenerated when billNumberLocked is set to false
       admissionNumber: "ADM",
       studentName: "",
       fatherName: "",
@@ -1216,5 +1287,5 @@ const BillEntry = () => {
   )
 }
 
-export default BillEntry
+export default BillingEntry
 
