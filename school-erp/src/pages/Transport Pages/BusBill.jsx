@@ -25,6 +25,7 @@ import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import PaymentHistoryModal from "./PaymentHistoryModal"
+import BillPreviewModal from "./BillPreviewModal"
 
 // Import the static profile image
 import defaultProfileImage from "../../images/StudentProfileIcon/studentProfile.jpeg"
@@ -37,6 +38,7 @@ const BusBill = () => {
   // State for administration and transport IDs
   const [administrationId, setAdministrationId] = useState(null)
   const [transportId, setTransportId] = useState(null)
+  const [schoolInfo, setSchoolInfo] = useState({ name: "", address: "" })
 
   // Bill data state
   const [billData, setBillData] = useState({
@@ -81,8 +83,32 @@ const BusBill = () => {
   // State for confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false)
 
+  // State for bill preview modal
+  const [showBillPreviewModal, setShowBillPreviewModal] = useState(false)
+
   // State to track if bill number is locked
   const [billNumberLocked, setBillNumberLocked] = useState(false)
+
+  // Fetch school info
+  useEffect(() => {
+    const fetchSchoolInfo = async () => {
+      try {
+        const schoolDoc = doc(db, "Schools", auth.currentUser.uid)
+        const schoolSnapshot = await getDoc(schoolDoc)
+        if (schoolSnapshot.exists()) {
+          const data = schoolSnapshot.data()
+          setSchoolInfo({
+            name: data.SchoolName || "XPOMEDIA MATRIC. HR. SEC. SCHOOL",
+            address: data.SchoolAddres || "TIRUVANNAMALAIA 606601",
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching school information:", error)
+      }
+    }
+
+    fetchSchoolInfo()
+  }, [])
 
   // Generate bill number
   useEffect(() => {
@@ -763,8 +789,8 @@ const BusBill = () => {
 
       toast.success("Bus fee payment processed successfully!")
 
-      // Reset form for next entry
-      resetForm()
+      // Show bill preview modal
+      setShowBillPreviewModal(true)
     } catch (error) {
       console.error("Error processing payment:", error)
       toast.error(`Failed to process payment: ${error.message}`)
@@ -848,6 +874,12 @@ const BusBill = () => {
     setStudentData(null)
     setStudentLoaded(false)
     setStudentImageUrl(null)
+  }
+
+  // Handle bill preview modal close
+  const handleBillPreviewClose = () => {
+    setShowBillPreviewModal(false)
+    resetForm()
   }
 
   return (
@@ -1224,6 +1256,16 @@ const BusBill = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Bill Preview Modal */}
+      <BillPreviewModal
+        show={showBillPreviewModal}
+        onHide={() => setShowBillPreviewModal(false)}
+        billData={billData}
+        feeTableData={feeTableData}
+        schoolInfo={schoolInfo}
+        onClose={handleBillPreviewClose}
+      />
 
       <style jsx>{`
         .billing-form {

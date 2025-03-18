@@ -6,7 +6,7 @@ import { FaPrint, FaFilePdf } from "react-icons/fa"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 import { doc, getDoc } from "firebase/firestore"
-import { db, auth } from "../../../Firebase/config"
+import { db, auth } from "../../Firebase/config"
 
 const BillPreviewModal = ({ show, onHide, billData, feeTableData, schoolInfo, onClose, isDuplicate = false }) => {
   const billPreviewRef = useRef(null)
