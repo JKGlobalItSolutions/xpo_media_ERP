@@ -11,6 +11,26 @@ import "react-toastify/dist/ReactToastify.css"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import defaultStudentPhoto from "../../images/StudentProfileIcon/studentProfile.jpeg"
 import { QRCodeSVG } from "qrcode.react"
+import "./AdmissionForm.css" // Import the separate CSS file
+
+// Custom styles for date inputs
+const dateInputStyles = {
+  wrapper: {
+    position: "relative",
+    width: "100%",
+  },
+  calendarIcon: {
+    position: "absolute",
+    right: "0",
+    top: "0",
+    height: "100%",
+    width: "38px",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    zIndex: 2,
+  },
+}
 
 const AdmissionForm = () => {
   const { id } = useParams()
@@ -585,6 +605,35 @@ const AdmissionForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
+
+    // Add validation for Aadhar Number - only allow 12 digits
+    if (name === "aadharNumber") {
+      // Remove any non-digit characters
+      const digitsOnly = value.replace(/\D/g, "")
+      // Limit to 12 digits
+      const limitedValue = digitsOnly.slice(0, 12)
+      setFormData((prev) => ({
+        ...prev,
+        [name]: limitedValue,
+      }))
+      setErrors((prev) => ({ ...prev, [name]: "" }))
+      return
+    }
+
+    // Add validation for Phone Number - only allow 10 digits
+    if (name === "phoneNumber") {
+      // Remove any non-digit characters
+      const digitsOnly = value.replace(/\D/g, "")
+      // Limit to 10 digits
+      const limitedValue = digitsOnly.slice(0, 10)
+      setFormData((prev) => ({
+        ...prev,
+        [name]: limitedValue,
+      }))
+      setErrors((prev) => ({ ...prev, [name]: "" }))
+      return
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -665,12 +714,6 @@ const AdmissionForm = () => {
   const handlePhotoClick = () => {
     if (!isViewMode) {
       fileInputRef.current.click()
-    }
-  }
-
-  const handleDateInputClick = (ref) => {
-    if (!isViewMode) {
-      ref.current.showPicker()
     }
   }
 
@@ -923,45 +966,22 @@ const AdmissionForm = () => {
           </nav>
         </div>
 
-        <div
-          style={{ backgroundColor: "#0B3D7B" }}
-          className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
-        >
+        <div className="header-container">
           <div className="d-flex align-items-center">
             <h2 className="mb-0">{isViewMode ? "View Admission" : id ? "Edit Admission" : "Add Admission"}</h2>
           </div>
           <div style={{ width: "20px" }}></div>
         </div>
 
-        <div className="bg-white p-4 rounded-bottom shadow">
+        <div className="form-container">
           <Form onSubmit={handleSubmit} className="admission-form">
             <Row>
               <Col md={6}>
                 <div className="text-center mb-4">
                   <h3 className="section-title">Student Photo</h3>
-                  <div
-                    className="photo-upload-circle mx-auto"
-                    onClick={handlePhotoClick}
-                    style={{
-                      width: "200px",
-                      height: "200px",
-                      border: "2px dashed #ccc",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: isViewMode ? "default" : "pointer",
-                      overflow: "hidden",
-                      backgroundColor: "#f8f9fa",
-                      marginBottom: "20px",
-                    }}
-                  >
+                  <div className="photo-upload-circle mx-auto" onClick={handlePhotoClick}>
                     {photoPreview ? (
-                      <img
-                        src={photoPreview || "/placeholder.svg"}
-                        alt="Student"
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
+                      <img src={photoPreview || "/placeholder.svg"} alt="Student" />
                     ) : (
                       <div className="text-center">Upload Photo Here</div>
                     )}
@@ -979,7 +999,7 @@ const AdmissionForm = () => {
               <Col md={6}>
                 <div className="text-center mb-4">
                   <h3 className="section-title">QR Code Preview</h3>
-                  <div className="qr-code-container mx-auto" style={{ width: "200px", height: "200px" }}>
+                  <div className="qr-code-container mx-auto">
                     {qrCodeData && <QRCodeSVG value={qrCodeData} size={200} level="M" includeMargin={true} />}
                   </div>
                 </div>
@@ -1133,16 +1153,27 @@ const AdmissionForm = () => {
 
                 <Form.Group className="mb-3">
                   <Form.Label>Date Of Birth</Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth || ""}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                    ref={dateOfBirthRef}
-                    onClick={() => handleDateInputClick(dateOfBirthRef)}
-                  />
+                  <div style={dateInputStyles.wrapper}>
+                    <Form.Control
+                      type="date"
+                      name="dateOfBirth"
+                      value={formData.dateOfBirth || ""}
+                      onChange={handleInputChange}
+                      disabled={isViewMode}
+                      className="form-control-blue"
+                      ref={dateOfBirthRef}
+                    />
+                    {!isViewMode && (
+                      <button
+                        type="button"
+                        style={dateInputStyles.calendarIcon}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          dateOfBirthRef.current.showPicker()
+                        }}
+                      />
+                    )}
+                  </div>
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1425,16 +1456,27 @@ const AdmissionForm = () => {
 
                 <Form.Group className="mb-3">
                   <Form.Label>Date Of Admission</Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="dateOfAdmission"
-                    value={formData.dateOfAdmission || ""}
-                    onChange={handleInputChange}
-                    disabled={isViewMode}
-                    className="form-control-blue"
-                    ref={dateOfAdmissionRef}
-                    onClick={() => handleDateInputClick(dateOfAdmissionRef)}
-                  />
+                  <div style={dateInputStyles.wrapper}>
+                    <Form.Control
+                      type="date"
+                      name="dateOfAdmission"
+                      value={formData.dateOfAdmission || ""}
+                      onChange={handleInputChange}
+                      disabled={isViewMode}
+                      className="form-control-blue"
+                      ref={dateOfAdmissionRef}
+                    />
+                    {!isViewMode && (
+                      <button
+                        type="button"
+                        style={dateInputStyles.calendarIcon}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          dateOfAdmissionRef.current.showPicker()
+                        }}
+                      />
+                    )}
+                  </div>
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1633,7 +1675,7 @@ const AdmissionForm = () => {
                 <h3 className="section-title mt-4">All Fees Details</h3>
                 <div className="fee-details-table mb-4">
                   <Table bordered hover size="sm">
-                    <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                    <thead>
                       <tr>
                         <th>Fee Type</th>
                         <th>Fee Heading</th>
@@ -1665,174 +1707,10 @@ const AdmissionForm = () => {
           </Form>
         </div>
       </Container>
-
-      <style>
-        {`
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .admission-form {
-            max-width: 1200px;
-            margin: 0 auto;
-          }
-
-          .section-title {
-            color: #0B3D7B;
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-          }
-
-          .form-control-blue {
-            background-color: #F0F4FF !important;
-            border: 1px solid #E2E8F0;
-            border-radius: 4px;
-            padding: 0.5rem;
-          }
-
-          .form-control-blue:focus {
-            border-color: #0B3D7B;
-            box-shadow: 0 0 0 0.2rem rgba(11, 61, 123, 0.25);
-          }
-
-          .submit-btn {
-            background: linear-gradient(to bottom, #1565C0, #0B3D7B);
-            border: none;
-            padding: 0.75rem 2rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            min-width: 200px;
-          }
-
-          .submit-btn:hover {
-            background: linear-gradient(to bottom, #1976D2, #1565C0);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-          }
-
-          .photo-upload-circle {
-            transition: all 0.3s ease;
-          }
-
-          .photo-upload-circle:hover:not(:disabled) {
-            border-color: #0B3D7B;
-            background-color: #F8FAFF;
-          }
-
-          .form-label {
-            font-weight: 500;
-            color: #2D3748;
-          }
-
-          input[type="date"].form-control-blue {
-            position: relative;
-            padding-right: 35px;
-          }
-
-          input[type="date"].form-control-blue::-webkit-calendar-picker-indicator {
-            position: absolute;
-            right: 10px;
-            cursor: pointer;
-          }
-
-          h2 {
-            font-size: 1.5rem;
-            margin-bottom: 0;
-          }
-
-          .fee-details-table table {
-            margin-bottom: 1rem;
-          }
-
-          .fee-details-table th,
-          .fee-details-table td {
-            vertical-align: middle;
-            padding: 0.5rem;
-          }
-
-          .fee-details-table tfoot td {
-            background-color: #f8f9fa;
-          }
-
-          @media (max-width: 768px) {
-            .admission-form-container {
-              padding: 1rem;
-            }
-
-            .section-title {
-              font-size: 1.1rem;
-            }
-
-            .submit-btn {
-              width: 100%;
-            }
-
-            .fee-details-table table {
-              font-size: 0.9rem;
-            }
-          }
-
-          .form-check-input {
-            width: 3em;
-            height: 1.5em;
-            margin-top: 0.25em;
-            vertical-align: top;
-            background-color: #fff;
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: contain;
-            border: 1px solid rgba(0, 0, 0, 0.25);
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
-            transition: background-color 0.15s ease-in-out, background-position 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-          }
-
-          .form-check-input:checked {
-            background-color: #0B3D7B;
-            border-color: #0B3D7B;
-          }
-
-          .form-check-input:focus {
-            border-color: #0B3D7B;
-            outline: 0;
-            box-shadow: 0 0 0 0.25rem rgba(11, 61, 123, 0.25);
-          }
-
-          .form-switch .form-check-input {
-            width: 2.5em;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%280, 0, 0, 0.25%29'/%3e%3c/svg%3e");
-            background-position: left center;
-            border-radius: 2em;
-            transition: background-position 0.15s ease-in-out;
-          }
-
-          .form-switch .form-check-input:checked {
-            background-position: right center;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
-          }
-
-          .form-switch .form-check-label {
-            padding-left: 0.5rem;
-          }
-        `}
-      </style>
       <ToastContainer />
     </MainContentPage>
   )
 }
 
 export default AdmissionForm
+
