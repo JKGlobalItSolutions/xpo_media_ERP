@@ -18,7 +18,7 @@ import {
   updateDoc,
   serverTimestamp,
   Timestamp,
-  runTransaction,
+  orderBy,
 } from "firebase/firestore"
 import { ref, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
@@ -110,58 +110,57 @@ const OtherFee = () => {
     fetchSchoolInfo()
   }, [])
 
-  // Generate bill number
+  // Generate bill number based on last bill entry
   useEffect(() => {
     const generateBillNumber = async () => {
       if (!administrationId) return
 
       try {
-        // Use a transaction to safely get and update the next bill number
-        await runTransaction(db, async (transaction) => {
-          // Reference to the BillNumberSequence document in the OtherBillEntries collection
-          const billSequenceRef = doc(
-            db,
-            "Schools",
-            auth.currentUser.uid,
-            "Transactions",
-            administrationId,
-            "OtherBillEntries",
-            "BillNumberSequence",
-          )
+        // Get the current date for financial year calculation
+        const currentDate = new Date()
+        const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
 
-          // Get the current sequence value
-          const billSequenceDoc = await transaction.get(billSequenceRef)
+        // Query the OtherBillEntries collection to get the last bill
+        const billEntriesRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Transactions",
+          administrationId,
+          "OtherBillEntries",
+        )
 
-          const currentDate = new Date()
-          const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
+        // Order by timestamp in descending order and limit to 1 to get the most recent bill
+        const q = query(billEntriesRef, orderBy("timestamp", "desc"), limit(1))
+        const querySnapshot = await getDocs(q)
 
-          let nextNumber = 1
+        let nextNumber = 1 // Default to 1 if no previous bills exist
 
-          // If sequence document exists, increment it
-          if (billSequenceDoc.exists()) {
-            const sequenceData = billSequenceDoc.data()
-            // Check if we're in a new financial year
-            if (sequenceData.financialYear === financialYear) {
-              nextNumber = sequenceData.currentNumber + 1
-            } else {
-              // Reset counter for new financial year
-              nextNumber = 1
+        if (!querySnapshot.empty) {
+          const lastBill = querySnapshot.docs[0].data()
+
+          // Extract the bill number from the last bill
+          if (lastBill.billNumber) {
+            // Parse the bill number format (e.g., "123/2023-24")
+            const parts = lastBill.billNumber.split("/")
+            if (parts.length > 0) {
+              const lastBillNumber = Number.parseInt(parts[0])
+
+              // Check if the financial year is the same
+              if (parts[1] === financialYear) {
+                nextNumber = lastBillNumber + 1
+              } else {
+                // If it's a new financial year, start from 1
+                nextNumber = 1
+              }
             }
           }
+        }
 
-          // Update the sequence document
-          transaction.set(billSequenceRef, {
-            currentNumber: nextNumber,
-            financialYear: financialYear,
-            lastUpdated: serverTimestamp(),
-            module: "Fee", // Identify which module this sequence is for
-          })
-
-          // Set the bill number
-          const newBillNumber = `${nextNumber}/${financialYear}`
-          setBillData((prev) => ({ ...prev, billNumber: newBillNumber }))
-          setBillNumberLocked(true)
-        })
+        // Set the new bill number
+        const newBillNumber = `${nextNumber}/${financialYear}`
+        setBillData((prev) => ({ ...prev, billNumber: newBillNumber }))
+        setBillNumberLocked(true)
       } catch (error) {
         console.error("Error generating bill number:", error)
         toast.error("Failed to generate bill number")

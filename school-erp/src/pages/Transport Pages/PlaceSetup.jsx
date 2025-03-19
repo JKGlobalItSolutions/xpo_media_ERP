@@ -552,8 +552,8 @@ const PlaceSetup = () => {
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Place Setup</h2>
-                  <h6 className="m-0 d-lg-none">Place Setup</h6>
+                  <h2 className="m-0 d-none d-lg-block text-light">Place Setup</h2>
+                  <h6 className="m-0 d-lg-none text-light">Place Setup</h6>
                   <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
                     + Add Place
                   </Button>
@@ -683,6 +683,7 @@ const PlaceSetup = () => {
 
           .header {
             border-bottom: 1px solid #dee2e6;
+            background: #0B3D7B;
           }
 
           .custom-search {

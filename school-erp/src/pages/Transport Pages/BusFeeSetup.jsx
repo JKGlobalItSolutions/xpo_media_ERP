@@ -536,8 +536,8 @@ const BusFeeSetup = () => {
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Bus Fee Setup</h2>
-                  <h6 className="m-0 d-lg-none">Bus Fee Setup</h6>
+                  <h2 className="m-0 d-none d-lg-block text-light">Bus Fee Setup</h2>
+                  <h6 className="m-0 d-lg-none text-light">Bus Fee Setup</h6>
                   <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
                     + Add Fee
                   </Button>
@@ -677,6 +677,7 @@ const BusFeeSetup = () => {
 
           .header {
             border-bottom: 1px solid #dee2e6;
+            background-color: #0B3D7B;
           }
 
           .custom-search {
