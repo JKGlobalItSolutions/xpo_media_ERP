@@ -172,6 +172,84 @@ const BillingEntry = () => {
     }
   }, [administrationId, billNumberLocked])
 
+  // Helper function to generate a new bill number
+  const getNextBillNumber = async () => {
+    if (!administrationId) return null
+
+    try {
+      // Get the current date for financial year calculation
+      const currentDate = new Date()
+      const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
+
+      // Query the BillEntries collection to get the last bill
+      const billEntriesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Transactions",
+        administrationId,
+        "BillEntries",
+      )
+
+      // Order by timestamp in descending order and limit to 1 to get the most recent bill
+      const q = query(billEntriesRef, orderBy("timestamp", "desc"), limit(1))
+      const querySnapshot = await getDocs(q)
+
+      let nextNumber = 1 // Default to 1 if no previous bills exist
+
+      if (!querySnapshot.empty) {
+        const lastBill = querySnapshot.docs[0].data()
+
+        // Extract the bill number from the last bill
+        if (lastBill.billNumber) {
+          // Parse the bill number format (e.g., "123/2023-24")
+          const parts = lastBill.billNumber.split("/")
+          if (parts.length > 0) {
+            const lastBillNumber = Number.parseInt(parts[0])
+
+            // Check if the financial year is the same
+            if (parts[1] === financialYear) {
+              nextNumber = lastBillNumber + 1
+            } else {
+              // If it's a new financial year, start from 1
+              nextNumber = 1
+            }
+          }
+        }
+      }
+
+      // Return the new bill number
+      return `${nextNumber}/${financialYear}`
+    } catch (error) {
+      console.error("Error generating next bill number:", error)
+      return null
+    }
+  }
+
+  // Check if a bill number already exists
+  const checkBillNumberExists = async (billNumber) => {
+    if (!administrationId || !billNumber) return false
+
+    try {
+      const billEntriesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Transactions",
+        administrationId,
+        "BillEntries",
+      )
+
+      const q = query(billEntriesRef, where("billNumber", "==", billNumber))
+      const querySnapshot = await getDocs(q)
+
+      return !querySnapshot.empty
+    } catch (error) {
+      console.error("Error checking bill number existence:", error)
+      return false
+    }
+  }
+
   // Fetch administration and transport IDs
   useEffect(() => {
     const fetchAdministrationId = async () => {
@@ -595,6 +673,29 @@ const BillingEntry = () => {
   const processPayment = async () => {
     try {
       setShowConfirmModal(false)
+      setIsLoading(true)
+
+      // Check if the current bill number already exists
+      const billNumberExists = await checkBillNumberExists(billData.billNumber)
+
+      // If bill number exists, get a new one
+      let currentBillNumber = billData.billNumber
+      if (billNumberExists) {
+        const newBillNumber = await getNextBillNumber()
+        if (newBillNumber) {
+          currentBillNumber = newBillNumber
+          // Update the bill data with the new bill number
+          setBillData((prev) => ({
+            ...prev,
+            billNumber: newBillNumber,
+          }))
+        } else {
+          toast.error("Failed to generate a new bill number. Please try again.")
+          setIsLoading(false)
+          return
+        }
+      }
+
       const now = new Date()
       const totalPaidAmount = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
       const totalConcessionAmount = feeTableData.reduce(
@@ -604,7 +705,7 @@ const BillingEntry = () => {
 
       // Create the main fee log entry for the full amount
       const mainFeeLogEntry = {
-        billNumber: billData.billNumber,
+        billNumber: currentBillNumber,
         admissionNumber: billData.admissionNumber,
         studentName: billData.studentName,
         fatherName: billData.fatherName,
@@ -654,6 +755,7 @@ const BillingEntry = () => {
 
       if (mainFeeLogEntry.feePayments.length === 0 && !concessionFeeLogEntry) {
         toast.error("No fees have been paid or concessions applied")
+        setIsLoading(false)
         return
       }
 
@@ -700,6 +802,7 @@ const BillingEntry = () => {
       // Add main payment entry
       await addDoc(billEntryRef, {
         ...billData,
+        billNumber: currentBillNumber,
         feeDetails: mainFeeLogEntry.feePayments,
         totalPaidAmount: totalPaidAmount.toFixed(2),
         totalConcessionAmount: "0", // Set to 0 for main entry
@@ -711,7 +814,7 @@ const BillingEntry = () => {
       if (concessionFeeLogEntry && concessionFeeLogEntry.feePayments.length > 0) {
         await addDoc(billEntryRef, {
           ...billData,
-          billNumber: billData.billNumber, // Use the same bill number (no suffix)
+          billNumber: currentBillNumber, // Use the same bill number (no suffix)
           feeDetails: concessionFeeLogEntry.feePayments,
           totalPaidAmount: (-totalConcessionAmount).toFixed(2), // Negative amount for concession
           totalConcessionAmount: totalConcessionAmount.toFixed(2),
@@ -755,12 +858,14 @@ const BillingEntry = () => {
       })
 
       toast.success("Fee payment processed successfully!")
+      setIsLoading(false)
 
       // Show bill preview modal
       setShowBillPreviewModal(true)
     } catch (error) {
       console.error("Error processing payment:", error)
       toast.error(`Failed to process payment: ${error.message}`)
+      setIsLoading(false)
     }
   }
 
