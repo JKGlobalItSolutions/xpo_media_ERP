@@ -30,6 +30,11 @@ const dateInputStyles = {
     cursor: "pointer",
     zIndex: 2,
   },
+  error: {
+    color: "#dc3545",
+    fontSize: "0.875rem",
+    marginTop: "0.25rem",
+  },
 }
 
 const AdmissionForm = () => {
@@ -756,13 +761,13 @@ const AdmissionForm = () => {
 
     requiredFields.forEach((field) => {
       if (!formData[field]) {
-        newErrors[field] = `${
+        const fieldName =
           field.charAt(0).toUpperCase() +
           field
             .slice(1)
             .replace(/([A-Z])/g, " $1")
             .trim()
-        } is required`
+        newErrors[field] = `${fieldName} is required`
       }
     })
 
@@ -888,7 +893,6 @@ const AdmissionForm = () => {
             }
           }
         }
-
         toast.success("Admission submitted successfully!")
         setTimeout(() => {
           navigate("/admission/StudentDetails")
@@ -898,8 +902,15 @@ const AdmissionForm = () => {
         toast.error(`Failed to submit admission: ${error.message}`)
       }
     } else {
-      const missingFields = Object.keys(errors).join(", ")
-      toast.error(`Please fill in all required fields. Missing: ${missingFields}`)
+      // Scroll to the first error field
+      const firstErrorField = Object.keys(errors)[0]
+      const element = document.querySelector(`[name="${firstErrorField}"]`)
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" })
+      }
+
+      // Show toast with more specific message
+      toast.error("Please fill in all required fields marked in red")
     }
   }
 
@@ -1046,8 +1057,9 @@ const AdmissionForm = () => {
                     value={formData.studentName || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.studentName ? "is-invalid" : ""}`}
                   />
+                  {errors.studentName && <div style={dateInputStyles.error}>{errors.studentName}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1058,8 +1070,9 @@ const AdmissionForm = () => {
                     value={formData.fatherName || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.fatherName ? "is-invalid" : ""}`}
                   />
+                  {errors.fatherName && <div style={dateInputStyles.error}>{errors.fatherName}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1070,8 +1083,9 @@ const AdmissionForm = () => {
                     value={formData.motherName || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.motherName ? "is-invalid" : ""}`}
                   />
+                  {errors.motherName && <div style={dateInputStyles.error}>{errors.motherName}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1081,7 +1095,7 @@ const AdmissionForm = () => {
                     value={formData.fatherOccupation || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.fatherOccupation ? "is-invalid" : ""}`}
                   >
                     <option value="">Select Father's Occupation</option>
                     {setupData.parentOccupations.map((occupation) => (
@@ -1090,6 +1104,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.fatherOccupation && <div style={dateInputStyles.error}>{errors.fatherOccupation}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1099,7 +1114,7 @@ const AdmissionForm = () => {
                     value={formData.motherOccupation || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.motherOccupation ? "is-invalid" : ""}`}
                   >
                     <option value="">Select Mother's Occupation</option>
                     {setupData.parentOccupations.map((occupation) => (
@@ -1108,6 +1123,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.motherOccupation && <div style={dateInputStyles.error}>{errors.motherOccupation}</div>}
                 </Form.Group>
 
                 <h3 className="section-title mt-4">Personal Details</h3>
@@ -1119,8 +1135,9 @@ const AdmissionForm = () => {
                     value={formData.phoneNumber || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.phoneNumber ? "is-invalid" : ""}`}
                   />
+                  {errors.phoneNumber && <div style={dateInputStyles.error}>{errors.phoneNumber}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1142,13 +1159,14 @@ const AdmissionForm = () => {
                     value={formData.gender || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.gender ? "is-invalid" : ""}`}
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
-                    <option value="Other">Other</option>
+                    <option value="Transgender">Transgender </option>
                   </Form.Select>
+                  {errors.gender && <div style={dateInputStyles.error}>{errors.gender}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1160,7 +1178,7 @@ const AdmissionForm = () => {
                       value={formData.dateOfBirth || ""}
                       onChange={handleInputChange}
                       disabled={isViewMode}
-                      className="form-control-blue"
+                      className={`form-control-blue ${errors.dateOfBirth ? "is-invalid" : ""}`}
                       ref={dateOfBirthRef}
                     />
                     {!isViewMode && (
@@ -1174,6 +1192,7 @@ const AdmissionForm = () => {
                       />
                     )}
                   </div>
+                  {errors.dateOfBirth && <div style={dateInputStyles.error}>{errors.dateOfBirth}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1183,7 +1202,7 @@ const AdmissionForm = () => {
                     value={formData.bloodGroup || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.bloodGroup ? "is-invalid" : ""}`}
                   >
                     <option value="">Select Blood Group</option>
                     {setupData.bloodGroups.map((bg) => (
@@ -1192,6 +1211,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.bloodGroup && <div style={dateInputStyles.error}>{errors.bloodGroup}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1201,7 +1221,7 @@ const AdmissionForm = () => {
                     value={formData.nationality || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.nationality ? "is-invalid" : ""}`}
                   >
                     <option value="">Select Nationality</option>
                     {setupData.nationalities.map((nat) => (
@@ -1210,6 +1230,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.nationality && <div style={dateInputStyles.error}>{errors.nationality}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1219,7 +1240,7 @@ const AdmissionForm = () => {
                     value={formData.religion || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.religion ? "is-invalid" : ""}`}
                   >
                     <option value="">Select Religion</option>
                     {setupData.religions.map((rel) => (
@@ -1228,6 +1249,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.religion && <div style={dateInputStyles.error}>{errors.religion}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1237,7 +1259,7 @@ const AdmissionForm = () => {
                     value={formData.community || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.community ? "is-invalid" : ""}`}
                   >
                     <option value="">Select Community</option>
                     {setupData.communities.map((comm) => (
@@ -1246,6 +1268,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.community && <div style={dateInputStyles.error}>{errors.community}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1255,7 +1278,7 @@ const AdmissionForm = () => {
                     value={formData.caste || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.caste ? "is-invalid" : ""}`}
                   >
                     <option value="">Select Caste</option>
                     {setupData.castes.map((caste) => (
@@ -1264,6 +1287,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.caste && <div style={dateInputStyles.error}>{errors.caste}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1273,7 +1297,7 @@ const AdmissionForm = () => {
                     value={formData.motherTongue || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.motherTongue ? "is-invalid" : ""}`}
                   >
                     <option value="">Select Mother Tongue</option>
                     {setupData.motherTongues.map((mt) => (
@@ -1282,6 +1306,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.motherTongue && <div style={dateInputStyles.error}>{errors.motherTongue}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1292,8 +1317,9 @@ const AdmissionForm = () => {
                     value={formData.aadharNumber || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.aadharNumber ? "is-invalid" : ""}`}
                   />
+                  {errors.aadharNumber && <div style={dateInputStyles.error}>{errors.aadharNumber}</div>}
                 </Form.Group>
 
                 <h3 className="section-title">Address Details</h3>
@@ -1305,8 +1331,9 @@ const AdmissionForm = () => {
                     value={formData.streetVillage || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.streetVillage ? "is-invalid" : ""}`}
                   />
+                  {errors.streetVillage && <div style={dateInputStyles.error}>{errors.streetVillage}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1317,8 +1344,9 @@ const AdmissionForm = () => {
                     value={formData.placePincode || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.placePincode ? "is-invalid" : ""}`}
                   />
+                  {errors.placePincode && <div style={dateInputStyles.error}>{errors.placePincode}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1328,7 +1356,7 @@ const AdmissionForm = () => {
                     value={formData.state || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.state ? "is-invalid" : ""}`}
                   >
                     <option value="">Select State</option>
                     {setupData.states.map((state) => (
@@ -1337,6 +1365,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.state && <div style={dateInputStyles.error}>{errors.state}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1346,7 +1375,7 @@ const AdmissionForm = () => {
                     value={formData.district || ""}
                     onChange={handleInputChange}
                     disabled={isViewMode}
-                    className="form-control-blue"
+                    className={`form-control-blue ${errors.district ? "is-invalid" : ""}`}
                   >
                     <option value="">Select District</option>
                     {setupData.districts.map((district) => (
@@ -1355,6 +1384,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.district && <div style={dateInputStyles.error}>{errors.district}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1386,6 +1416,7 @@ const AdmissionForm = () => {
                     <option value="New">New</option>
                     <option value="Existing">Existing</option>
                   </Form.Select>
+                  {errors.studentType && <div style={dateInputStyles.error}>{errors.studentType}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1404,6 +1435,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.studentCategory && <div style={dateInputStyles.error}>{errors.studentCategory}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1422,6 +1454,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.standard && <div style={dateInputStyles.error}>{errors.standard}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1440,6 +1473,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.section && <div style={dateInputStyles.error}>{errors.section}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1452,6 +1486,7 @@ const AdmissionForm = () => {
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
+                  {errors.emis && <div style={dateInputStyles.error}>{errors.emis}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1477,6 +1512,7 @@ const AdmissionForm = () => {
                       />
                     )}
                   </div>
+                  {errors.dateOfAdmission && <div style={dateInputStyles.error}>{errors.dateOfAdmission}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1489,6 +1525,7 @@ const AdmissionForm = () => {
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
+                  {errors.examNumber && <div style={dateInputStyles.error}>{errors.examNumber}</div>}
                 </Form.Group>
 
                 <h3 className="section-title mt-4">Bus Transport Details</h3>
@@ -1584,6 +1621,7 @@ const AdmissionForm = () => {
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
+                  {errors.studiedYear && <div style={dateInputStyles.error}>{errors.studiedYear}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1602,6 +1640,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.classLastStudied && <div style={dateInputStyles.error}>{errors.classLastStudied}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1620,6 +1659,7 @@ const AdmissionForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {errors.classToBeAdmitted && <div style={dateInputStyles.error}>{errors.classToBeAdmitted}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1632,6 +1672,7 @@ const AdmissionForm = () => {
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
+                  {errors.nameOfSchool && <div style={dateInputStyles.error}>{errors.nameOfSchool}</div>}
                 </Form.Group>
 
                 <h3 className="section-title mt-4">Remarks</h3>
@@ -1645,6 +1686,7 @@ const AdmissionForm = () => {
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
+                  {errors.identificationMark1 && <div style={dateInputStyles.error}>{errors.identificationMark1}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -1657,6 +1699,7 @@ const AdmissionForm = () => {
                     disabled={isViewMode}
                     className="form-control-blue"
                   />
+                  {errors.identificationMark2 && <div style={dateInputStyles.error}>{errors.identificationMark2}</div>}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
