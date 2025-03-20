@@ -1171,26 +1171,35 @@ const BusBill = () => {
 
                   <Form.Group className="my-1">
                     <Form.Label>Pay Mode</Form.Label>
-                    <div className="d-flex">
-                      <Form.Check
-                        type="radio"
-                        id="online"
-                        label="Online"
-                        name="paymentMode"
-                        value="Online"
-                        checked={billData.paymentMode === "Online"}
-                        onChange={handleInputChange}
-                        className="me-3"
-                      />
-                      <Form.Check
-                        type="radio"
-                        id="cash"
-                        label="Cash"
-                        name="paymentMode"
-                        value="Cash"
-                        checked={billData.paymentMode === "Cash"}
-                        onChange={handleInputChange}
-                      />
+                    <div className="d-flex align-items-center">
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          id="online"
+                          name="paymentMode"
+                          value="Online"
+                          checked={billData.paymentMode === "Online"}
+                          onChange={handleInputChange}
+                        />
+                        <label className="form-check-label" htmlFor="online">
+                          Online
+                        </label>
+                      </div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          id="cash"
+                          name="paymentMode"
+                          value="Cash"
+                          checked={billData.paymentMode === "Cash"}
+                          onChange={handleInputChange}
+                        />
+                        <label className="form-check-label" htmlFor="cash">
+                          Cash
+                        </label>
+                      </div>
                     </div>
                   </Form.Group>
 
@@ -1421,6 +1430,22 @@ const BusBill = () => {
 
         .dropdown-item:hover {
           background-color: #f8f9fa;
+        }
+
+        .form-check-inline {
+          margin-right: 1rem;
+        }
+
+        .form-check-input {
+          width: 1rem;
+          height: 1rem;
+          margin-top: 0.25rem;
+          vertical-align: top;
+          border-radius: 50%;
+        }
+
+        .form-check-label {
+          margin-left: 0.5rem;
         }
 
         @media print {

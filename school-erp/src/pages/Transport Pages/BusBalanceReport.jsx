@@ -650,17 +650,23 @@ const BusBalanceReport = () => {
                       {/* Standard Field */}
                       <Row className="mb-4 align-items-center">
                         <Col md={4} className="d-flex align-items-center">
-                          <Form.Check
-                            type="checkbox"
-                            name="standard"
-                            checked={formData.standard}
-                            onChange={handleChange}
-                            className="me-3"
-                            style={{ width: "20px", height: "20px", borderColor: "#0B3D7B" }}
-                          />
-                          <Form.Label className="mb-0 fw-bold" style={{ fontSize: "1.1rem" }}>
-                            Standard
-                          </Form.Label>
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              id="standardCheck"
+                              name="standard"
+                              checked={formData.standard}
+                              onChange={handleChange}
+                            />
+                            <label
+                              className="form-check-label fw-bold"
+                              htmlFor="standardCheck"
+                              style={{ fontSize: "1.1rem" }}
+                            >
+                              Standard
+                            </label>
+                          </div>
                         </Col>
                         <Col md={8}>
                           {formData.standard && (
@@ -684,17 +690,23 @@ const BusBalanceReport = () => {
                       {/* Term / Month Field */}
                       <Row className="mb-4 align-items-center">
                         <Col md={4} className="d-flex align-items-center">
-                          <Form.Check
-                            type="checkbox"
-                            name="term"
-                            checked={formData.term}
-                            onChange={handleChange}
-                            className="me-3"
-                            style={{ width: "20px", height: "20px", borderColor: "#0B3D7B" }}
-                          />
-                          <Form.Label className="mb-0 fw-bold" style={{ fontSize: "1.1rem" }}>
-                            Term / Month
-                          </Form.Label>
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              id="termCheck"
+                              name="term"
+                              checked={formData.term}
+                              onChange={handleChange}
+                            />
+                            <label
+                              className="form-check-label fw-bold"
+                              htmlFor="termCheck"
+                              style={{ fontSize: "1.1rem" }}
+                            >
+                              Term / Month
+                            </label>
+                          </div>
                         </Col>
                         <Col md={8}>
                           {formData.term && (
@@ -721,17 +733,23 @@ const BusBalanceReport = () => {
                       {/* Routewise Field */}
                       <Row className="mb-4 align-items-center">
                         <Col md={4} className="d-flex align-items-center">
-                          <Form.Check
-                            type="checkbox"
-                            name="route"
-                            checked={formData.route}
-                            onChange={handleChange}
-                            className="me-3"
-                            style={{ width: "20px", height: "20px", borderColor: "#0B3D7B" }}
-                          />
-                          <Form.Label className="mb-0 fw-bold" style={{ fontSize: "1.1rem" }}>
-                            Routewise
-                          </Form.Label>
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              id="routeCheck"
+                              name="route"
+                              checked={formData.route}
+                              onChange={handleChange}
+                            />
+                            <label
+                              className="form-check-label fw-bold"
+                              htmlFor="routeCheck"
+                              style={{ fontSize: "1.1rem" }}
+                            >
+                              Routewise
+                            </label>
+                          </div>
                         </Col>
                         <Col md={8}>
                           {formData.route && (
@@ -931,91 +949,107 @@ const BusBalanceReport = () => {
       {/* Toastify Container */}
       <ToastContainer />
 
-      <style>
-        {`
-          .custom-btn-clr {
-            background-color: #0B3D7B;
-            color: white;
-            border: none;
-          }
-          
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-          
-          .custom-breadcrumb .separator {
-            color: #6c757d;
-          }
-          
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-          
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-          
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-          
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-          
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
+      <style jsx>{`
+        .custom-btn-clr {
+          background-color: #0B3D7B;
+          color: white;
+          border: none;
+        }
+        
+        .custom-breadcrumb a {
+          color: #0B3D7B;
+          text-decoration: none;
+        }
+        
+        .custom-breadcrumb .separator {
+          color: #6c757d;
+        }
+        
+        /* Toastify custom styles */
+        .Toastify__toast-container {
+          z-index: 9999;
+        }
+        
+        .Toastify__toast {
+          background-color: #0B3D7B;
+          color: white;
+        }
+        
+        .Toastify__toast--success {
+          background-color: #0B3D7B;
+        }
+        
+        .Toastify__toast--error {
+          background-color: #dc3545;
+        }
+        
+        .Toastify__progress-bar {
+          background-color: rgba(255, 255, 255, 0.7);
+        }
 
-          @media (max-width: 991.98px) {
-            .form-label {
-              font-size: 1rem !important;
-            }
+        @media (max-width: 991.98px) {
+          .form-label {
+            font-size: 1rem !important;
           }
-          
-          /* Report styles */
-          .report-container {
-            background-color: white;
-            border: 1px solid #ddd;
+        }
+        
+        /* Report styles */
+        .report-container {
+          background-color: white;
+          border: 1px solid #ddd;
+        }
+        
+        .report-table {
+          border-collapse: collapse;
+          width: 100%;
+        }
+        
+        .report-table th, .report-table td {
+          border: 1px solid #000;
+          padding: 8px;
+        }
+        
+        .report-table th {
+          background-color: #f8f9fa;
+          font-weight: bold;
+        }
+        
+        @media print {
+          body * {
+            visibility: hidden;
           }
-          
-          .report-table {
-            border-collapse: collapse;
+          #reportToPrint, #reportToPrint * {
+            visibility: visible;
+          }
+          #reportToPrint {
+            position: absolute;
+            left: 0;
+            top: 0;
             width: 100%;
           }
-          
-          .report-table th, .report-table td {
-            border: 1px solid #000;
-            padding: 8px;
+          .report-container {
+            border: none;
           }
-          
-          .report-table th {
-            background-color: #f8f9fa;
-            font-weight: bold;
-          }
-          
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            #reportToPrint, #reportToPrint * {
-              visibility: visible;
-            }
-            #reportToPrint {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-            }
-            .report-container {
-              border: none;
-            }
-          }
-        `}
-      </style>
+        }
+
+        /* Fix for checkbox styling */
+        .form-check-input {
+          width: 1rem;
+          height: 1rem;
+          margin-top: 0.25rem;
+          vertical-align: top;
+          border-radius: 0.25rem;
+        }
+
+        .form-check {
+          display: flex;
+          align-items: center;
+        }
+
+        .form-check-label {
+          margin-left: 0.5rem;
+        }
+      `}</style>
     </MainContentPage>
   )
 }
