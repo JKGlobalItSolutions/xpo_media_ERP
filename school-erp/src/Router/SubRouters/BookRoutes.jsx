@@ -13,6 +13,7 @@ import UtiliseMaterialOtherItems from '../../pages/Book/BookTransaction Pages/Ut
 import PurchaseEntry from '../../pages/Book/BookTransaction Pages/PurchaseEntry';
 import SupplierPaymentEntry from '../../pages/Book/BookTransaction Pages/SupplierPaymentEntry';
 import UnitsSetup from '../../pages/Book/UnitsSetup';
+import BookMaterialPurchaseView from '../../pages/Book/BookTransaction Pages/BookMaterialPurchaseView';
 
 
 
@@ -34,6 +35,7 @@ function BookRoutes() {
       <Route path="purchase-entry" element={<PurchaseEntry/>} />
       <Route path="supplier-payment-entry" element={<SupplierPaymentEntry/>} />
       <Route path="unit-setup" element={<UnitsSetup/>} />
+      <Route path="book-material-view" element={<BookMaterialPurchaseView/>} />
 
     </Routes>
   );

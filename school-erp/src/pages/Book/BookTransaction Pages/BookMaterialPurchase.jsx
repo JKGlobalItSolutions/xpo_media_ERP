@@ -1,10 +1,11 @@
-// book-material-purchase.jsx
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import MainContentPage from '../../../components/MainContent/MainContentPage';
 import { Form, Button, Row, Col, Card, Table, ListGroup, Modal } from 'react-bootstrap';
 import { db, auth } from "../../../Firebase/config";
+import {Link} from 'react-router-dom'
 import { 
   collection, 
   getDocs, 
@@ -47,6 +48,7 @@ const AddCustomUnitModal = ({ isOpen, onClose, onConfirm, unitName }) => {
 };
 
 const BookMaterialPurchase = () => {
+  const navigate = useNavigate();
   const [entryData, setEntryData] = useState({
     entryNo: '',
     entryDate: new Date().toISOString().split('T')[0],
@@ -654,6 +656,28 @@ const BookMaterialPurchase = () => {
     if (e.key === 'Enter') {
       e.preventDefault();
       return false;
+    }
+  };
+
+  // Navigate to view page
+  const handleViewClick = () => {
+    // Try multiple navigation approaches to ensure it works
+    try {
+      // Approach 1: Direct navigation to the view page
+      navigate('/book-material-purchase-view');
+      
+      // Approach 2: If the above doesn't work, try with a relative path
+      // navigate('../book-material-purchase-view');
+      
+      // Approach 3: If using nested routes, try with the full path
+      // navigate('/transaction/book-transaction/book-material-purchase-view');
+      
+      console.log("Navigating to book material purchase view page");
+    } catch (error) {
+      console.error("Navigation error:", error);
+      
+      // Fallback: Try window.location as a last resort
+      window.location.href = '/book-material-purchase-view';
     }
   };
 
@@ -1339,12 +1363,15 @@ const BookMaterialPurchase = () => {
                     >
                       {isSubmitting ? 'Saving...' : 'Save'}
                     </Button>
-                    <Button 
+                  <Link to='/book/book-material-view' >
+                  <Button 
                       variant="primary"
                       style={{ backgroundColor: '#2196F3', borderColor: '#2196F3' }}
+                   
                     >
                       View
                     </Button>
+                  </Link>
                     <Button 
                       variant="danger"
                       style={{ backgroundColor: '#F44336', borderColor: '#F44336' }}
@@ -1381,7 +1408,7 @@ const BookMaterialPurchase = () => {
                 </Col>
                 <Col md={4}>
                   <Card>
-                    <Card.Body>
+                    <Card.Body> 
                       <h6 className="card-title">Gross Amt</h6>
                       
                       {/* Book Items List with Prices */}
