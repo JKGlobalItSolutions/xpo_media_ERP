@@ -7,7 +7,6 @@ import ReceiptEntry from '../../pages/Transaction Pages/ReceiptEntry';
 import DuplicateBill from '../../pages/Transaction Pages/DuplicateBill';
 import PaymentEntry from '../../pages/Transaction Pages/PaymentEntry';
 import StaffUpdate from '../../pages/Transaction Pages/StaffUpdate';
-import StudentPhoneReplace from '../../pages/Transaction Pages/StudentPhoneReplace';
 import AttendanceEntry from '../../pages/Transaction Pages/AttendanceEntry';
 import SmsSend from '../../pages/Transaction Pages/SmsSend';
 import EnquirySMS from '../../pages/Transaction Pages/SMSPages/EnquirySMS';
@@ -28,7 +27,6 @@ function TransactionRoute() {
       <Route path="receipt-entry" element={< ReceiptEntry/>} />  
       <Route path="duplicate-bill" element={< DuplicateBill/>} />  
       <Route path="staff-update" element={< StaffUpdate/>} />  
-      <Route path="student-phone-replace" element={< StudentPhoneReplace/>} />  
       <Route path="attendance-entry" element={< AttendanceEntry/>} />  
       <Route path="sms-send" element={< SmsSend/>} />  
       <Route path="enquiry-sms" element={< EnquirySMS/>} />  

@@ -6,21 +6,21 @@ import MainContentPage from "../../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import * as XLSX from "xlsx" // Added for import/export functionality
+import * as XLSX from "xlsx"
 
 // Add Section Modal Component
 const AddSectionModal = ({ isOpen, onClose, onConfirm }) => {
-  const [sectionName, setSectionName] = useState("")
+  const [standard, setStandard] = useState("")
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(sectionName)
-    setSectionName("")
+    onConfirm(standard)
+    setStandard("")
   }
 
   return (
@@ -31,8 +31,8 @@ const AddSectionModal = ({ isOpen, onClose, onConfirm }) => {
           <Form.Control
             type="text"
             placeholder="Enter Section Name"
-            value={sectionName}
-            onChange={(e) => setSectionName(e.target.value)}
+            value={standard}
+            onChange={(e) => setStandard(e.target.value)}
             className="custom-input"
           />
         </div>
@@ -51,18 +51,18 @@ const AddSectionModal = ({ isOpen, onClose, onConfirm }) => {
 
 // Edit Section Modal Component
 const EditSectionModal = ({ isOpen, onClose, onConfirm, section }) => {
-  const [sectionName, setSectionName] = useState(section?.name || "")
+  const [standard, setStandard] = useState(section?.standard || "")
 
   useEffect(() => {
     if (section) {
-      setSectionName(section.name)
+      setStandard(section.standard)
     }
   }, [section])
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(section.id, sectionName)
+    onConfirm(section.id, standard)
   }
 
   return (
@@ -73,8 +73,8 @@ const EditSectionModal = ({ isOpen, onClose, onConfirm, section }) => {
           <Form.Control
             type="text"
             placeholder="Enter Section Name"
-            value={sectionName}
-            onChange={(e) => setSectionName(e.target.value)}
+            value={standard}
+            onChange={(e) => setStandard(e.target.value)}
             className="custom-input"
           />
         </div>
@@ -101,7 +101,7 @@ const DeleteSectionModal = ({ isOpen, onClose, onConfirm, section }) => {
         <h2 className="modal-title">Delete Section</h2>
         <div className="modal-body text-center">
           <p>Are you sure you want to delete this section?</p>
-          <p className="fw-bold">{section?.name}</p>
+          <p className="fw-bold">{section?.standard}</p>
         </div>
         <div className="modal-buttons">
           <Button className="modal-button delete" onClick={() => onConfirm(section.id)}>
@@ -152,24 +152,52 @@ const SectionSetup = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
   const [selectedSection, setSelectedSection] = useState(null)
-  const [newSectionName, setNewSectionName] = useState("")
+  const [newStandard, setNewStandard] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [sections, setSections] = useState([])
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
-  const [administrationId, setAdministrationId] = useState(null)
-  const { user } = useAuthContext()
+  const { user, currentAcademicYear } = useAuthContext()
 
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
+    const resetState = () => {
+      setSections([])
+      setSearchTerm("")
+      setSelectedSection(null)
+      setNewStandard("")
+      setIsAddModalOpen(false)
+      setIsEditModalOpen(false)
+      setIsDeleteModalOpen(false)
+      setIsConfirmEditModalOpen(false)
+    }
+
+    resetState()
+
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid)
-        await fetchAdministrationId()
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        // Ensure all necessary documents exist
+        await ensureDocumentsExist()
+        await fetchSections()
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage sections.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       } else {
         console.log("User is not authenticated")
         toast.error("Please log in to view and manage sections.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
@@ -180,76 +208,117 @@ const SectionSetup = () => {
     }
 
     checkAuthAndFetchData()
-  }, [])
 
-  useEffect(() => {
-    if (administrationId) {
-      fetchSections()
-    }
-  }, [administrationId])
+    return () => resetState()
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
 
-  const fetchAdministrationId = async () => {
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-      const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-        setAdministrationId(newAdminRef.id)
-      } else {
-        setAdministrationId(querySnapshot.docs[0].id)
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error)
-      toast.error("Failed to initialize. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      })
+      console.error("Error ensuring necessary documents:", error)
     }
   }
 
   const fetchSections = async () => {
-    if (!administrationId) return
+    if (!auth.currentUser || !currentAcademicYear) return
 
-    setError(null)
     try {
-      const sectionsRef = collection(
+      // First ensure all documents exist
+      await ensureDocumentsExist()
+
+      // Path to the SectionSetup collection - now directly accessing SectionSetup without CourseItems subcollection
+      const sectionsCollectionRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "SectionSetup",
       )
-      const querySnapshot = await getDocs(sectionsRef)
+
+      const querySnapshot = await getDocs(sectionsCollectionRef)
       const sectionsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log("Fetched sections:", sectionsData)
-      setSections(sectionsData)
+      console.log(
+        "Fetched sections for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        sectionsData,
+      )
+      setSections(sectionsData) // Update state with fetched data
     } catch (error) {
       console.error("Error fetching sections:", error)
       toast.error("Failed to fetch sections. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+      setSections([]) // Reset on error
     }
   }
 
-  const handleAddSection = async (name) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+  const handleAddSection = async (standard) => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -259,10 +328,10 @@ const SectionSetup = () => {
       return
     }
 
-    if (!name.trim()) {
+    if (!standard.trim()) {
       toast.error("Section name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -272,7 +341,7 @@ const SectionSetup = () => {
       return
     }
 
-    const isDuplicate = sections.some((section) => section.name.toLowerCase() === name.toLowerCase())
+    const isDuplicate = sections.some((section) => section.standard.toLowerCase() === standard.toLowerCase())
     if (isDuplicate) {
       toast.error("A section with this name already exists. Please choose a different name.", {
         position: "top-right",
@@ -287,19 +356,37 @@ const SectionSetup = () => {
     }
 
     try {
-      const sectionsRef = collection(
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
+
+      // Path to add a new section - now directly to SectionSetup collection
+      const sectionsCollectionRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "SectionSetup",
       )
-      const docRef = await addDoc(sectionsRef, { name })
-      console.log("Section added with ID:", docRef.id)
+
+      const docRef = await addDoc(sectionsCollectionRef, {
+        standard,
+        createdAt: new Date(),
+      })
+
+      console.log(
+        "Section added with ID:",
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
       // Immediately update UI
-      const newSection = { id: docRef.id, name }
+      const newSection = { id: docRef.id, standard }
       setSections((prevSections) => [...prevSections, newSection])
 
       setIsAddModalOpen(false)
@@ -313,12 +400,14 @@ const SectionSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data to ensure consistency
       await fetchSections()
     } catch (error) {
       console.error("Error adding section:", error)
       toast.error("Failed to add section. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -328,11 +417,11 @@ const SectionSetup = () => {
     }
   }
 
-  const handleEditSection = async (sectionId, newName) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+  const handleEditSection = async (sectionId, newStandard) => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -342,10 +431,10 @@ const SectionSetup = () => {
       return
     }
 
-    if (!newName.trim()) {
+    if (!newStandard.trim()) {
       toast.error("Section name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -356,7 +445,7 @@ const SectionSetup = () => {
     }
 
     const isDuplicate = sections.some(
-      (section) => section.id !== sectionId && section.name.toLowerCase() === newName.toLowerCase(),
+      (section) => section.id !== sectionId && section.standard.toLowerCase() === newStandard.toLowerCase(),
     )
     if (isDuplicate) {
       toast.error("A section with this name already exists. Please choose a different name.", {
@@ -373,14 +462,14 @@ const SectionSetup = () => {
 
     setIsEditModalOpen(false)
     setIsConfirmEditModalOpen(true)
-    setNewSectionName(newName)
+    setNewStandard(newStandard)
   }
 
   const confirmEditSection = async () => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -391,28 +480,43 @@ const SectionSetup = () => {
     }
 
     try {
-      const sectionRef = doc(
+      // Path to update a section - now directly in SectionSetup collection
+      const sectionDocRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "SectionSetup",
         selectedSection.id,
       )
-      await updateDoc(sectionRef, { name: newSectionName })
-      console.log("Section updated:", selectedSection.id)
+
+      await updateDoc(sectionDocRef, {
+        standard: newStandard,
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        "Section updated:",
+        selectedSection.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
       // Immediately update UI
       setSections((prevSections) =>
         prevSections.map((section) =>
-          section.id === selectedSection.id ? { ...section, name: newSectionName } : section
-        )
+          section.id === selectedSection.id ? { ...section, standard: newStandard } : section,
+        ),
       )
 
       setIsConfirmEditModalOpen(false)
       setSelectedSection(null)
-      setNewSectionName("")
+      setNewStandard("")
       toast.success("Section updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -423,12 +527,14 @@ const SectionSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data
       await fetchSections()
     } catch (error) {
       console.error("Error updating section:", error)
       toast.error("Failed to update section. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -439,10 +545,10 @@ const SectionSetup = () => {
   }
 
   const handleDeleteSection = async (sectionId) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -453,17 +559,28 @@ const SectionSetup = () => {
     }
 
     try {
-      const sectionRef = doc(
+      // Path to delete a section - now directly in SectionSetup collection
+      const sectionDocRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "SectionSetup",
         sectionId,
       )
-      await deleteDoc(sectionRef)
-      console.log("Section deleted:", sectionId)
+
+      await deleteDoc(sectionDocRef)
+      console.log(
+        "Section deleted:",
+        sectionId,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
       // Immediately update UI
       setSections((prevSections) => prevSections.filter((section) => section.id !== sectionId))
@@ -479,12 +596,14 @@ const SectionSetup = () => {
         draggable: true,
         progress: undefined,
       })
+
+      // Fetch fresh data
       await fetchSections()
     } catch (error) {
       console.error("Error deleting section:", error)
       toast.error("Failed to delete section. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -494,12 +613,11 @@ const SectionSetup = () => {
     }
   }
 
-  // Import function (mirrors CourseSetup.jsx)
   const handleImport = async (event) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -526,33 +644,52 @@ const SectionSetup = () => {
       }
 
       try {
-        const sectionsRef = collection(
+        // Ensure all necessary documents exist
+        await ensureDocumentsExist()
+
+        // Path to add imported sections - now directly to SectionSetup collection
+        const sectionsCollectionRef = collection(
           db,
           "Schools",
           auth.currentUser.uid,
+          "AcademicYears",
+          currentAcademicYear,
           "Administration",
-          administrationId,
+          ADMIN_DOC_ID,
           "SectionSetup",
         )
+
         const newSections = []
         for (const row of jsonData) {
-          const name = row["Section Name"] || row["name"]
-          if (name && name.trim()) {
-            const isDuplicate = sections.some((section) => section.name.toLowerCase() === name.toLowerCase())
+          const standard = row["Section Name"] || row["standard"]
+          if (standard && standard.trim()) {
+            const isDuplicate = sections.some((section) => section.standard.toLowerCase() === standard.toLowerCase())
             if (!isDuplicate) {
-              const docRef = await addDoc(sectionsRef, { name })
-              newSections.push({ id: docRef.id, name })
-              console.log("Imported section:", name, "for user:", auth.currentUser.uid)
+              const docRef = await addDoc(sectionsCollectionRef, {
+                standard,
+                createdAt: new Date(),
+              })
+              newSections.push({ id: docRef.id, standard })
+              console.log(
+                "Imported section:",
+                standard,
+                "for user:",
+                auth.currentUser.uid,
+                "in academic year:",
+                currentAcademicYear,
+              )
             }
           }
         }
 
-        // Update UI with imported sections
+        // Update UI
         setSections((prevSections) => [...prevSections, ...newSections])
 
         toast.success("Sections imported successfully!", {
           style: { background: "#0B3D7B", color: "white" },
         })
+
+        // Fetch fresh data
         await fetchSections()
       } catch (error) {
         console.error("Error importing sections:", error)
@@ -562,12 +699,11 @@ const SectionSetup = () => {
     reader.readAsArrayBuffer(file)
   }
 
-  // Export function (mirrors CourseSetup.jsx)
   const handleExport = () => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -583,12 +719,12 @@ const SectionSetup = () => {
     }
 
     const exportData = sections.map((section) => ({
-      "Section Name": section.name,
+      "Section Name": section.standard,
     }))
     const worksheet = XLSX.utils.json_to_sheet(exportData)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Sections")
-    XLSX.writeFile(workbook, `Sections_Export_${auth.currentUser.uid}.xlsx`)
+    XLSX.writeFile(workbook, `Sections_Export_${auth.currentUser.uid}_${currentAcademicYear}.xlsx`)
     toast.success("Sections exported successfully!", {
       style: { background: "#0B3D7B", color: "white" },
     })
@@ -604,8 +740,8 @@ const SectionSetup = () => {
     setIsDeleteModalOpen(true)
   }
 
-  const filteredSections = sections.filter((section) =>
-    section.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredSections = sections.filter(
+    (section) => section.standard && section.standard.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -614,11 +750,21 @@ const SectionSetup = () => {
         {/* Breadcrumb Navigation */}
         <nav className="custom-breadcrumb py-1 py-lg-3">
           <Link to="/home">Home</Link>
-          <span className="separator">&gt;</span>
+          <span className="separator"></span>
           <span>Administration</span>
-          <span className="separator">&gt;</span>
+          <span className="separator"></span>
           <span className="current col-12">Section Setup</span>
         </nav>
+
+        {/* Current Academic Year Display */}
+        {currentAcademicYear && (
+          <div className="academic-year-display mb-3">
+            <h5 className="m-0">
+              Academic Year: <span className="academic-year-value">{currentAcademicYear}</span>
+            </h5>
+          </div>
+        )}
+
         <Row>
           <Col xs={12}>
             <div className="section-setup-container">
@@ -626,8 +772,8 @@ const SectionSetup = () => {
                 {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
                   <div>
-                    <h2 className="m-0 d-none d-lg-block">Section Setup</h2>
-                    <h6 className="m-0 d-lg-none">Section Setup</h6>
+                    <h2 className="m-0 d-none d-lg-block">Create Section Setup</h2>
+                    <h6 className="m-0 d-lg-none">Create Section Setup</h6>
                   </div>
                   <div className="d-flex align-items-center gap-2">
                     <input
@@ -640,13 +786,22 @@ const SectionSetup = () => {
                     <Button
                       onClick={() => document.getElementById("import-file").click()}
                       className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear}
                     >
                       Import
                     </Button>
-                    <Button onClick={handleExport} className="btn btn-light text-dark">
+                    <Button
+                      onClick={handleExport}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || sections.length === 0}
+                    >
                       Export
                     </Button>
-                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                    <Button
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear}
+                    >
                       + Add Section
                     </Button>
                   </div>
@@ -654,63 +809,69 @@ const SectionSetup = () => {
 
                 {/* Content */}
                 <div className="content-wrapper p-4">
-                  {/* Search Bar */}
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by Section Name"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="custom-search mb-3"
-                  />
+                  {!currentAcademicYear ? (
+                    <div className="alert alert-warning">Please select an academic year to manage sections.</div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <Form.Control
+                        type="text"
+                        placeholder="Search by Section Name"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="custom-search mb-3"
+                      />
 
-                  {/* Section Table */}
-                  <div className="table-responsive">
-                    <Table bordered hover>
-                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                        <tr>
-                          <th>Section Name</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sections.length === 0 ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No data available
-                            </td>
-                          </tr>
-                        ) : filteredSections.length === 0 && searchTerm ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No matching sections found
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredSections.map((section) => (
-                            <tr key={section.id}>
-                              <td>{section.name}</td>
-                              <td>
-                                <Button
-                                  variant="link"
-                                  className="action-button edit-button me-2"
-                                  onClick={() => openEditModal(section)}
-                                >
-                                  <FaEdit />
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  className="action-button delete-button"
-                                  onClick={() => openDeleteModal(section)}
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </td>
+                      {/* Section Table */}
+                      <div className="table-responsive">
+                        <Table bordered hover>
+                          <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                            <tr>
+                              <th>Section Name</th>
+                              <th>Action</th>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </div>
+                          </thead>
+                          <tbody>
+                            {sections.length === 0 ? (
+                              <tr>
+                                <td colSpan="2" className="text-center">
+                                  No data available
+                                </td>
+                              </tr>
+                            ) : filteredSections.length === 0 && searchTerm ? (
+                              <tr>
+                                <td colSpan="2" className="text-center">
+                                  No matching sections found
+                                </td>
+                              </tr>
+                            ) : (
+                              filteredSections.map((section) => (
+                                <tr key={section.id}>
+                                  <td>{section.standard}</td>
+                                  <td>
+                                    <Button
+                                      variant="link"
+                                      className="action-button edit-button me-2"
+                                      onClick={() => openEditModal(section)}
+                                    >
+                                      <FaEdit />
+                                    </Button>
+                                    <Button
+                                      variant="link"
+                                      className="action-button delete-button"
+                                      onClick={() => openDeleteModal(section)}
+                                    >
+                                      <FaTrash />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </Table>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -743,11 +904,11 @@ const SectionSetup = () => {
         onClose={() => {
           setIsConfirmEditModalOpen(false)
           setSelectedSection(null)
-          setNewSectionName("")
+          setNewStandard("")
         }}
         onConfirm={confirmEditSection}
-        currentName={selectedSection?.name}
-        newName={newSectionName}
+        currentName={selectedSection?.standard}
+        newName={newStandard}
       />
 
       {/* Toastify Container */}
@@ -902,6 +1063,19 @@ const SectionSetup = () => {
             border-radius: 4px;
           }
 
+          /* Academic Year Display */
+          .academic-year-display {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border-left: 4px solid #0B3D7B;
+          }
+
+          .academic-year-value {
+            font-weight: bold;
+            color: #0B3D7B;
+          }
+
           /* Toastify custom styles */
           .Toastify__toast-container {
             z-index: 9999;
@@ -934,3 +1108,4 @@ const SectionSetup = () => {
 }
 
 export default SectionSetup
+

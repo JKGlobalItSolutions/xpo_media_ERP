@@ -18,13 +18,14 @@ import {
   updateDoc,
   serverTimestamp,
   Timestamp,
-  runTransaction,
+  orderBy,
 } from "firebase/firestore"
 import { ref, getDownloadURL } from "firebase/storage"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import MainContentPage from "../../components/MainContent/MainContentPage"
 import PaymentHistoryModal from "./PaymentHistoryModal"
+import BillPreviewModal from "./BillPreviewModal"
 
 // Import the static profile image
 import defaultProfileImage from "../../images/StudentProfileIcon/studentProfile.jpeg"
@@ -37,6 +38,7 @@ const BusBill = () => {
   // State for administration and transport IDs
   const [administrationId, setAdministrationId] = useState(null)
   const [transportId, setTransportId] = useState(null)
+  const [schoolInfo, setSchoolInfo] = useState({ name: "", address: "" })
 
   // Bill data state
   const [billData, setBillData] = useState({
@@ -81,61 +83,84 @@ const BusBill = () => {
   // State for confirmation modal
   const [showConfirmModal, setShowConfirmModal] = useState(false)
 
+  // State for bill preview modal
+  const [showBillPreviewModal, setShowBillPreviewModal] = useState(false)
+
   // State to track if bill number is locked
   const [billNumberLocked, setBillNumberLocked] = useState(false)
 
-  // Generate bill number
+  // Fetch school info
+  useEffect(() => {
+    const fetchSchoolInfo = async () => {
+      try {
+        const schoolDoc = doc(db, "Schools", auth.currentUser.uid)
+        const schoolSnapshot = await getDoc(schoolDoc)
+        if (schoolSnapshot.exists()) {
+          const data = schoolSnapshot.data()
+          setSchoolInfo({
+            name: data.SchoolName || "XPOMEDIA MATRIC. HR. SEC. SCHOOL",
+            address: data.SchoolAddres || "TIRUVANNAMALAIA 606601",
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching school information:", error)
+      }
+    }
+
+    fetchSchoolInfo()
+  }, [])
+
+  // Generate bill number based on last bill entry
   useEffect(() => {
     const generateBillNumber = async () => {
       if (!administrationId) return
 
       try {
-        // Use a transaction to safely get and update the next bill number
-        await runTransaction(db, async (transaction) => {
-          // Reference to the BillNumberSequence document in the BusBillEntries collection
-          const billSequenceRef = doc(
-            db,
-            "Schools",
-            auth.currentUser.uid,
-            "Transactions",
-            administrationId,
-            "BusBillEntries",
-            "BillNumberSequence",
-          )
+        // Get the current date for financial year calculation
+        const currentDate = new Date()
+        const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
 
-          // Get the current sequence value
-          const billSequenceDoc = await transaction.get(billSequenceRef)
+        // Query the BusBillEntries collection to get the last bill
+        const billEntriesRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "Transactions",
+          administrationId,
+          "BusBillEntries",
+        )
 
-          const currentDate = new Date()
-          const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
+        // Order by timestamp in descending order and limit to 1 to get the most recent bill
+        const q = query(billEntriesRef, orderBy("timestamp", "desc"), limit(1))
+        const querySnapshot = await getDocs(q)
 
-          let nextNumber = 1
+        let nextNumber = 1 // Default to 1 if no previous bills exist
 
-          // If sequence document exists, increment it
-          if (billSequenceDoc.exists()) {
-            const sequenceData = billSequenceDoc.data()
-            // Check if we're in a new financial year
-            if (sequenceData.financialYear === financialYear) {
-              nextNumber = sequenceData.currentNumber + 1
-            } else {
-              // Reset counter for new financial year
-              nextNumber = 1
+        if (!querySnapshot.empty) {
+          const lastBill = querySnapshot.docs[0].data()
+
+          // Extract the bill number from the last bill
+          if (lastBill.billNumber) {
+            // Parse the bill number format (e.g., "123/2023-24")
+            const parts = lastBill.billNumber.split("/")
+            if (parts.length > 0) {
+              const lastBillNumber = Number.parseInt(parts[0])
+
+              // Check if the financial year is the same
+              if (parts[1] === financialYear) {
+                nextNumber = lastBillNumber + 1
+              } else {
+                // If it's a new financial year, start from 1
+                nextNumber = 1
+              }
             }
           }
+        }
 
-          // Update the sequence document
-          transaction.set(billSequenceRef, {
-            currentNumber: nextNumber,
-            financialYear: financialYear,
-            lastUpdated: serverTimestamp(),
-            module: "BusFee", // Identify which module this sequence is for
-          })
-
-          // Set the bill number
-          const newBillNumber = `${nextNumber}/${financialYear}`
-          setBillData((prev) => ({ ...prev, billNumber: newBillNumber }))
-          setBillNumberLocked(true)
-        })
+        // Set the new bill number
+        const newBillNumber = `${nextNumber}/${financialYear}`
+        setBillData((prev) => ({ ...prev, billNumber: newBillNumber }))
+        setBillNumberLocked(true)
       } catch (error) {
         console.error("Error generating bill number:", error)
         toast.error("Failed to generate bill number")
@@ -146,6 +171,84 @@ const BusBill = () => {
       generateBillNumber()
     }
   }, [administrationId, billNumberLocked])
+
+  // Helper function to generate a new bill number
+  const getNextBillNumber = async () => {
+    if (!administrationId) return null
+
+    try {
+      // Get the current date for financial year calculation
+      const currentDate = new Date()
+      const financialYear = `${currentDate.getFullYear()}-${(currentDate.getFullYear() + 1).toString().slice(-2)}`
+
+      // Query the BusBillEntries collection to get the last bill
+      const billEntriesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Transactions",
+        administrationId,
+        "BusBillEntries",
+      )
+
+      // Order by timestamp in descending order and limit to 1 to get the most recent bill
+      const q = query(billEntriesRef, orderBy("timestamp", "desc"), limit(1))
+      const querySnapshot = await getDocs(q)
+
+      let nextNumber = 1 // Default to 1 if no previous bills exist
+
+      if (!querySnapshot.empty) {
+        const lastBill = querySnapshot.docs[0].data()
+
+        // Extract the bill number from the last bill
+        if (lastBill.billNumber) {
+          // Parse the bill number format (e.g., "123/2023-24")
+          const parts = lastBill.billNumber.split("/")
+          if (parts.length > 0) {
+            const lastBillNumber = Number.parseInt(parts[0])
+
+            // Check if the financial year is the same
+            if (parts[1] === financialYear) {
+              nextNumber = lastBillNumber + 1
+            } else {
+              // If it's a new financial year, start from 1
+              nextNumber = 1
+            }
+          }
+        }
+      }
+
+      // Return the new bill number
+      return `${nextNumber}/${financialYear}`
+    } catch (error) {
+      console.error("Error generating next bill number:", error)
+      return null
+    }
+  }
+
+  // Check if a bill number already exists
+  const checkBillNumberExists = async (billNumber) => {
+    if (!administrationId || !billNumber) return false
+
+    try {
+      const billEntriesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "Transactions",
+        administrationId,
+        "BusBillEntries",
+      )
+
+      const q = query(billEntriesRef, where("billNumber", "==", billNumber))
+      const querySnapshot = await getDocs(q)
+
+      return !querySnapshot.empty
+    } catch (error) {
+      console.error("Error checking bill number existence:", error)
+      return false
+    }
+  }
 
   // Fetch administration and transport IDs
   useEffect(() => {
@@ -587,6 +690,29 @@ const BusBill = () => {
   const processPayment = async () => {
     try {
       setShowConfirmModal(false)
+      setIsLoading(true)
+
+      // Check if the current bill number already exists
+      const billNumberExists = await checkBillNumberExists(billData.billNumber)
+
+      // If bill number exists, get a new one
+      let currentBillNumber = billData.billNumber
+      if (billNumberExists) {
+        const newBillNumber = await getNextBillNumber()
+        if (newBillNumber) {
+          currentBillNumber = newBillNumber
+          // Update the bill data with the new bill number
+          setBillData((prev) => ({
+            ...prev,
+            billNumber: newBillNumber,
+          }))
+        } else {
+          toast.error("Failed to generate a new bill number. Please try again.")
+          setIsLoading(false)
+          return
+        }
+      }
+
       const now = new Date()
       const totalPaidAmount = feeTableData.reduce((sum, fee) => sum + Number.parseFloat(fee.paidAmount || 0), 0)
       const totalConcessionAmount = feeTableData.reduce(
@@ -596,7 +722,7 @@ const BusBill = () => {
 
       // Create the main fee log entry for the full amount
       const mainFeeLogEntry = {
-        billNumber: billData.billNumber,
+        billNumber: currentBillNumber,
         admissionNumber: billData.admissionNumber,
         studentName: billData.studentName,
         fatherName: billData.fatherName,
@@ -646,6 +772,7 @@ const BusBill = () => {
 
       if (mainFeeLogEntry.feePayments.length === 0 && !concessionFeeLogEntry) {
         toast.error("No fees have been paid or concessions applied")
+        setIsLoading(false)
         return
       }
 
@@ -692,6 +819,7 @@ const BusBill = () => {
       // Add main payment entry
       await addDoc(billEntryRef, {
         ...billData,
+        billNumber: currentBillNumber,
         feeDetails: mainFeeLogEntry.feePayments,
         totalPaidAmount: totalPaidAmount.toFixed(2),
         totalConcessionAmount: "0", // Set to 0 for main entry
@@ -703,7 +831,7 @@ const BusBill = () => {
       if (concessionFeeLogEntry && concessionFeeLogEntry.feePayments.length > 0) {
         await addDoc(billEntryRef, {
           ...billData,
-          billNumber: billData.billNumber, // Use the same bill number (no suffix)
+          billNumber: currentBillNumber, // Use the same bill number (no suffix)
           feeDetails: concessionFeeLogEntry.feePayments,
           totalPaidAmount: (-totalConcessionAmount).toFixed(2), // Negative amount for concession
           totalConcessionAmount: totalConcessionAmount.toFixed(2),
@@ -762,12 +890,14 @@ const BusBill = () => {
       })
 
       toast.success("Bus fee payment processed successfully!")
+      setIsLoading(false)
 
-      // Reset form for next entry
-      resetForm()
+      // Show bill preview modal
+      setShowBillPreviewModal(true)
     } catch (error) {
       console.error("Error processing payment:", error)
       toast.error(`Failed to process payment: ${error.message}`)
+      setIsLoading(false)
     }
   }
 
@@ -848,6 +978,12 @@ const BusBill = () => {
     setStudentData(null)
     setStudentLoaded(false)
     setStudentImageUrl(null)
+  }
+
+  // Handle bill preview modal close
+  const handleBillPreviewClose = () => {
+    setShowBillPreviewModal(false)
+    resetForm()
   }
 
   return (
@@ -1035,26 +1171,35 @@ const BusBill = () => {
 
                   <Form.Group className="my-1">
                     <Form.Label>Pay Mode</Form.Label>
-                    <div className="d-flex">
-                      <Form.Check
-                        type="radio"
-                        id="online"
-                        label="Online"
-                        name="paymentMode"
-                        value="Online"
-                        checked={billData.paymentMode === "Online"}
-                        onChange={handleInputChange}
-                        className="me-3"
-                      />
-                      <Form.Check
-                        type="radio"
-                        id="cash"
-                        label="Cash"
-                        name="paymentMode"
-                        value="Cash"
-                        checked={billData.paymentMode === "Cash"}
-                        onChange={handleInputChange}
-                      />
+                    <div className="d-flex align-items-center">
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          id="online"
+                          name="paymentMode"
+                          value="Online"
+                          checked={billData.paymentMode === "Online"}
+                          onChange={handleInputChange}
+                        />
+                        <label className="form-check-label" htmlFor="online">
+                          Online
+                        </label>
+                      </div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          id="cash"
+                          name="paymentMode"
+                          value="Cash"
+                          checked={billData.paymentMode === "Cash"}
+                          onChange={handleInputChange}
+                        />
+                        <label className="form-check-label" htmlFor="cash">
+                          Cash
+                        </label>
+                      </div>
                     </div>
                   </Form.Group>
 
@@ -1225,6 +1370,16 @@ const BusBill = () => {
         </Modal.Footer>
       </Modal>
 
+      {/* Bill Preview Modal */}
+      <BillPreviewModal
+        show={showBillPreviewModal}
+        onHide={() => setShowBillPreviewModal(false)}
+        billData={billData}
+        feeTableData={feeTableData}
+        schoolInfo={schoolInfo}
+        onClose={handleBillPreviewClose}
+      />
+
       <style jsx>{`
         .billing-form {
           max-width: 1200px;
@@ -1275,6 +1430,22 @@ const BusBill = () => {
 
         .dropdown-item:hover {
           background-color: #f8f9fa;
+        }
+
+        .form-check-inline {
+          margin-right: 1rem;
+        }
+
+        .form-check-input {
+          width: 1rem;
+          height: 1rem;
+          margin-top: 0.25rem;
+          vertical-align: top;
+          border-radius: 50%;
+        }
+
+        .form-check-label {
+          margin-left: 0.5rem;
         }
 
         @media print {

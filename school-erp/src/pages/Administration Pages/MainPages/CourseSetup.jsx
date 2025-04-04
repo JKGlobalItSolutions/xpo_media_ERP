@@ -6,7 +6,7 @@ import MainContentPage from "../../../components/MainContent/MainContentPage"
 import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
@@ -155,14 +155,15 @@ const CourseSetup = () => {
   const [newStandard, setNewStandard] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [courses, setCourses] = useState([])
-  const [administrationId, setAdministrationId] = useState(null)
-  const { user } = useAuthContext()
+  const { user, currentAcademicYear } = useAuthContext()
 
-  // Reset state and fetch data when user changes
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
     const resetState = () => {
       setCourses([])
-      setAdministrationId(null)
       setSearchTerm("")
       setSelectedCourse(null)
       setNewStandard("")
@@ -175,14 +176,28 @@ const CourseSetup = () => {
     resetState()
 
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid)
-        await fetchAdministrationId()
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        // Ensure all necessary documents exist
+        await ensureDocumentsExist()
+        await fetchCourses()
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage courses.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       } else {
         console.log("User is not authenticated")
         toast.error("Please log in to view and manage courses.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
@@ -195,59 +210,100 @@ const CourseSetup = () => {
     checkAuthAndFetchData()
 
     return () => resetState()
-  }, [auth.currentUser?.uid]) // Re-run on user change
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
 
-  useEffect(() => {
-    if (administrationId && auth.currentUser) {
-      fetchCourses()
-    }
-  }, [administrationId])
-
-  const fetchAdministrationId = async () => {
-    if (!auth.currentUser) return
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
 
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-      const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-        setAdministrationId(newAdminRef.id)
-        console.log("New Administration ID created:", newAdminRef.id)
-      } else {
-        const adminId = querySnapshot.docs[0].id
-        setAdministrationId(adminId)
-        console.log("Existing Administration ID fetched:", adminId)
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error)
-      toast.error("Failed to initialize administration data. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      })
+      console.error("Error ensuring necessary documents:", error)
     }
   }
 
   const fetchCourses = async () => {
-    if (!administrationId || !auth.currentUser) return
+    if (!auth.currentUser || !currentAcademicYear) return
 
     try {
-      const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
-      const querySnapshot = await getDocs(coursesRef)
+      // First ensure all documents exist
+      await ensureDocumentsExist()
+
+      // Path to the CourseSetup collection - now directly accessing CourseSetup without CourseItems subcollection
+      const coursesCollectionRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "CourseSetup",
+      )
+
+      const querySnapshot = await getDocs(coursesCollectionRef)
       const coursesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log("Fetched courses for user", auth.currentUser.uid, ":", coursesData)
+      console.log(
+        "Fetched courses for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        coursesData,
+      )
       setCourses(coursesData) // Update state with fetched data
     } catch (error) {
       console.error("Error fetching courses:", error)
       toast.error("Failed to fetch courses. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -259,10 +315,10 @@ const CourseSetup = () => {
   }
 
   const handleAddCourse = async (standard) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -275,7 +331,7 @@ const CourseSetup = () => {
     if (!standard.trim()) {
       toast.error("Course name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -300,9 +356,34 @@ const CourseSetup = () => {
     }
 
     try {
-      const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
-      const docRef = await addDoc(coursesRef, { standard })
-      console.log("Course added with ID:", docRef.id, "for user:", auth.currentUser.uid)
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
+
+      // Path to add a new course - now directly to CourseSetup collection
+      const coursesCollectionRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "CourseSetup",
+      )
+
+      const docRef = await addDoc(coursesCollectionRef, {
+        standard,
+        createdAt: new Date(),
+      })
+
+      console.log(
+        "Course added with ID:",
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
       // Immediately update UI
       const newCourse = { id: docRef.id, standard }
@@ -326,7 +407,7 @@ const CourseSetup = () => {
       console.error("Error adding course:", error)
       toast.error("Failed to add course. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -337,10 +418,10 @@ const CourseSetup = () => {
   }
 
   const handleEditCourse = async (courseId, newStandard) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -353,7 +434,7 @@ const CourseSetup = () => {
     if (!newStandard.trim()) {
       toast.error("Course name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -385,10 +466,10 @@ const CourseSetup = () => {
   }
 
   const confirmEditCourse = async () => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -399,23 +480,36 @@ const CourseSetup = () => {
     }
 
     try {
-      const courseRef = doc(
+      // Path to update a course - now directly in CourseSetup collection
+      const courseDocRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
-        "Courses",
+        ADMIN_DOC_ID,
+        "CourseSetup",
         selectedCourse.id,
       )
-      await updateDoc(courseRef, { standard: newStandard })
-      console.log("Course updated:", selectedCourse.id, "for user:", auth.currentUser.uid)
+
+      await updateDoc(courseDocRef, {
+        standard: newStandard,
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        "Course updated:",
+        selectedCourse.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
       // Immediately update UI
       setCourses((prevCourses) =>
-        prevCourses.map((course) =>
-          course.id === selectedCourse.id ? { ...course, standard: newStandard } : course
-        )
+        prevCourses.map((course) => (course.id === selectedCourse.id ? { ...course, standard: newStandard } : course)),
       )
 
       setIsConfirmEditModalOpen(false)
@@ -438,7 +532,7 @@ const CourseSetup = () => {
       console.error("Error updating course:", error)
       toast.error("Failed to update course. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -449,10 +543,10 @@ const CourseSetup = () => {
   }
 
   const handleDeleteCourse = async (courseId) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -463,17 +557,28 @@ const CourseSetup = () => {
     }
 
     try {
-      const courseRef = doc(
+      // Path to delete a course - now directly in CourseSetup collection
+      const courseDocRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
-        "Courses",
+        ADMIN_DOC_ID,
+        "CourseSetup",
         courseId,
       )
-      await deleteDoc(courseRef)
-      console.log("Course deleted:", courseId, "for user:", auth.currentUser.uid)
+
+      await deleteDoc(courseDocRef)
+      console.log(
+        "Course deleted:",
+        courseId,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
       // Immediately update UI
       setCourses((prevCourses) => prevCourses.filter((course) => course.id !== courseId))
@@ -496,7 +601,7 @@ const CourseSetup = () => {
       console.error("Error deleting course:", error)
       toast.error("Failed to delete course. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -507,10 +612,10 @@ const CourseSetup = () => {
   }
 
   const handleImport = async (event) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -537,16 +642,40 @@ const CourseSetup = () => {
       }
 
       try {
-        const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
+        // Ensure all necessary documents exist
+        await ensureDocumentsExist()
+
+        // Path to add imported courses - now directly to CourseSetup collection
+        const coursesCollectionRef = collection(
+          db,
+          "Schools",
+          auth.currentUser.uid,
+          "AcademicYears",
+          currentAcademicYear,
+          "Administration",
+          ADMIN_DOC_ID,
+          "CourseSetup",
+        )
+
         const newCourses = []
         for (const row of jsonData) {
           const standard = row["Course Name"] || row["standard"]
           if (standard && standard.trim()) {
             const isDuplicate = courses.some((course) => course.standard.toLowerCase() === standard.toLowerCase())
             if (!isDuplicate) {
-              const docRef = await addDoc(coursesRef, { standard })
+              const docRef = await addDoc(coursesCollectionRef, {
+                standard,
+                createdAt: new Date(),
+              })
               newCourses.push({ id: docRef.id, standard })
-              console.log("Imported course:", standard, "for user:", auth.currentUser.uid)
+              console.log(
+                "Imported course:",
+                standard,
+                "for user:",
+                auth.currentUser.uid,
+                "in academic year:",
+                currentAcademicYear,
+              )
             }
           }
         }
@@ -569,10 +698,10 @@ const CourseSetup = () => {
   }
 
   const handleExport = () => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -593,7 +722,7 @@ const CourseSetup = () => {
     const worksheet = XLSX.utils.json_to_sheet(exportData)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Courses")
-    XLSX.writeFile(workbook, `Courses_Export_${auth.currentUser.uid}.xlsx`)
+    XLSX.writeFile(workbook, `Courses_Export_${auth.currentUser.uid}_${currentAcademicYear}.xlsx`)
     toast.success("Courses exported successfully!", {
       style: { background: "#0B3D7B", color: "white" },
     })
@@ -609,8 +738,8 @@ const CourseSetup = () => {
     setIsDeleteModalOpen(true)
   }
 
-  const filteredCourses = courses.filter((course) =>
-    course.standard && course.standard.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCourses = courses.filter(
+    (course) => course.standard && course.standard.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -624,6 +753,16 @@ const CourseSetup = () => {
           <span className="separator"></span>
           <span className="current col-12">Standard/Course Setup</span>
         </nav>
+
+        {/* Current Academic Year Display */}
+        {currentAcademicYear && (
+          <div className="academic-year-display mb-3">
+            <h5 className="m-0">
+              Academic Year: <span className="academic-year-value">{currentAcademicYear}</span>
+            </h5>
+          </div>
+        )}
+
         <Row>
           <Col xs={12}>
             <div className="course-setup-container">
@@ -645,13 +784,22 @@ const CourseSetup = () => {
                     <Button
                       onClick={() => document.getElementById("import-file").click()}
                       className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear}
                     >
                       Import
                     </Button>
-                    <Button onClick={handleExport} className="btn btn-light text-dark">
+                    <Button
+                      onClick={handleExport}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || courses.length === 0}
+                    >
                       Export
                     </Button>
-                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                    <Button
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear}
+                    >
                       + Add Course
                     </Button>
                   </div>
@@ -659,63 +807,69 @@ const CourseSetup = () => {
 
                 {/* Content */}
                 <div className="content-wrapper p-4">
-                  {/* Search Bar */}
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by Course Name"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="custom-search mb-3"
-                  />
+                  {!currentAcademicYear ? (
+                    <div className="alert alert-warning">Please select an academic year to manage courses.</div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <Form.Control
+                        type="text"
+                        placeholder="Search by Course Name"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="custom-search mb-3"
+                      />
 
-                  {/* Course Table */}
-                  <div className="table-responsive">
-                    <Table bordered hover>
-                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                        <tr>
-                          <th>Course Name</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {courses.length === 0 ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No data available
-                            </td>
-                          </tr>
-                        ) : filteredCourses.length === 0 && searchTerm ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No matching courses found
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredCourses.map((course) => (
-                            <tr key={course.id}>
-                              <td>{course.standard}</td>
-                              <td>
-                                <Button
-                                  variant="link"
-                                  className="action-button edit-button me-2"
-                                  onClick={() => openEditModal(course)}
-                                >
-                                  <FaEdit />
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  className="action-button delete-button"
-                                  onClick={() => openDeleteModal(course)}
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </td>
+                      {/* Course Table */}
+                      <div className="table-responsive">
+                        <Table bordered hover>
+                          <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                            <tr>
+                              <th>Course Name</th>
+                              <th>Action</th>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </div>
+                          </thead>
+                          <tbody>
+                            {courses.length === 0 ? (
+                              <tr>
+                                <td colSpan="2" className="text-center">
+                                  No data available
+                                </td>
+                              </tr>
+                            ) : filteredCourses.length === 0 && searchTerm ? (
+                              <tr>
+                                <td colSpan="2" className="text-center">
+                                  No matching courses found
+                                </td>
+                              </tr>
+                            ) : (
+                              filteredCourses.map((course) => (
+                                <tr key={course.id}>
+                                  <td>{course.standard}</td>
+                                  <td>
+                                    <Button
+                                      variant="link"
+                                      className="action-button edit-button me-2"
+                                      onClick={() => openEditModal(course)}
+                                    >
+                                      <FaEdit />
+                                    </Button>
+                                    <Button
+                                      variant="link"
+                                      className="action-button delete-button"
+                                      onClick={() => openDeleteModal(course)}
+                                    >
+                                      <FaTrash />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </Table>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -907,6 +1061,19 @@ const CourseSetup = () => {
             border-radius: 4px;
           }
 
+          /* Academic Year Display */
+          .academic-year-display {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border-left: 4px solid #0B3D7B;
+          }
+
+          .academic-year-value {
+            font-weight: bold;
+            color: #0B3D7B;
+          }
+
           /* Toastify custom styles */
           .Toastify__toast-container {
             z-index: 9999;
@@ -939,3 +1106,4 @@ const CourseSetup = () => {
 }
 
 export default CourseSetup
+

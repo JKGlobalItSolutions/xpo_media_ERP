@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import "bootstrap/dist/css/bootstrap.min.css"
 import leftprofile from "../../images/leftprofile.jpg"
 import logo from "../../images/Logo/logo.jpg"
@@ -8,6 +8,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { auth, db } from "../../Firebase/config"
 import { signInWithEmailAndPassword } from "firebase/auth"
 import { doc, setDoc, getDoc } from "firebase/firestore"
+import { useAuthContext } from "../../Context/AuthContext"
 
 // SchoolNameModal Component
 function SchoolNameModal({ isOpen, onClose, onConfirm }) {
@@ -124,6 +125,31 @@ function Login() {
   const [showModal, setShowModal] = useState(false)
   const [user, setUser] = useState(null)
   const navigate = useNavigate()
+  const { currentAcademicYear } = useAuthContext()
+
+  // Check if user is already authenticated - only once on mount
+  useEffect(() => {
+    const checkAuthOnce = async () => {
+      if (auth.currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, "Schools", auth.currentUser.uid))
+          if (userDoc.exists() && userDoc.data().currentAcademicYear) {
+            // They have an academic year, redirect to home
+            console.log("User already logged in with academic year, redirecting to home")
+            navigate("/home", { replace: true })
+          } else {
+            // No academic year, redirect to year selection
+            console.log("User logged in but no academic year, redirecting to year selection")
+            navigate("/select-year", { replace: true })
+          }
+        } catch (error) {
+          console.error("Error checking user data:", error)
+        }
+      }
+    }
+
+    checkAuthOnce()
+  }, [navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -135,16 +161,22 @@ function Login() {
 
       // Check if SchoolName exists
       const userDoc = await getDoc(doc(db, "Schools", user.uid))
-      if (userDoc.exists() && userDoc.data().SchoolName) {
-        // If SchoolName exists, navigate to home page
-        navigate("/home")
+
+      if (userDoc.exists()) {
+        if (userDoc.data().SchoolName) {
+          // Always navigate to year selection after login
+          navigate("/select-year", { replace: true })
+        } else {
+          // If SchoolName doesn't exist, show the modal
+          setShowModal(true)
+        }
       } else {
-        // If SchoolName doesn't exist, show the modal
+        // If document doesn't exist, show the modal
         setShowModal(true)
       }
     } catch (error) {
-      setError("Failed to log in. Please check your credentials.")
       console.error("Login error:", error)
+      setError("Failed to log in. Please check your credentials.")
     }
   }
 
@@ -166,7 +198,8 @@ function Login() {
         { merge: true },
       )
       setShowModal(false)
-      navigate("/home")
+      // After setting school name, navigate to year selection
+      navigate("/select-year", { replace: true })
     } catch (error) {
       console.error("Error saving school name:", error)
       setError("Failed to save school name. Please try again.")
@@ -175,8 +208,10 @@ function Login() {
 
   const handleModalClose = () => {
     setShowModal(false)
-    // You might want to handle this case, e.g., by logging out the user
-    // or redirecting them to a different page
+    // You might want to sign out the user if they cancel setting up their school name
+    auth.signOut().then(() => {
+      setError("School name is required to continue. Please log in again.")
+    })
   }
 
   return (
@@ -302,4 +337,3 @@ function Login() {
 }
 
 export default Login
-

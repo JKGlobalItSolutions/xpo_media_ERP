@@ -5,8 +5,8 @@ import { Link } from "react-router-dom";
 const ReceiptEntry = () => {
   return (
     <MainContentPage>
-      <div className="mb-4 w-100 ">
-          <nav className=" d-flex py-1 ">
+      <div className="mb-4">
+          <nav className="custom-breadcrumb d-flex py-1 py-lg-3">
             <Link to="/home">Home</Link>
             <span className="separator mx-2">&gt;</span>
             <div >Transaction
