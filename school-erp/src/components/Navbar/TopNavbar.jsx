@@ -5,6 +5,7 @@ import { auth, db } from "../../Firebase/config"
 import { signOut } from "firebase/auth"
 import { doc, onSnapshot } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
+import { useAuthContext } from "../../context/AuthContext"
 
 // Logout Confirmation Modal Component
 function LogoutModal({ isOpen, onClose, onConfirm }) {
@@ -104,6 +105,7 @@ function TopNavbar({ toggleSidebar, isMobile }) {
   const [schoolData, setSchoolData] = useState({ SchoolName: "", profileImage: "" })
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const navigate = useNavigate()
+  const { currentAcademicYear } = useAuthContext()
 
   useEffect(() => {
     const user = auth.currentUser
@@ -149,6 +151,11 @@ function TopNavbar({ toggleSidebar, isMobile }) {
     setIsDropdownOpen(false)
   }
 
+  const handleYearSelectorClick = () => {
+    navigate("/select-year")
+    setIsDropdownOpen(false)
+  }
+
   return (
     <nav
       style={{
@@ -179,6 +186,23 @@ function TopNavbar({ toggleSidebar, isMobile }) {
       )}
       <div style={{ flex: 1 }} />
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        {/* Academic Year Display */}
+        {currentAcademicYear && (
+          <div
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              padding: "6px 12px",
+              borderRadius: "4px",
+              display: "flex",
+              alignItems: "center",
+              cursor: "pointer",
+            }}
+            onClick={handleYearSelectorClick}
+          >
+            <span style={{ fontSize: "14px", marginRight: "4px" }}>Academic Year:</span>
+            <span style={{ fontSize: "14px", fontWeight: "bold" }}>{currentAcademicYear}</span>
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {/* Add any additional elements here */}
         </div>
@@ -262,6 +286,20 @@ function TopNavbar({ toggleSidebar, isMobile }) {
               zIndex: 1000,
             }}
           >
+            <button
+              onClick={handleYearSelectorClick}
+              style={{
+                width: "100%",
+                padding: "8px 16px",
+                border: "none",
+                background: "none",
+                color: "#0B3D7B",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              Change Academic Year
+            </button>
             <button
               onClick={handleSettingsClick}
               style={{

@@ -754,15 +754,6 @@ const CourseSetup = () => {
           <span className="current col-12">Standard/Course Setup</span>
         </nav>
 
-        {/* Current Academic Year Display */}
-        {currentAcademicYear && (
-          <div className="academic-year-display mb-3">
-            <h5 className="m-0">
-              Academic Year: <span className="academic-year-value">{currentAcademicYear}</span>
-            </h5>
-          </div>
-        )}
-
         <Row>
           <Col xs={12}>
             <div className="course-setup-container">
@@ -1059,19 +1050,6 @@ const CourseSetup = () => {
             padding: 0.5rem;
             border: 1px solid #ced4da;
             border-radius: 4px;
-          }
-
-          /* Academic Year Display */
-          .academic-year-display {
-            background-color: #f8f9fa;
-            padding: 10px 15px;
-            border-radius: 5px;
-            border-left: 4px solid #0B3D7B;
-          }
-
-          .academic-year-value {
-            font-weight: bold;
-            color: #0B3D7B;
           }
 
           /* Toastify custom styles */
