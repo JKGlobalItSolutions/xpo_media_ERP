@@ -3,14 +3,15 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table, Spinner } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import * as XLSX from "xlsx" // Added for import/export
+import "../styles/style.css"
 
 // Add Mother Tongue Modal Component
 const AddMotherTongueModal = ({ isOpen, onClose, onConfirm }) => {
@@ -40,9 +41,7 @@ const AddMotherTongueModal = ({ isOpen, onClose, onConfirm }) => {
           <Button className="modal-button confirm" onClick={handleSubmit}>
             Add
           </Button>
-          <Button className="modal-button cancel" onClick={onClose
-
-}>
+          <Button className="modal-button cancel" onClick={onClose}>
             Cancel
           </Button>
         </div>
@@ -157,21 +156,58 @@ const MotherTongueSetup = () => {
   const [newMotherTongueName, setNewMotherTongueName] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [motherTongues, setMotherTongues] = useState([])
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
-  const [administrationId, setAdministrationId] = useState(null)
-  const { user } = useAuthContext()
+  const [isLoading, setIsLoading] = useState(false)
+  const { user, currentAcademicYear } = useAuthContext()
 
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
+    const resetState = () => {
+      setMotherTongues([])
+      setSearchTerm("")
+      setSelectedMotherTongue(null)
+      setNewMotherTongueName("")
+      setIsAddModalOpen(false)
+      setIsEditModalOpen(false)
+      setIsDeleteModalOpen(false)
+      setIsConfirmEditModalOpen(false)
+    }
+
+    resetState()
+
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid)
-        await fetchAdministrationId()
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        setIsLoading(true)
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+          await fetchMotherTongues()
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        } finally {
+          setIsLoading(false)
+        }
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage mother tongues.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       } else {
         console.log("User is not authenticated")
         toast.error("Please log in to view and manage mother tongues.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
@@ -182,76 +218,120 @@ const MotherTongueSetup = () => {
     }
 
     checkAuthAndFetchData()
-  }, [])
 
-  useEffect(() => {
-    if (administrationId) {
-      fetchMotherTongues()
-    }
-  }, [administrationId])
+    return () => resetState()
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
 
-  const fetchAdministrationId = async () => {
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-      const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-        setAdministrationId(newAdminRef.id)
-      } else {
-        setAdministrationId(querySnapshot.docs[0].id)
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error)
-      toast.error("Failed to initialize. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      })
+      console.error("Error ensuring necessary documents:", error)
     }
   }
 
   const fetchMotherTongues = async () => {
-    if (!administrationId) return
+    if (!auth.currentUser || !currentAcademicYear) return
 
-    setError(null)
+    setIsLoading(true)
     try {
+      // First ensure all documents exist
+      await ensureDocumentsExist()
+
+      // Path to the MotherTongue collection
       const motherTonguesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "MotherTongue",
       )
+
       const querySnapshot = await getDocs(motherTonguesRef)
       const motherTonguesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log("Fetched mother tongues:", motherTonguesData)
-      setMotherTongues(motherTonguesData)
+      console.log(
+        "Fetched mother tongues for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        motherTonguesData,
+      )
+      setMotherTongues(motherTonguesData) // Update state with fetched data
     } catch (error) {
       console.error("Error fetching mother tongues:", error)
       toast.error("Failed to fetch mother tongues. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+      setMotherTongues([]) // Reset on error
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleAddMotherTongue = async (motherTongueName) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -264,7 +344,7 @@ const MotherTongueSetup = () => {
     if (!motherTongueName.trim()) {
       toast.error("Mother tongue name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -290,18 +370,41 @@ const MotherTongueSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
+
+      // Path to add a new mother tongue
       const motherTonguesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "MotherTongue",
       )
-      const docRef = await addDoc(motherTonguesRef, { MotherTongueName: motherTongueName })
-      console.log("Mother tongue added with ID:", docRef.id)
-      setMotherTongues((prev) => [...prev, { id: docRef.id, MotherTongueName: motherTongueName }])
+
+      const docRef = await addDoc(motherTonguesRef, {
+        MotherTongueName: motherTongueName,
+        createdAt: new Date(),
+      })
+
+      console.log(
+        "Mother tongue added with ID:",
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      const newMotherTongue = { id: docRef.id, MotherTongueName: motherTongueName }
+      setMotherTongues((prevMotherTongues) => [...prevMotherTongues, newMotherTongue])
+
       setIsAddModalOpen(false)
       toast.success("Mother tongue added successfully!", {
         position: "top-right",
@@ -313,26 +416,30 @@ const MotherTongueSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data to ensure consistency
       await fetchMotherTongues()
     } catch (error) {
       console.error("Error adding mother tongue:", error)
       toast.error("Failed to add mother tongue. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleEditMotherTongue = async (motherTongueId, newName) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -345,7 +452,7 @@ const MotherTongueSetup = () => {
     if (!newName.trim()) {
       toast.error("Mother tongue name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -378,23 +485,55 @@ const MotherTongueSetup = () => {
   }
 
   const confirmEditMotherTongue = async () => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsLoading(true)
     try {
+      // Path to update a mother tongue
       const motherTongueRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "MotherTongue",
         selectedMotherTongue.id,
       )
-      await updateDoc(motherTongueRef, { MotherTongueName: newMotherTongueName })
-      console.log("Mother tongue updated:", selectedMotherTongue.id)
-      setMotherTongues((prev) =>
-        prev.map((mt) =>
-          mt.id === selectedMotherTongue.id ? { ...mt, MotherTongueName: newMotherTongueName } : mt
-        )
+
+      await updateDoc(motherTongueRef, {
+        MotherTongueName: newMotherTongueName,
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        "Mother tongue updated:",
+        selectedMotherTongue.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
       )
+
+      // Immediately update UI
+      setMotherTongues((prevMotherTongues) =>
+        prevMotherTongues.map((mt) =>
+          mt.id === selectedMotherTongue.id ? { ...mt, MotherTongueName: newMotherTongueName } : mt,
+        ),
+      )
+
       setIsConfirmEditModalOpen(false)
       setSelectedMotherTongue(null)
       setNewMotherTongueName("")
@@ -408,26 +547,30 @@ const MotherTongueSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data
       await fetchMotherTongues()
     } catch (error) {
       console.error("Error updating mother tongue:", error)
       toast.error("Failed to update mother tongue. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleDeleteMotherTongue = async (motherTongueId) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -437,19 +580,34 @@ const MotherTongueSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
+      // Path to delete a mother tongue
       const motherTongueRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "MotherTongue",
         motherTongueId,
       )
+
       await deleteDoc(motherTongueRef)
-      console.log("Mother tongue deleted:", motherTongueId)
-      setMotherTongues((prev) => prev.filter((mt) => mt.id !== motherTongueId))
+      console.log(
+        "Mother tongue deleted:",
+        motherTongueId,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      setMotherTongues((prevMotherTongues) => prevMotherTongues.filter((mt) => mt.id !== motherTongueId))
+
       setIsDeleteModalOpen(false)
       setSelectedMotherTongue(null)
       toast.success("Mother tongue deleted successfully!", {
@@ -461,26 +619,30 @@ const MotherTongueSetup = () => {
         draggable: true,
         progress: undefined,
       })
+
+      // Fetch fresh data
       await fetchMotherTongues()
     } catch (error) {
       console.error("Error deleting mother tongue:", error)
       toast.error("Failed to delete mother tongue. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleImport = async (event) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -493,6 +655,7 @@ const MotherTongueSetup = () => {
     const file = event.target.files[0]
     if (!file) return
 
+    setIsLoading(true)
     const reader = new FileReader()
     reader.onload = async (e) => {
       const data = new Uint8Array(e.target.result)
@@ -503,49 +666,72 @@ const MotherTongueSetup = () => {
 
       if (jsonData.length === 0) {
         toast.error("No data found in the imported file.")
+        setIsLoading(false)
         return
       }
 
       try {
+        // Ensure all necessary documents exist
+        await ensureDocumentsExist()
+
+        // Path to add imported mother tongues
         const motherTonguesRef = collection(
           db,
           "Schools",
           auth.currentUser.uid,
+          "AcademicYears",
+          currentAcademicYear,
           "Administration",
-          administrationId,
+          ADMIN_DOC_ID,
           "MotherTongue",
         )
+
         const newMotherTongues = []
         for (const row of jsonData) {
           const name = row["Mother Tongue"] || row["MotherTongueName"]
           if (name && name.trim()) {
-            const isDuplicate = motherTongues.some(
-              (mt) => mt.MotherTongueName.toLowerCase() === name.toLowerCase()
-            )
+            const isDuplicate = motherTongues.some((mt) => mt.MotherTongueName.toLowerCase() === name.toLowerCase())
             if (!isDuplicate) {
-              const docRef = await addDoc(motherTonguesRef, { MotherTongueName: name })
+              const docRef = await addDoc(motherTonguesRef, {
+                MotherTongueName: name,
+                createdAt: new Date(),
+              })
               newMotherTongues.push({ id: docRef.id, MotherTongueName: name })
             }
           }
         }
-        setMotherTongues((prev) => [...prev, ...newMotherTongues])
+
+        // Update UI
+        setMotherTongues((prevMotherTongues) => [...prevMotherTongues, ...newMotherTongues])
+
         toast.success("Mother tongues imported successfully!", {
+          position: "top-right",
+          autoClose: 1000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
           style: { background: "#0B3D7B", color: "white" },
         })
+
+        // Fetch fresh data
         await fetchMotherTongues()
       } catch (error) {
         console.error("Error importing mother tongues:", error)
         toast.error("Failed to import mother tongues. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
     }
     reader.readAsArrayBuffer(file)
   }
 
   const handleExport = () => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -566,8 +752,15 @@ const MotherTongueSetup = () => {
     const worksheet = XLSX.utils.json_to_sheet(exportData)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "MotherTongues")
-    XLSX.writeFile(workbook, `MotherTongues_Export_${auth.currentUser.uid}.xlsx`)
+    XLSX.writeFile(workbook, `MotherTongues_Export_${auth.currentUser.uid}_${currentAcademicYear}.xlsx`)
     toast.success("Mother tongues exported successfully!", {
+      position: "top-right",
+      autoClose: 1000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
       style: { background: "#0B3D7B", color: "white" },
     })
   }
@@ -583,7 +776,7 @@ const MotherTongueSetup = () => {
   }
 
   const filteredMotherTongues = motherTongues.filter((motherTongue) =>
-    motherTongue.MotherTongueName.toLowerCase().includes(searchTerm.toLowerCase())
+    motherTongue.MotherTongueName.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -616,72 +809,103 @@ const MotherTongueSetup = () => {
                     <Button
                       onClick={() => document.getElementById("import-file").click()}
                       className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || isLoading}
                     >
                       Import
                     </Button>
-                    <Button onClick={handleExport} className="btn btn-light text-dark">
+                    <Button
+                      onClick={handleExport}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || motherTongues.length === 0 || isLoading}
+                    >
                       Export
                     </Button>
-                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                    <Button
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || isLoading}
+                    >
                       + Add Mother Tongue
                     </Button>
                   </div>
                 </div>
                 <div className="content-wrapper p-4">
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by Mother Tongue"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="custom-search mb-3"
-                  />
-                  <div className="table-responsive">
-                    <Table bordered hover>
-                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                        <tr>
-                          <th>Mother Tongue</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {motherTongues.length === 0 ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No data available
-                            </td>
-                          </tr>
-                        ) : filteredMotherTongues.length === 0 ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No matching mother tongues found
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredMotherTongues.map((motherTongue) => (
-                            <tr key={motherTongue.id}>
-                              <td>{motherTongue.MotherTongueName}</td>
-                              <td>
-                                <Button
-                                  variant="link"
-                                  className="action-button edit-button me-2"
-                                  onClick={() => openEditModal(motherTongue)}
-                                >
-                                  <FaEdit />
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  className="action-button delete-button"
-                                  onClick={() => openDeleteModal(motherTongue)}
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </div>
+                  {!currentAcademicYear ? (
+                    <div className="alert alert-warning">Please select an academic year to manage mother tongues.</div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <Form.Control
+                        type="text"
+                        placeholder="Search by Mother Tongue"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="custom-search mb-3"
+                        disabled={isLoading}
+                      />
+
+                      {/* Loading Indicator */}
+                      {isLoading && (
+                        <div className="text-center my-4">
+                          <Spinner animation="border" role="status" variant="primary" className="loader">
+                            <span className="visually-hidden">Loading...</span>
+                          </Spinner>
+                          <p className="mt-2">Loading data...</p>
+                        </div>
+                      )}
+
+                      {/* Mother Tongues Table */}
+                      {!isLoading && (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                              <tr>
+                                <th>Mother Tongue</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {motherTongues.length === 0 ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No data available
+                                  </td>
+                                </tr>
+                              ) : filteredMotherTongues.length === 0 && searchTerm ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No matching mother tongues found
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredMotherTongues.map((motherTongue) => (
+                                  <tr key={motherTongue.id}>
+                                    <td>{motherTongue.MotherTongueName}</td>
+                                    <td>
+                                      <Button
+                                        variant="link"
+                                        className="action-button edit-button me-2"
+                                        onClick={() => openEditModal(motherTongue)}
+                                      >
+                                        <FaEdit />
+                                      </Button>
+                                      <Button
+                                        variant="link"
+                                        className="action-button delete-button"
+                                        onClick={() => openDeleteModal(motherTongue)}
+                                      >
+                                        <FaTrash />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </Table>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -725,183 +949,9 @@ const MotherTongueSetup = () => {
       />
 
       <ToastContainer />
-
-      <style>
-        {`
-          .mother-tongue-setup-container {
-            background-color: #fff;
-          }
-
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          .form-card {
-            background-color: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-          }
-
-          .header {
-            border-bottom: 1px solid #dee2e6;
-          }
-
-          .custom-search {
-            max-width: 300px;
-          }
-
-          .table-responsive {
-            margin-bottom: 0;
-          }
-
-          .table th {
-            font-weight: 500;
-          }
-
-          .table td {
-            vertical-align: middle;
-          }
-
-          .action-button {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            padding: 0;
-            color: white;
-          }
-
-          .edit-button {
-            background-color: #0B3D7B;
-          }
-
-          .edit-button:hover {
-            background-color: #092a54;
-            color: white;
-          }
-
-          .delete-button {
-            background-color: #dc3545;
-          }
-
-          .delete-button:hover {
-            background-color: #bb2d3b;
-            color: white;
-          }
-
-          .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1100;
-          }
-
-          .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-          }
-
-          .modal-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #333;
-            text-align: center;
-          }
-
-          .modal-body {
-            margin-bottom: 1.5rem;
-          }
-
-          .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-          }
-
-          .modal-button {
-            padding: 0.5rem 2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
-          }
-
-          .modal-button.confirm {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .modal-button.delete {
-            background-color: #dc3545;
-            color: white;
-          }
-
-          .modal-button.cancel {
-            background-color: #6c757d;
-            color: white;
-          }
-
-          .custom-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-          }
-
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
-
-          .gap-2 {
-            gap: 0.5rem;
-          }
-        `}
-      </style>
     </MainContentPage>
   )
 }
 
 export default MotherTongueSetup
+

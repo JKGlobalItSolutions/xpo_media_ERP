@@ -1,20 +1,24 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Container, Form, Button, Row, Col } from "react-bootstrap"
+import { Container, Form, Button, Row, Col, Spinner } from "react-bootstrap"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, limit, orderBy } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, limit, orderBy, setDoc } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import { FaArrowLeft } from "react-icons/fa"
+import { useAuthContext } from "../../../context/AuthContext"
 
 const StaffForm = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
   const isViewMode = new URLSearchParams(location.search).get("mode") === "view"
+  const { user, currentAcademicYear } = useAuthContext()
+  const ADMIN_DOC_ID = "admin_doc"
+
   const [formData, setFormData] = useState({
     staffCode: "",
     name: "",
@@ -66,61 +70,93 @@ const StaffForm = () => {
   const [staffDesignations, setStaffDesignations] = useState([])
   const [staffCategories, setStaffCategories] = useState([])
   const [courses, setCourses] = useState([])
-  const [administrationId, setAdministrationId] = useState(null)
+
+  const [isLoading, setIsLoading] = useState({
+    init: true,
+    states: false,
+    districts: false,
+    communities: false,
+    castes: false,
+    religions: false,
+    nationalities: false,
+    staffDesignations: false,
+    staffCategories: false,
+    courses: false,
+    staffMember: false,
+    submit: false,
+  })
 
   useEffect(() => {
-    const fetchAdministrationId = async () => {
-      try {
-        const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-        const q = query(adminRef, limit(1))
-        const querySnapshot = await getDocs(q)
-
-        if (querySnapshot.empty) {
-          const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-          setAdministrationId(newAdminRef.id)
-        } else {
-          setAdministrationId(querySnapshot.docs[0].id)
-        }
-      } catch (error) {
-        console.error("Error fetching/creating Administration ID:", error)
-        toast.error("Failed to initialize. Please try again.")
-      }
+    if (user && currentAcademicYear) {
+      ensureDocumentsExist()
     }
+  }, [user, currentAcademicYear])
 
-    fetchAdministrationId()
-  }, [])
+  const ensureDocumentsExist = async () => {
+    try {
+      setIsLoading((prev) => ({ ...prev, init: true }))
 
-  useEffect(() => {
-    if (administrationId) {
-      fetchStates()
-      fetchDistricts()
-      fetchItems("CommunitySetup")
-      fetchItems("CasteSetup")
-      fetchItems("ReligionSetup")
-      fetchItems("NationalitySetup")
-      fetchItems("StaffDesignation")
-      fetchItems("StaffCategory")
-      fetchCourses()
+      // Ensure Administration document exists
+      const adminRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+
+      await setDoc(adminRef, { updatedAt: new Date() }, { merge: true })
+
+      // After ensuring documents exist, fetch all required data
+      await Promise.all([
+        fetchStates(),
+        fetchDistricts(),
+        fetchItems("CommunitySetup", "communities"),
+        fetchItems("CasteSetup", "castes"),
+        fetchItems("ReligionSetup", "religions"),
+        fetchItems("NationalitySetup", "nationalities"),
+        fetchStaffDesignations(),
+        fetchStaffCategories(),
+        fetchCourses(),
+      ])
 
       if (id) {
-        fetchStaffMember(id)
+        await fetchStaffMember(id)
       } else {
-        generateStaffCode()
+        await generateStaffCode()
       }
+
+      setIsLoading((prev) => ({ ...prev, init: false }))
+    } catch (error) {
+      console.error("Error ensuring documents exist:", error)
+      toast.error("Failed to initialize. Please try again.")
+      setIsLoading((prev) => ({ ...prev, init: false }))
     }
-  }, [administrationId, id])
+  }
 
   const fetchStaffMember = async (staffId) => {
+    if (!currentAcademicYear) {
+      toast.error("Please select an academic year first")
+      return
+    }
+
     try {
+      setIsLoading((prev) => ({ ...prev, staffMember: true }))
+
       const staffRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "StaffMaster",
         staffId,
       )
+
       const staffDoc = await getDoc(staffRef)
       if (staffDoc.exists()) {
         setFormData(staffDoc.data())
@@ -128,22 +164,33 @@ const StaffForm = () => {
         toast.error("Staff member not found")
         navigate("/admin/staff-master")
       }
+
+      setIsLoading((prev) => ({ ...prev, staffMember: false }))
     } catch (error) {
       console.error("Error fetching staff member:", error)
       toast.error("Failed to fetch staff member. Please try again.")
+      setIsLoading((prev) => ({ ...prev, staffMember: false }))
     }
   }
 
   const generateStaffCode = async () => {
+    if (!currentAcademicYear) {
+      toast.error("Please select an academic year first")
+      return
+    }
+
     try {
       const staffRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "StaffMaster",
       )
+
       const q = query(staffRef, orderBy("staffCode", "desc"), limit(1))
       const querySnapshot = await getDocs(q)
 
@@ -165,46 +212,83 @@ const StaffForm = () => {
   }
 
   const fetchStates = async () => {
+    if (!currentAcademicYear) return
+
     try {
+      setIsLoading((prev) => ({ ...prev, states: true }))
+
       const statesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "StateSetup",
       )
+
       const querySnapshot = await getDocs(statesRef)
       const statesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       setStates(statesData)
+
+      setIsLoading((prev) => ({ ...prev, states: false }))
     } catch (error) {
       console.error("Error fetching states:", error)
+      toast.error("Failed to fetch states. Please try again.")
+      setIsLoading((prev) => ({ ...prev, states: false }))
     }
   }
 
   const fetchDistricts = async () => {
+    if (!currentAcademicYear) return
+
     try {
+      setIsLoading((prev) => ({ ...prev, districts: true }))
+
       const districtsRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "DistrictSetup",
       )
+
       const querySnapshot = await getDocs(districtsRef)
       const districtsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       setDistricts(districtsData)
+
+      setIsLoading((prev) => ({ ...prev, districts: false }))
     } catch (error) {
       console.error("Error fetching districts:", error)
+      toast.error("Failed to fetch districts. Please try again.")
+      setIsLoading((prev) => ({ ...prev, districts: false }))
     }
   }
 
-  const fetchItems = async (category) => {
+  const fetchItems = async (category, stateKey) => {
+    if (!currentAcademicYear) return
+
     try {
-      const itemsRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, category)
+      setIsLoading((prev) => ({ ...prev, [stateKey]: true }))
+
+      const itemsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        category,
+      )
+
       const querySnapshot = await getDocs(itemsRef)
       const itemsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+
       switch (category) {
         case "CommunitySetup":
           setCommunities(itemsData)
@@ -218,26 +302,118 @@ const StaffForm = () => {
         case "NationalitySetup":
           setNationalities(itemsData)
           break
-        case "StaffDesignation":
-          setStaffDesignations(itemsData)
-          break
-        case "StaffCategory":
-          setStaffCategories(itemsData)
-          break
       }
+
+      setIsLoading((prev) => ({ ...prev, [stateKey]: false }))
     } catch (error) {
       console.error(`Error fetching ${category}:`, error)
+      toast.error(`Failed to fetch ${category}. Please try again.`)
+      setIsLoading((prev) => ({ ...prev, [stateKey]: false }))
+    }
+  }
+
+  // Updated function to fetch staff designations
+  const fetchStaffDesignations = async () => {
+    if (!currentAcademicYear) return
+
+    try {
+      setIsLoading((prev) => ({ ...prev, staffDesignations: true }))
+
+      // This is the correct path based on StaffDesignationandCategory.jsx
+      const designationsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "StaffDesignationSetup",
+      )
+
+      const querySnapshot = await getDocs(designationsRef)
+
+      // Debug log to check what data is being returned
+      console.log(
+        "Staff Designations Data:",
+        querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      )
+
+      const designationsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setStaffDesignations(designationsData)
+
+      setIsLoading((prev) => ({ ...prev, staffDesignations: false }))
+    } catch (error) {
+      console.error("Error fetching staff designations:", error)
+      toast.error("Failed to fetch staff designations. Please try again.")
+      setIsLoading((prev) => ({ ...prev, staffDesignations: false }))
+    }
+  }
+
+  // Updated function to fetch staff categories
+  const fetchStaffCategories = async () => {
+    if (!currentAcademicYear) return
+
+    try {
+      setIsLoading((prev) => ({ ...prev, staffCategories: true }))
+
+      // This is the correct path based on StaffDesignationandCategory.jsx
+      const categoriesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "StaffCategorySetup",
+      )
+
+      const querySnapshot = await getDocs(categoriesRef)
+
+      // Debug log to check what data is being returned
+      console.log(
+        "Staff Categories Data:",
+        querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      )
+
+      const categoriesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setStaffCategories(categoriesData)
+
+      setIsLoading((prev) => ({ ...prev, staffCategories: false }))
+    } catch (error) {
+      console.error("Error fetching staff categories:", error)
+      toast.error("Failed to fetch staff categories. Please try again.")
+      setIsLoading((prev) => ({ ...prev, staffCategories: false }))
     }
   }
 
   const fetchCourses = async () => {
+    if (!currentAcademicYear) return
+
     try {
-      const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
+      setIsLoading((prev) => ({ ...prev, courses: true }))
+
+      const coursesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "Courses",
+      )
+
       const querySnapshot = await getDocs(coursesRef)
       const coursesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       setCourses(coursesData)
+
+      setIsLoading((prev) => ({ ...prev, courses: false }))
     } catch (error) {
       console.error("Error fetching courses:", error)
+      toast.error("Failed to fetch courses. Please try again.")
+      setIsLoading((prev) => ({ ...prev, courses: false }))
     }
   }
 
@@ -251,6 +427,15 @@ const StaffForm = () => {
 
   const handleSelectChange = (e) => {
     const { name, value } = e.target
+    if (!value) {
+      setFormData((prevState) => ({
+        ...prevState,
+        [`${name}Id`]: "",
+        [name]: "",
+      }))
+      return
+    }
+
     const [id, displayValue] = value.split("|")
     setFormData((prevState) => ({
       ...prevState,
@@ -259,34 +444,301 @@ const StaffForm = () => {
     }))
   }
 
+  const validateForm = () => {
+    const requiredFields = [
+      "name",
+      "familyHeadName",
+      "numberStreetName",
+      "placePinCode",
+      "stateId",
+      "districtId",
+      "gender",
+      "dateOfBirth",
+      "communityId",
+      "casteId",
+      "religionId",
+      "nationalityId",
+      "designationId",
+      "educationQualification",
+      "salary",
+      "pfNumber",
+      "categoryId",
+      "maritalStatus",
+      "majorSubject",
+      "extraTalentDlNo",
+      "experience",
+      "dateOfJoining",
+      "emailBankAcId",
+      "totalLeaveDays",
+      "mobileNumber",
+      "status",
+    ]
+
+    const missingFields = requiredFields.filter((field) => !formData[field])
+
+    if (missingFields.length > 0) {
+      const fieldNames = missingFields.map((field) => {
+        // Convert camelCase to Title Case with spaces
+        return field
+          .replace(/([A-Z])/g, " $1")
+          .replace(/^./, (str) => str.toUpperCase())
+          .replace(/Id$/, "")
+      })
+
+      toast.error(`Please fill in all required fields: ${fieldNames.join(", ")}`)
+      return false
+    }
+
+    // Validate mobile number
+    if (!/^\d{10}$/.test(formData.mobileNumber)) {
+      toast.error("Mobile number must be 10 digits")
+      return false
+    }
+
+    return true
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    if (!currentAcademicYear) {
+      toast.error("Please select an academic year first")
+      return
+    }
+
+    if (!validateForm()) {
+      return
+    }
+
     try {
+      setIsLoading((prev) => ({ ...prev, submit: true }))
+
       const staffRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "StaffMaster",
       )
 
+      const timestamp = new Date()
+      const staffData = {
+        ...formData,
+        updatedAt: timestamp,
+      }
+
       if (id) {
-        await updateDoc(doc(staffRef, id), formData)
+        await updateDoc(doc(staffRef, id), staffData)
         toast.success("Staff member updated successfully!")
       } else {
-        await addDoc(staffRef, formData)
+        staffData.createdAt = timestamp
+        await addDoc(staffRef, staffData)
         toast.success("Staff member added successfully!")
       }
+
       navigate("/admin/staff-master")
+      setIsLoading((prev) => ({ ...prev, submit: false }))
     } catch (error) {
       console.error("Error adding/updating staff member:", error)
       toast.error("Failed to add/update staff member. Please try again.")
+      setIsLoading((prev) => ({ ...prev, submit: false }))
     }
   }
 
   const handleBack = () => {
     navigate("/admin/staff-master")
+  }
+
+  const isAnyLoading = Object.values(isLoading).some(Boolean)
+
+  if (!currentAcademicYear) {
+    return (
+      <MainContentPage>
+        <Container fluid className="px-0">
+          <div className="mb-4">
+            <nav className="custom-breadcrumb py-1 py-lg-3">
+              <Link to="/home">Home</Link>
+              <span className="separator mx-2">&gt;</span>
+              <span>Administration</span>
+              <span className="separator mx-2">&gt;</span>
+              <Link to="/admin/staff-master">Staff Master</Link>
+              <span className="separator mx-2">&gt;</span>
+              <span>{isViewMode ? "View Staff" : id ? "Edit Staff" : "Add Staff"}</span>
+            </nav>
+          </div>
+
+          <div
+            style={{ backgroundColor: "#0B3D7B" }}
+            className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
+          >
+            <div className="d-flex align-items-center">
+              <Button variant="link" className="text-white p-0 back-button me-3" onClick={handleBack}>
+                <FaArrowLeft size={20} />
+              </Button>
+              <h2 className="mb-0">{isViewMode ? "View Staff" : id ? "Edit Staff" : "Add Staff"}</h2>
+            </div>
+            <div style={{ width: "20px" }}></div>
+          </div>
+
+          <div className="bg-white p-4 rounded-bottom shadow">
+            <div className="alert alert-warning">Please select an academic year to manage staff members.</div>
+          </div>
+        </Container>
+
+        <ToastContainer />
+
+        <style>
+          {`
+            .custom-breadcrumb {
+              padding: 0.5rem 1rem;
+            }
+
+            .custom-breadcrumb a {
+              color: #0B3D7B;
+              text-decoration: none;
+            }
+
+            .custom-breadcrumb .separator {
+              margin: 0 0.5rem;
+              color: #6c757d;
+            }
+
+            .custom-breadcrumb .current {
+              color: #212529;
+            }
+
+            .back-button {
+              transition: opacity 0.2s;
+            }
+
+            .back-button:hover {
+              opacity: 0.8;
+            }
+
+            /* Toastify custom styles */
+            .Toastify__toast-container {
+              z-index: 9999;
+            }
+
+            .Toastify__toast {
+              background-color: #0B3D7B;
+              color: white;
+            }
+
+            .Toastify__toast--success {
+              background-color: #0B3D7B;
+            }
+
+            .Toastify__toast--error {
+              background-color: #dc3545;
+            }
+
+            .Toastify__progress-bar {
+              background-color: rgba(255, 255, 255, 0.7);
+            }
+          `}
+        </style>
+      </MainContentPage>
+    )
+  }
+
+  if (isLoading.init) {
+    return (
+      <MainContentPage>
+        <Container fluid className="px-0">
+          <div className="mb-4">
+            <nav className="custom-breadcrumb py-1 py-lg-3">
+              <Link to="/home">Home</Link>
+              <span className="separator mx-2">&gt;</span>
+              <span>Administration</span>
+              <span className="separator mx-2">&gt;</span>
+              <Link to="/admin/staff-master">Staff Master</Link>
+              <span className="separator mx-2">&gt;</span>
+              <span>{isViewMode ? "View Staff" : id ? "Edit Staff" : "Add Staff"}</span>
+            </nav>
+          </div>
+
+          <div
+            style={{ backgroundColor: "#0B3D7B" }}
+            className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
+          >
+            <div className="d-flex align-items-center">
+              <Button variant="link" className="text-white p-0 back-button me-3" onClick={handleBack}>
+                <FaArrowLeft size={20} />
+              </Button>
+              <h2 className="mb-0">{isViewMode ? "View Staff" : id ? "Edit Staff" : "Add Staff"}</h2>
+            </div>
+            <div style={{ width: "20px" }}></div>
+          </div>
+
+          <div className="bg-white p-4 rounded-bottom shadow">
+            <div className="text-center py-5">
+              <Spinner animation="border" role="status" style={{ color: "#0B3D7B" }}>
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+              <p className="mt-2">Loading staff data...</p>
+            </div>
+          </div>
+        </Container>
+
+        <ToastContainer />
+
+        <style>
+          {`
+            .custom-breadcrumb {
+              padding: 0.5rem 1rem;
+            }
+
+            .custom-breadcrumb a {
+              color: #0B3D7B;
+              text-decoration: none;
+            }
+
+            .custom-breadcrumb .separator {
+              margin: 0 0.5rem;
+              color: #6c757d;
+            }
+
+            .custom-breadcrumb .current {
+              color: #212529;
+            }
+
+            .back-button {
+              transition: opacity 0.2s;
+            }
+
+            .back-button:hover {
+              opacity: 0.8;
+            }
+
+            /* Toastify custom styles */
+            .Toastify__toast-container {
+              z-index: 9999;
+            }
+
+            .Toastify__toast {
+              background-color: #0B3D7B;
+              color: white;
+            }
+
+            .Toastify__toast--success {
+              background-color: #0B3D7B;
+            }
+
+            .Toastify__toast--error {
+              background-color: #dc3545;
+            }
+
+            .Toastify__progress-bar {
+              background-color: rgba(255, 255, 255, 0.7);
+            }
+          `}
+        </style>
+      </MainContentPage>
+    )
   }
 
   return (
@@ -303,6 +755,7 @@ const StaffForm = () => {
             <span>{isViewMode ? "View Staff" : id ? "Edit Staff" : "Add Staff"}</span>
           </nav>
         </div>
+
         <div
           style={{ backgroundColor: "#0B3D7B" }}
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
@@ -335,7 +788,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter name"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -348,7 +801,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter family head name"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -361,7 +814,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter street address"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -374,7 +827,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter place and pin code"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -385,7 +838,7 @@ const StaffForm = () => {
                     value={`${formData.stateId}|${formData.state}`}
                     onChange={handleSelectChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit || isLoading.states}
                   >
                     <option value="">Select State</option>
                     {states.map((state) => (
@@ -403,7 +856,7 @@ const StaffForm = () => {
                     value={`${formData.districtId}|${formData.district}`}
                     onChange={handleSelectChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit || isLoading.districts}
                   >
                     <option value="">Select District</option>
                     {districts.map((district) => (
@@ -421,7 +874,7 @@ const StaffForm = () => {
                     value={formData.gender}
                     onChange={handleInputChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -438,7 +891,7 @@ const StaffForm = () => {
                     value={formData.dateOfBirth}
                     onChange={handleInputChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
               </Col>
@@ -452,7 +905,7 @@ const StaffForm = () => {
                     value={`${formData.communityId}|${formData.community}`}
                     onChange={handleSelectChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit || isLoading.communities}
                   >
                     <option value="">Select Community</option>
                     {communities.map((community) => (
@@ -470,7 +923,7 @@ const StaffForm = () => {
                     value={`${formData.casteId}|${formData.caste}`}
                     onChange={handleSelectChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit || isLoading.castes}
                   >
                     <option value="">Select Caste</option>
                     {castes.map((caste) => (
@@ -488,7 +941,7 @@ const StaffForm = () => {
                     value={`${formData.religionId}|${formData.religion}`}
                     onChange={handleSelectChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit || isLoading.religions}
                   >
                     <option value="">Select Religion</option>
                     {religions.map((religion) => (
@@ -506,7 +959,7 @@ const StaffForm = () => {
                     value={`${formData.nationalityId}|${formData.nationality}`}
                     onChange={handleSelectChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit || isLoading.nationalities}
                   >
                     <option value="">Select Nationality</option>
                     {nationalities.map((nationality) => (
@@ -524,7 +977,7 @@ const StaffForm = () => {
                     value={`${formData.designationId}|${formData.designation}`}
                     onChange={handleSelectChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit || isLoading.staffDesignations}
                   >
                     <option value="">Select Designation</option>
                     {staffDesignations.map((designation) => (
@@ -533,6 +986,13 @@ const StaffForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {isLoading.staffDesignations && (
+                    <div className="text-center mt-1">
+                      <Spinner animation="border" size="sm" role="status" style={{ color: "#0B3D7B" }}>
+                        <span className="visually-hidden">Loading designations...</span>
+                      </Spinner>
+                    </div>
+                  )}
                 </Form.Group>
 
                 <Form.Group className="mb-3 flex-grow-1">
@@ -544,7 +1004,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter qualification"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -557,7 +1017,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter salary"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -570,7 +1030,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter PF number"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -581,7 +1041,7 @@ const StaffForm = () => {
                     value={`${formData.categoryId}|${formData.category}`}
                     onChange={handleSelectChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit || isLoading.staffCategories}
                   >
                     <option value="">Select Category</option>
                     {staffCategories.map((category) => (
@@ -590,6 +1050,13 @@ const StaffForm = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {isLoading.staffCategories && (
+                    <div className="text-center mt-1">
+                      <Spinner animation="border" size="sm" role="status" style={{ color: "#0B3D7B" }}>
+                        <span className="visually-hidden">Loading categories...</span>
+                      </Spinner>
+                    </div>
+                  )}
                 </Form.Group>
               </Col>
 
@@ -602,7 +1069,7 @@ const StaffForm = () => {
                     value={formData.maritalStatus}
                     onChange={handleInputChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   >
                     <option value="">Select Marital Status</option>
                     <option value="single">Single</option>
@@ -621,7 +1088,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter major subject"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -633,7 +1100,7 @@ const StaffForm = () => {
                     value={formData.optionalSubject}
                     onChange={handleInputChange}
                     placeholder="Enter optional subject"
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -647,7 +1114,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter extra talent/DL number"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -661,7 +1128,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter experience"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -671,7 +1138,7 @@ const StaffForm = () => {
                     name="classInCharge"
                     value={`${formData.classInChargeId}|${formData.classInCharge}`}
                     onChange={handleSelectChange}
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit || isLoading.courses}
                   >
                     <option value="">Select Class</option>
                     {courses.map((course) => (
@@ -690,7 +1157,7 @@ const StaffForm = () => {
                     value={formData.dateOfJoining}
                     onChange={handleInputChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -703,7 +1170,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter email/bank account ID"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
 
@@ -716,7 +1183,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter total leave days"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
               </Col>
@@ -733,7 +1200,7 @@ const StaffForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter mobile number"
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
               </Col>
@@ -745,7 +1212,7 @@ const StaffForm = () => {
                     value={formData.status}
                     onChange={handleInputChange}
                     required
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   >
                     <option value="">Select Status</option>
                     <option value="active">Active</option>
@@ -761,7 +1228,7 @@ const StaffForm = () => {
                     name="dateOfRelieve"
                     value={formData.dateOfRelieve}
                     onChange={handleInputChange}
-                    disabled={isViewMode}
+                    disabled={isViewMode || isLoading.submit}
                   />
                 </Form.Group>
               </Col>
@@ -769,8 +1236,24 @@ const StaffForm = () => {
 
             {!isViewMode && (
               <div className="text-center mt-3">
-                <Button size="lg" type="submit" className="custom-btn">
-                  {id ? "Update" : "Submit"}
+                <Button size="lg" type="submit" className="custom-btn" disabled={isLoading.submit}>
+                  {isLoading.submit ? (
+                    <>
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                        className="me-2"
+                      />
+                      {id ? "Updating..." : "Submitting..."}
+                    </>
+                  ) : id ? (
+                    "Update"
+                  ) : (
+                    "Submit"
+                  )}
                 </Button>
               </div>
             )}
@@ -802,7 +1285,7 @@ const StaffForm = () => {
 
           .custom-btn {
             background: #0B3D7B;
-            color:rgb(255, 255, 255);
+            color: rgb(255, 255, 255);
           }
 
           .back-button {

@@ -1,14 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Container, Form, Button, Table } from "react-bootstrap"
+import { Container, Form, Button, Table, Spinner } from "react-bootstrap"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
 import { Link, useNavigate } from "react-router-dom"
 import { db, auth } from "../../../Firebase/config"
-import { collection, getDocs, deleteDoc, doc, query, limit, addDoc } from "firebase/firestore"
+import { collection, getDocs, deleteDoc, doc, setDoc } from "firebase/firestore"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import { FaEdit, FaTrash, FaEye } from "react-icons/fa"
+import { useAuthContext } from "../../../context/AuthContext"
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
@@ -38,93 +39,127 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
 const StaffMaster = () => {
   const [staffMembers, setStaffMembers] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [administrationId, setAdministrationId] = useState(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [staffToDelete, setStaffToDelete] = useState(null)
+  const [isLoading, setIsLoading] = useState({
+    staffMembers: false,
+    delete: false,
+    init: true,
+  })
   const navigate = useNavigate()
+  const { user, currentAcademicYear } = useAuthContext()
+
+  const ADMIN_DOC_ID = "admin_doc"
 
   useEffect(() => {
-    const fetchAdministrationId = async () => {
-      try {
-        const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-        const q = query(adminRef, limit(1))
-        const querySnapshot = await getDocs(q)
-
-        if (querySnapshot.empty) {
-          const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-          setAdministrationId(newAdminRef.id)
-        } else {
-          setAdministrationId(querySnapshot.docs[0].id)
-        }
-      } catch (error) {
-        console.error("Error fetching/creating Administration ID:", error)
-        toast.error("Failed to initialize. Please try again.", {
-          style: { background: "#dc3545", color: "white" },
-        })
-      }
+    if (user && currentAcademicYear) {
+      ensureDocumentsExist()
     }
+  }, [user, currentAcademicYear])
 
-    fetchAdministrationId()
-  }, [])
+  const ensureDocumentsExist = async () => {
+    try {
+      setIsLoading((prev) => ({ ...prev, init: true }))
 
-  useEffect(() => {
-    if (administrationId) {
-      fetchStaffMembers()
+      // Ensure Administration document exists
+      const adminRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+
+      await setDoc(adminRef, { updatedAt: new Date() }, { merge: true })
+
+      // After ensuring documents exist, fetch staff members
+      await fetchStaffMembers()
+
+      setIsLoading((prev) => ({ ...prev, init: false }))
+    } catch (error) {
+      console.error("Error ensuring documents exist:", error)
+      toast.error("Failed to initialize. Please try again.")
+      setIsLoading((prev) => ({ ...prev, init: false }))
     }
-  }, [administrationId])
+  }
 
   const fetchStaffMembers = async () => {
+    if (!currentAcademicYear) {
+      toast.error("Please select an academic year first")
+      return
+    }
+
     try {
+      setIsLoading((prev) => ({ ...prev, staffMembers: true }))
+
       const staffRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "StaffMaster",
       )
+
       const querySnapshot = await getDocs(staffRef)
       const staffData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       setStaffMembers(staffData)
+
+      setIsLoading((prev) => ({ ...prev, staffMembers: false }))
     } catch (error) {
       console.error("Error fetching staff members:", error)
-      toast.error("Failed to fetch staff members. Please try again.", {
-        style: { background: "#dc3545", color: "white" },
-      })
+      toast.error("Failed to fetch staff members. Please try again.")
+      setIsLoading((prev) => ({ ...prev, staffMembers: false }))
     }
   }
 
   const handleDelete = async () => {
+    if (!currentAcademicYear) {
+      toast.error("Please select an academic year first")
+      return
+    }
+
     try {
+      setIsLoading((prev) => ({ ...prev, delete: true }))
+
       const staffRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "StaffMaster",
         staffToDelete.id,
       )
+
       await deleteDoc(staffRef)
-      toast.success("Staff member deleted successfully!", {
-        style: { background: "#dc3545", color: "white" },
-      })
-      fetchStaffMembers()
+
+      toast.success("Staff member deleted successfully!")
+      await fetchStaffMembers()
+
       setIsDeleteModalOpen(false)
       setStaffToDelete(null)
+      setIsLoading((prev) => ({ ...prev, delete: false }))
     } catch (error) {
       console.error("Error deleting staff member:", error)
-      toast.error("Failed to delete staff member. Please try again.", {
-        style: { background: "#dc3545", color: "white" },
-      })
+      toast.error("Failed to delete staff member. Please try again.")
+      setIsLoading((prev) => ({ ...prev, delete: false }))
     }
   }
 
   const filteredStaffMembers = staffMembers.filter(
     (staff) =>
-      staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staff.staffCode.toLowerCase().includes(searchTerm.toLowerCase()),
+      staff.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staff.staffCode?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const isAnyLoading = Object.values(isLoading).some(Boolean)
 
   return (
     <MainContentPage>
@@ -138,77 +173,110 @@ const StaffMaster = () => {
             <span>Staff Master</span>
           </nav>
         </div>
+
         <div
           style={{ backgroundColor: "#0B3D7B" }}
           className="text-white p-3 rounded-top d-flex justify-content-between align-items-center"
         >
-          <h2>Staff Master</h2>
-          <Button onClick={() => navigate("/admin/staff-form")} className="btn btn-light text-dark">
+          <h2 className="mb-0">Staff Master</h2>
+          <Button
+            onClick={() => navigate("/admin/staff-form")}
+            className="btn btn-light text-dark"
+            disabled={isAnyLoading || !currentAcademicYear}
+          >
             + Add Staff
           </Button>
         </div>
 
         <div className="bg-white p-4 rounded-bottom shadow">
-          <Form className="mb-3">
-            <Form.Group>
-              <Form.Control
-                type="text"
-                placeholder="Search by name or staff code"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </Form.Group>
-          </Form>
+          {!currentAcademicYear ? (
+            <div className="alert alert-warning">Please select an academic year to manage staff members.</div>
+          ) : isLoading.init ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" role="status" style={{ color: "#0B3D7B" }}>
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+              <p className="mt-2">Initializing...</p>
+            </div>
+          ) : (
+            <>
+              <Form className="mb-3">
+                <Form.Group>
+                  <Form.Control
+                    type="text"
+                    placeholder="Search by name or staff code"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    disabled={isLoading.staffMembers}
+                  />
+                </Form.Group>
+              </Form>
 
-          <div className="table-responsive">
-            <Table bordered hover>
-              <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                <tr>
-                  <th>Staff Code</th>
-                  <th>Name</th>
-                  <th>Designation</th>
-                  <th>Mobile Number</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStaffMembers.map((staff) => (
-                  <tr key={staff.id}>
-                    <td>{staff.staffCode}</td>
-                    <td>{staff.name}</td>
-                    <td>{staff.designation}</td>
-                    <td>{staff.mobileNumber}</td>
-                    <td>
-                      <Button
-                        variant="secondary"
-                        className="action-button view-button me-2"
-                        onClick={() => navigate(`/admin/staff-form/${staff.id}?mode=view`)}
-                      >
-                        <FaEye />
-                      </Button>
-                      <Button
-                        variant="link"
-                        className="action-button edit-button me-2"
-                        onClick={() => navigate(`/admin/staff-form/${staff.id}`)}
-                      >
-                        <FaEdit />
-                      </Button>
-                      <Button
-                        variant="link"
-                        className="action-button delete-button"
-                        onClick={() => {
-                          setStaffToDelete(staff)
-                          setIsDeleteModalOpen(true)
-                        }}
-                      >
-                        <FaTrash />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
+              {isLoading.staffMembers ? (
+                <div className="text-center py-5">
+                  <Spinner animation="border" role="status" style={{ color: "#0B3D7B" }}>
+                    <span className="visually-hidden">Loading...</span>
+                  </Spinner>
+                  <p className="mt-2">Loading staff members...</p>
+                </div>
+              ) : filteredStaffMembers.length > 0 ? (
+                <div className="table-responsive">
+                  <Table bordered hover>
+                    <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                      <tr>
+                        <th>Staff Code</th>
+                        <th>Name</th>
+                        <th>Designation</th>
+                        <th>Mobile Number</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStaffMembers.map((staff) => (
+                        <tr key={staff.id}>
+                          <td>{staff.staffCode}</td>
+                          <td>{staff.name}</td>
+                          <td>{staff.designation}</td>
+                          <td>{staff.mobileNumber}</td>
+                          <td>
+                            <Button
+                              variant="secondary"
+                              className="action-button view-button me-2"
+                              onClick={() => navigate(`/admin/staff-form/${staff.id}?mode=view`)}
+                              disabled={isAnyLoading}
+                            >
+                              <FaEye />
+                            </Button>
+                            <Button
+                              variant="link"
+                              className="action-button edit-button me-2"
+                              onClick={() => navigate(`/admin/staff-form/${staff.id}`)}
+                              disabled={isAnyLoading}
+                            >
+                              <FaEdit />
+                            </Button>
+                            <Button
+                              variant="link"
+                              className="action-button delete-button"
+                              onClick={() => {
+                                setStaffToDelete(staff)
+                                setIsDeleteModalOpen(true)
+                              }}
+                              disabled={isAnyLoading}
+                            >
+                              <FaTrash />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="alert alert-info">No staff members found. Add a new staff member to get started.</div>
+              )}
+            </>
+          )}
         </div>
       </Container>
 

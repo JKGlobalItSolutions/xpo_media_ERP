@@ -31,14 +31,14 @@ const PaymentSetup = () => {
 
         {/* Breadcrumb Navigation */}
         <div className="mb-4">
-  <nav className="custom-breadcrumb d-flex align-items-center py-1 py-lg-3">
-    <Link to="/home" className="text-decoration-none text-primary">Home</Link>
-    <span className="mx-2">&gt;</span>
-    <span>Administration</span>
-    <span className="mx-2">&gt;</span>
-    <span className="fw-bold">Payment Report</span>
-  </nav>
-</div>
+          <nav className="custom-breadcrumb d-flex align-items-center py-1 py-lg-3">
+            <Link to="/home" className="text-decoration-none text-primary">Home</Link>
+            <span className="mx-2">&gt;</span>
+            <span>Administration</span>
+            <span className="mx-2">&gt;</span>
+            <span className="fw-bold">Payment Report</span>
+          </nav>
+        </div>
 
 
         {/* Cards Grid */}
@@ -53,11 +53,11 @@ const PaymentSetup = () => {
             <div>
               <div className="card fee-setup-card h-100">
                 <div className="card-body d-flex align-items-center justify-content-center">
-            
-                <h5 className="card-title text-white m-0">
-                  Head Setup
+
+                  <h5 className="card-title text-white m-0">
+                    Head Setup
                   </h5>
-                
+
                 </div>
               </div>
             </div>

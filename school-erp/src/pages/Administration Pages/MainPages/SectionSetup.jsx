@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table, Spinner } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
@@ -11,6 +11,7 @@ import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import * as XLSX from "xlsx"
+import "../styles/style.css"
 
 // Add Section Modal Component
 const AddSectionModal = ({ isOpen, onClose, onConfirm }) => {
@@ -155,6 +156,7 @@ const SectionSetup = () => {
   const [newStandard, setNewStandard] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [sections, setSections] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
   const { user, currentAcademicYear } = useAuthContext()
 
   // Document ID for Administration
@@ -179,9 +181,17 @@ const SectionSetup = () => {
       if (auth.currentUser && currentAcademicYear) {
         console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
 
-        // Ensure all necessary documents exist
-        await ensureDocumentsExist()
-        await fetchSections()
+        setIsLoading(true)
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+          await fetchSections()
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        } finally {
+          setIsLoading(false)
+        }
       } else if (!currentAcademicYear) {
         console.log("No academic year selected")
         toast.error("Please select an academic year to view and manage sections.", {
@@ -272,6 +282,7 @@ const SectionSetup = () => {
   const fetchSections = async () => {
     if (!auth.currentUser || !currentAcademicYear) return
 
+    setIsLoading(true)
     try {
       // First ensure all documents exist
       await ensureDocumentsExist()
@@ -311,6 +322,8 @@ const SectionSetup = () => {
         progress: undefined,
       })
       setSections([]) // Reset on error
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -355,6 +368,7 @@ const SectionSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
       // Ensure all necessary documents exist
       await ensureDocumentsExist()
@@ -414,6 +428,8 @@ const SectionSetup = () => {
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -479,6 +495,7 @@ const SectionSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
       // Path to update a section - now directly in SectionSetup collection
       const sectionDocRef = doc(
@@ -541,6 +558,8 @@ const SectionSetup = () => {
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -558,6 +577,7 @@ const SectionSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
       // Path to delete a section - now directly in SectionSetup collection
       const sectionDocRef = doc(
@@ -610,6 +630,8 @@ const SectionSetup = () => {
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -630,6 +652,7 @@ const SectionSetup = () => {
     const file = event.target.files[0]
     if (!file) return
 
+    setIsLoading(true)
     const reader = new FileReader()
     reader.onload = async (e) => {
       const data = new Uint8Array(e.target.result)
@@ -640,6 +663,7 @@ const SectionSetup = () => {
 
       if (jsonData.length === 0) {
         toast.error("No data found in the imported file.")
+        setIsLoading(false)
         return
       }
 
@@ -694,6 +718,8 @@ const SectionSetup = () => {
       } catch (error) {
         console.error("Error importing sections:", error)
         toast.error("Failed to import sections. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
     }
     reader.readAsArrayBuffer(file)
@@ -750,20 +776,11 @@ const SectionSetup = () => {
         {/* Breadcrumb Navigation */}
         <nav className="custom-breadcrumb py-1 py-lg-3">
           <Link to="/home">Home</Link>
-          <span className="separator"></span>
+          <span className="separator">&gt;</span>
           <span>Administration</span>
-          <span className="separator"></span>
+          <span className="separator">&gt;</span>
           <span className="current col-12">Section Setup</span>
         </nav>
-
-        {/* Current Academic Year Display */}
-        {currentAcademicYear && (
-          <div className="academic-year-display mb-3">
-            <h5 className="m-0">
-              Academic Year: <span className="academic-year-value">{currentAcademicYear}</span>
-            </h5>
-          </div>
-        )}
 
         <Row>
           <Col xs={12}>
@@ -786,21 +803,21 @@ const SectionSetup = () => {
                     <Button
                       onClick={() => document.getElementById("import-file").click()}
                       className="btn btn-light text-dark"
-                      disabled={!currentAcademicYear}
+                      disabled={!currentAcademicYear || isLoading}
                     >
                       Import
                     </Button>
                     <Button
                       onClick={handleExport}
                       className="btn btn-light text-dark"
-                      disabled={!currentAcademicYear || sections.length === 0}
+                      disabled={!currentAcademicYear || sections.length === 0 || isLoading}
                     >
                       Export
                     </Button>
                     <Button
                       onClick={() => setIsAddModalOpen(true)}
                       className="btn btn-light text-dark"
-                      disabled={!currentAcademicYear}
+                      disabled={!currentAcademicYear || isLoading}
                     >
                       + Add Section
                     </Button>
@@ -820,56 +837,69 @@ const SectionSetup = () => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="custom-search mb-3"
+                        disabled={isLoading}
                       />
 
+                      {/* Loading Indicator */}
+                      {isLoading && (
+                        <div className="text-center my-4">
+                          <Spinner animation="border" role="status" variant="primary" className="loader">
+                            <span className="visually-hidden">Loading...</span>
+                          </Spinner>
+                          <p className="mt-2">Loading data...</p>
+                        </div>
+                      )}
+
                       {/* Section Table */}
-                      <div className="table-responsive">
-                        <Table bordered hover>
-                          <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                            <tr>
-                              <th>Section Name</th>
-                              <th>Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sections.length === 0 ? (
+                      {!isLoading && (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
                               <tr>
-                                <td colSpan="2" className="text-center">
-                                  No data available
-                                </td>
+                                <th>Section Name</th>
+                                <th>Action</th>
                               </tr>
-                            ) : filteredSections.length === 0 && searchTerm ? (
-                              <tr>
-                                <td colSpan="2" className="text-center">
-                                  No matching sections found
-                                </td>
-                              </tr>
-                            ) : (
-                              filteredSections.map((section) => (
-                                <tr key={section.id}>
-                                  <td>{section.standard}</td>
-                                  <td>
-                                    <Button
-                                      variant="link"
-                                      className="action-button edit-button me-2"
-                                      onClick={() => openEditModal(section)}
-                                    >
-                                      <FaEdit />
-                                    </Button>
-                                    <Button
-                                      variant="link"
-                                      className="action-button delete-button"
-                                      onClick={() => openDeleteModal(section)}
-                                    >
-                                      <FaTrash />
-                                    </Button>
+                            </thead>
+                            <tbody>
+                              {sections.length === 0 ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No data available
                                   </td>
                                 </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </Table>
-                      </div>
+                              ) : filteredSections.length === 0 && searchTerm ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No matching sections found
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredSections.map((section) => (
+                                  <tr key={section.id}>
+                                    <td>{section.standard}</td>
+                                    <td>
+                                      <Button
+                                        variant="link"
+                                        className="action-button edit-button me-2"
+                                        onClick={() => openEditModal(section)}
+                                      >
+                                        <FaEdit />
+                                      </Button>
+                                      <Button
+                                        variant="link"
+                                        className="action-button delete-button"
+                                        onClick={() => openDeleteModal(section)}
+                                      >
+                                        <FaTrash />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </Table>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -913,196 +943,6 @@ const SectionSetup = () => {
 
       {/* Toastify Container */}
       <ToastContainer />
-
-      <style>
-        {`
-          .section-setup-container {
-            background-color: #fff;
-          }
-
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          .form-card {
-            background-color: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-          }
-
-          .header {
-            border-bottom: 1px solid #dee2e6;
-          }
-
-          .custom-search {
-            max-width: 300px;
-          }
-
-          .table-responsive {
-            margin-bottom: 0;
-          }
-
-          .table th {
-            font-weight: 500;
-          }
-
-          .table td {
-            vertical-align: middle;
-          }
-
-          .action-button {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            padding: 0;
-            color: white;
-          }
-
-          .edit-button {
-            background-color: #0B3D7B;
-          }
-
-          .edit-button:hover {
-            background-color: #092a54;
-            color: white;
-          }
-
-          .delete-button {
-            background-color: #dc3545;
-          }
-
-          .delete-button:hover {
-            background-color: #bb2d3b;
-            color: white;
-          }
-
-          /* Modal Styles */
-          .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1100;
-          }
-
-          .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-          }
-
-          .modal-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #333;
-            text-align: center;
-          }
-
-          .modal-body {
-            margin-bottom: 1.5rem;
-          }
-
-          .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-          }
-
-          .modal-button {
-            padding: 0.5rem 2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
-          }
-
-          .modal-button.confirm {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .modal-button.delete {
-            background-color: #dc3545;
-            color: white;
-          }
-
-          .modal-button.cancel {
-            background-color: #6c757d;
-            color: white;
-          }
-
-          .custom-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-          }
-
-          /* Academic Year Display */
-          .academic-year-display {
-            background-color: #f8f9fa;
-            padding: 10px 15px;
-            border-radius: 5px;
-            border-left: 4px solid #0B3D7B;
-          }
-
-          .academic-year-value {
-            font-weight: bold;
-            color: #0B3D7B;
-          }
-
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
-
-          .gap-2 {
-            gap: 0.5rem;
-          }
-        `}
-      </style>
     </MainContentPage>
   )
 }

@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Row, Col, Container, Card } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Card, Spinner } from "react-bootstrap"
 import { FaEdit, FaTrash, FaSearch } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import "../styles/style.css"
 
 // Generic Modal Component
 const GenericModal = ({ isOpen, onClose, onConfirm, title, fields, data }) => {
@@ -109,12 +110,14 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, category, currentName, n
 }
 
 const StaffDesignationandCategory = () => {
-  const [administrationId, setAdministrationId] = useState(null)
-  const { user } = useAuthContext()
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
+  const { user, currentAcademicYear } = useAuthContext()
 
   // State for each category
-  const [staffDesignation, setStaffDesignation] = useState({ items: [], searchTerm: "" })
-  const [staffCategory, setStaffCategory] = useState({ items: [], searchTerm: "" })
+  const [staffDesignation, setStaffDesignation] = useState({ items: [], searchTerm: "", isLoading: false })
+  const [staffCategory, setStaffCategory] = useState({ items: [], searchTerm: "", isLoading: false })
 
   // Modal states
   const [modalState, setModalState] = useState({
@@ -133,16 +136,48 @@ const StaffDesignationandCategory = () => {
     id: "",
   })
 
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
+    const resetState = () => {
+      setStaffDesignation({ items: [], searchTerm: "", isLoading: false })
+      setStaffCategory({ items: [], searchTerm: "", isLoading: false })
+      setModalState({ isOpen: false, type: "", action: "", data: null })
+      setConfirmEditModalState({ isOpen: false, category: "", currentName: "", newName: "", id: "" })
+    }
+
+    resetState()
+
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid)
-        await fetchAdministrationId()
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+
+          // Fetch all categories
+          await fetchItems("StaffDesignation")
+          await fetchItems("StaffCategory")
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        }
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage entries.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       } else {
         console.log("User is not authenticated")
         toast.error("Please log in to view and manage entries.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
@@ -153,77 +188,158 @@ const StaffDesignationandCategory = () => {
     }
 
     checkAuthAndFetchData()
-  }, [])
 
-  useEffect(() => {
-    if (administrationId) {
-      fetchItems("StaffDesignation")
-      fetchItems("StaffCategory")
-    }
-  }, [administrationId])
+    return () => resetState()
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
 
-  const fetchAdministrationId = async () => {
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-      const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-        setAdministrationId(newAdminRef.id)
-      } else {
-        setAdministrationId(querySnapshot.docs[0].id)
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error)
-      toast.error("Failed to initialize. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      })
+      console.error("Error ensuring necessary documents:", error)
     }
   }
 
   const fetchItems = async (category) => {
-    if (!administrationId) return
+    if (!auth.currentUser || !currentAcademicYear) return
+
+    // Set loading state for the specific category
+    switch (category) {
+      case "StaffDesignation":
+        setStaffDesignation((prev) => ({ ...prev, isLoading: true }))
+        break
+      case "StaffCategory":
+        setStaffCategory((prev) => ({ ...prev, isLoading: true }))
+        break
+    }
 
     try {
-      const itemsRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, category)
+      // First ensure all documents exist
+      await ensureDocumentsExist()
+
+      // Path to the category collection
+      const itemsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        `${category}Setup`,
+      )
+
       const querySnapshot = await getDocs(itemsRef)
       const itemsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log(`Fetched ${category}:`, itemsData)
+      console.log(
+        `Fetched ${category} for user`,
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        itemsData,
+      )
 
+      // Update state with fetched data
       switch (category) {
         case "StaffDesignation":
-          setStaffDesignation((prev) => ({ ...prev, items: itemsData }))
+          setStaffDesignation((prev) => ({ ...prev, items: itemsData, isLoading: false }))
           break
         case "StaffCategory":
-          setStaffCategory((prev) => ({ ...prev, items: itemsData }))
+          setStaffCategory((prev) => ({ ...prev, items: itemsData, isLoading: false }))
           break
       }
     } catch (error) {
       console.error(`Error fetching ${category}:`, error)
       toast.error(`Failed to fetch ${category} entries. Please try again.`, {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+
+      // Reset loading state and items on error
+      switch (category) {
+        case "StaffDesignation":
+          setStaffDesignation((prev) => ({ ...prev, items: [], isLoading: false }))
+          break
+        case "StaffCategory":
+          setStaffCategory((prev) => ({ ...prev, items: [], isLoading: false }))
+          break
+      }
     }
   }
 
   const handleAdd = async (category, newItem) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    if (!newItem[category.toLowerCase()].trim()) {
+      toast.error(`${category} name cannot be empty.`, {
+        position: "top-right",
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -248,10 +364,57 @@ const StaffDesignationandCategory = () => {
       return
     }
 
+    // Set loading state for the specific category
+    switch (category) {
+      case "StaffDesignation":
+        setStaffDesignation((prev) => ({ ...prev, isLoading: true }))
+        break
+      case "StaffCategory":
+        setStaffCategory((prev) => ({ ...prev, isLoading: true }))
+        break
+    }
+
     try {
-      const itemsRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, category)
-      const docRef = await addDoc(itemsRef, newItem)
-      console.log(`${category} added with ID:`, docRef.id)
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
+
+      // Path to add a new item
+      const itemsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        `${category}Setup`,
+      )
+
+      const docRef = await addDoc(itemsRef, {
+        ...newItem,
+        createdAt: new Date(),
+      })
+
+      console.log(
+        `${category} added with ID:`,
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      const newItemData = { id: docRef.id, ...newItem }
+      switch (category) {
+        case "StaffDesignation":
+          setStaffDesignation((prev) => ({ ...prev, items: [...prev.items, newItemData], isLoading: false }))
+          break
+        case "StaffCategory":
+          setStaffCategory((prev) => ({ ...prev, items: [...prev.items, newItemData], isLoading: false }))
+          break
+      }
+
       setModalState({ isOpen: false, type: "", action: "", data: null })
       toast.success(`${category} entry added successfully!`, {
         position: "top-right",
@@ -263,26 +426,51 @@ const StaffDesignationandCategory = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data to ensure consistency
       await fetchItems(category)
     } catch (error) {
       console.error(`Error adding ${category}:`, error)
       toast.error(`Failed to add ${category} entry. Please try again.`, {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+
+      // Reset loading state on error
+      switch (category) {
+        case "StaffDesignation":
+          setStaffDesignation((prev) => ({ ...prev, isLoading: false }))
+          break
+        case "StaffCategory":
+          setStaffCategory((prev) => ({ ...prev, isLoading: false }))
+          break
+      }
     }
   }
 
   const handleEdit = async (category, id, updatedItem) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    if (!updatedItem[category.toLowerCase()].trim()) {
+      toast.error(`${category} name cannot be empty.`, {
+        position: "top-right",
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -319,10 +507,76 @@ const StaffDesignationandCategory = () => {
 
   const confirmEdit = async () => {
     const { category, id, newName } = confirmEditModalState
+
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    // Set loading state for the specific category
+    switch (category) {
+      case "StaffDesignation":
+        setStaffDesignation((prev) => ({ ...prev, isLoading: true }))
+        break
+      case "StaffCategory":
+        setStaffCategory((prev) => ({ ...prev, isLoading: true }))
+        break
+    }
+
     try {
-      const itemRef = doc(db, "Schools", auth.currentUser.uid, "Administration", administrationId, category, id)
-      await updateDoc(itemRef, { [category.toLowerCase()]: newName })
-      console.log(`${category} updated:`, id)
+      // Path to update an item
+      const itemRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        `${category}Setup`,
+        id,
+      )
+
+      await updateDoc(itemRef, {
+        [category.toLowerCase()]: newName,
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        `${category} updated:`,
+        id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      switch (category) {
+        case "StaffDesignation":
+          setStaffDesignation((prev) => ({
+            ...prev,
+            items: prev.items.map((item) => (item.id === id ? { ...item, [category.toLowerCase()]: newName } : item)),
+            isLoading: false,
+          }))
+          break
+        case "StaffCategory":
+          setStaffCategory((prev) => ({
+            ...prev,
+            items: prev.items.map((item) => (item.id === id ? { ...item, [category.toLowerCase()]: newName } : item)),
+            isLoading: false,
+          }))
+          break
+      }
+
       setConfirmEditModalState({ isOpen: false, category: "", currentName: "", newName: "", id: "" })
       toast.success(`${category} entry updated successfully!`, {
         position: "top-right",
@@ -334,26 +588,38 @@ const StaffDesignationandCategory = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data
       await fetchItems(category)
     } catch (error) {
       console.error(`Error updating ${category}:`, error)
       toast.error(`Failed to update ${category} entry. Please try again.`, {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+
+      // Reset loading state on error
+      switch (category) {
+        case "StaffDesignation":
+          setStaffDesignation((prev) => ({ ...prev, isLoading: false }))
+          break
+        case "StaffCategory":
+          setStaffCategory((prev) => ({ ...prev, isLoading: false }))
+          break
+      }
     }
   }
 
   const handleDelete = async (category, id) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -363,10 +629,58 @@ const StaffDesignationandCategory = () => {
       return
     }
 
+    // Set loading state for the specific category
+    switch (category) {
+      case "StaffDesignation":
+        setStaffDesignation((prev) => ({ ...prev, isLoading: true }))
+        break
+      case "StaffCategory":
+        setStaffCategory((prev) => ({ ...prev, isLoading: true }))
+        break
+    }
+
     try {
-      const itemRef = doc(db, "Schools", auth.currentUser.uid, "Administration", administrationId, category, id)
+      // Path to delete an item
+      const itemRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        `${category}Setup`,
+        id,
+      )
+
       await deleteDoc(itemRef)
-      console.log(`${category} deleted:`, id)
+      console.log(
+        `${category} deleted:`,
+        id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      switch (category) {
+        case "StaffDesignation":
+          setStaffDesignation((prev) => ({
+            ...prev,
+            items: prev.items.filter((item) => item.id !== id),
+            isLoading: false,
+          }))
+          break
+        case "StaffCategory":
+          setStaffCategory((prev) => ({
+            ...prev,
+            items: prev.items.filter((item) => item.id !== id),
+            isLoading: false,
+          }))
+          break
+      }
+
       setModalState({ isOpen: false, type: "", action: "", data: null })
       toast.success(`${category} entry deleted successfully!`, {
         position: "top-right",
@@ -377,18 +691,30 @@ const StaffDesignationandCategory = () => {
         draggable: true,
         progress: undefined,
       })
+
+      // Fetch fresh data
       await fetchItems(category)
     } catch (error) {
       console.error(`Error deleting ${category}:`, error)
       toast.error(`Failed to delete ${category} entry. Please try again.`, {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+
+      // Reset loading state on error
+      switch (category) {
+        case "StaffDesignation":
+          setStaffDesignation((prev) => ({ ...prev, isLoading: false }))
+          break
+        case "StaffCategory":
+          setStaffCategory((prev) => ({ ...prev, isLoading: false }))
+          break
+      }
     }
   }
 
@@ -430,61 +756,100 @@ const StaffDesignationandCategory = () => {
     return items.some((item) => item.id !== id && item[category.toLowerCase()].toLowerCase() === name.toLowerCase())
   }
 
-  const renderCard = (category, items, searchTerm) => {
+  const renderCard = (category, items, searchTerm, isLoading) => {
     const filteredItems = items.filter((item) =>
-      Object.values(item).some((value) => value.toString().toLowerCase().includes(searchTerm.toLowerCase())),
+      Object.values(item).some(
+        (value) => typeof value === "string" && value.toLowerCase().includes(searchTerm.toLowerCase()),
+      ),
     )
 
     return (
       <Card className="mb-4">
-        <Card.Header
-          className="d-flex justify-content-between align-items-center"
-          style={{ backgroundColor: "#0B3D7B", color: "white" }}
-        >
+        <Card.Header className="d-flex justify-content-between align-items-center header">
           <h5 className="m-0">{category} Setup</h5>
-          <Button onClick={() => openModal(category, "add")} variant="light" size="sm">
+          <Button
+            onClick={() => openModal(category, "add")}
+            variant="light"
+            size="sm"
+            disabled={!currentAcademicYear || isLoading}
+          >
             + Add {category}
           </Button>
         </Card.Header>
         <Card.Body>
-          <Form className="mb-3">
-            <Form.Group className="d-flex">
-              <Form.Control
-                type="text"
-                placeholder={`Search ${category}`}
-                value={searchTerm}
-                onChange={(e) => {
-                  switch (category) {
-                    case "StaffDesignation":
-                      setStaffDesignation((prev) => ({ ...prev, searchTerm: e.target.value }))
-                      break
-                    case "StaffCategory":
-                      setStaffCategory((prev) => ({ ...prev, searchTerm: e.target.value }))
-                      break
-                  }
-                }}
-                className="me-2"
-              />
-              <Button variant="outline-secondary">
-                <FaSearch />
-              </Button>
-            </Form.Group>
-          </Form>
-          {filteredItems.map((item) => (
-            <Card key={item.id} className="mb-2">
-              <Card.Body className="d-flex justify-content-between align-items-center">
-                <span>{item[category.toLowerCase()] || item.name || "N/A"}</span>
-                <div>
-                  <Button variant="link" className="p-0 me-2" onClick={() => openModal(category, "edit", item)}>
-                    <FaEdit color="#0B3D7B" />
+          {!currentAcademicYear ? (
+            <div className="alert alert-warning">
+              Please select an academic year to manage {category.toLowerCase()} entries.
+            </div>
+          ) : (
+            <>
+              <Form className="mb-3">
+                <Form.Group className="d-flex">
+                  <Form.Control
+                    type="text"
+                    placeholder={`Search ${category}`}
+                    value={searchTerm}
+                    onChange={(e) => {
+                      switch (category) {
+                        case "StaffDesignation":
+                          setStaffDesignation((prev) => ({ ...prev, searchTerm: e.target.value }))
+                          break
+                        case "StaffCategory":
+                          setStaffCategory((prev) => ({ ...prev, searchTerm: e.target.value }))
+                          break
+                      }
+                    }}
+                    className="me-2"
+                    disabled={isLoading}
+                  />
+                  <Button variant="outline-secondary" disabled={isLoading}>
+                    <FaSearch />
                   </Button>
-                  <Button variant="link" className="p-0" onClick={() => openModal(category, "delete", item)}>
-                    <FaTrash color="#dc3545" />
-                  </Button>
+                </Form.Group>
+              </Form>
+
+              {/* Loading Indicator */}
+              {isLoading && (
+                <div className="text-center my-4">
+                  <Spinner animation="border" role="status" variant="primary" className="loader">
+                    <span className="visually-hidden">Loading...</span>
+                  </Spinner>
+                  <p className="mt-2">Loading {category.toLowerCase()} data...</p>
                 </div>
-              </Card.Body>
-            </Card>
-          ))}
+              )}
+
+              {/* Items List */}
+              {!isLoading && (
+                <>
+                  {filteredItems.length === 0 && items.length === 0 ? (
+                    <p className="text-center">No data available</p>
+                  ) : filteredItems.length === 0 && searchTerm ? (
+                    <p className="text-center">No matching {category.toLowerCase()} found</p>
+                  ) : (
+                    filteredItems.map((item) => (
+                      <Card key={item.id} className="mb-2">
+                        <Card.Body className="d-flex justify-content-between align-items-center">
+                          <span>{item[category.toLowerCase()] || item.name || "N/A"}</span>
+                          <div>
+                            <Button
+                              variant="link"
+                              className="p-0 me-2"
+                              onClick={() => openModal(category, "edit", item)}
+                            >
+                              <FaEdit color="#0B3D7B" />
+                            </Button>
+                            <Button variant="link" className="p-0" onClick={() => openModal(category, "delete", item)}>
+                              <FaTrash color="#dc3545" />
+                            </Button>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    ))
+                  )}
+                </>
+              )}
+            </>
+          )}
         </Card.Body>
       </Card>
     )
@@ -506,10 +871,15 @@ const StaffDesignationandCategory = () => {
             <div className="setup-container">
               <Row>
                 <Col xs={12} md={6} className="mb-3">
-                  {renderCard("StaffDesignation", staffDesignation.items, staffDesignation.searchTerm)}
+                  {renderCard(
+                    "StaffDesignation",
+                    staffDesignation.items,
+                    staffDesignation.searchTerm,
+                    staffDesignation.isLoading,
+                  )}
                 </Col>
                 <Col xs={12} md={6} className="mb-3">
-                  {renderCard("StaffCategory", staffCategory.items, staffCategory.searchTerm)}
+                  {renderCard("StaffCategory", staffCategory.items, staffCategory.searchTerm, staffCategory.isLoading)}
                 </Col>
               </Row>
             </div>
@@ -548,128 +918,9 @@ const StaffDesignationandCategory = () => {
 
       {/* Toastify Container */}
       <ToastContainer />
-
-      <style>
-        {`
-          .setup-container {
-            background-color: #fff;
-          }
-
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          /* Modal Styles */
-          .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1100;
-          }
-
-          .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-          }
-
-          .modal-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #333;
-            text-align: center;
-          }
-
-          .modal-body {
-            margin-bottom: 1.5rem;
-          }
-
-          .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-          }
-
-          .modal-button {
-            padding: 0.5rem 2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
-          }
-
-          .modal-button.confirm {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .modal-button.delete {
-            background-color: #dc3545;
-            color: white;
-          }
-
-          .modal-button.cancel {
-            background-color: #6c757d;
-            color: white;
-          }
-
-          .custom-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-          }
-
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
-        `}
-      </style>
     </MainContentPage>
   )
 }
 
 export default StaffDesignationandCategory
 
-  

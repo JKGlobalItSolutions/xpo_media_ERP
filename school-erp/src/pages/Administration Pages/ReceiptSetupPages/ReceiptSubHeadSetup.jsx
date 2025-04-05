@@ -1,26 +1,35 @@
-import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import MainContentPage from "../../../components/MainContent/MainContentPage";
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap";
-import { FaEdit, FaTrash } from "react-icons/fa";
-import { db, auth } from "../../../Firebase/config";
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query } from "firebase/firestore";
-import { useAuthContext } from "../../../context/AuthContext";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+"use client"
+
+import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
+import MainContentPage from "../../../components/MainContent/MainContentPage"
+import { Form, Button, Row, Col, Container, Table, Spinner } from "react-bootstrap"
+import { FaEdit, FaTrash } from "react-icons/fa"
+import { db, auth } from "../../../Firebase/config"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
+import { useAuthContext } from "../../../context/AuthContext"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import "../styles/style.css"
 
 // Add SubHead Modal Component
 const AddSubHeadModal = ({ isOpen, onClose, onConfirm, mainHeads }) => {
-  const [mainHead, setMainHead] = useState("");
-  const [subHeadName, setSubHeadName] = useState("");
+  const [mainHeadId, setMainHeadId] = useState("")
+  const [subHeadName, setSubHeadName] = useState("")
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    // Reset form when modal opens
+    if (isOpen) {
+      setMainHeadId("")
+      setSubHeadName("")
+    }
+  }, [isOpen])
+
+  if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(mainHead, subHeadName);
-    setMainHead("");
-    setSubHeadName("");
-  };
+    onConfirm(mainHeadId, subHeadName)
+  }
 
   return (
     <div className="modal-overlay">
@@ -31,16 +40,20 @@ const AddSubHeadModal = ({ isOpen, onClose, onConfirm, mainHeads }) => {
             <Form.Label>Select Main Head</Form.Label>
             <Form.Control
               as="select"
-              value={mainHead}
-              onChange={(e) => setMainHead(e.target.value)}
+              value={mainHeadId}
+              onChange={(e) => setMainHeadId(e.target.value)}
               className="custom-input mb-3"
             >
               <option value="">-- Select Main Head --</option>
-              {mainHeads.map((head) => (
-                <option key={head.id} value={head.id}>
-                  {head.headName}
-                </option>
-              ))}
+              {mainHeads && mainHeads.length > 0 ? (
+                mainHeads.map((head) => (
+                  <option key={head.id} value={head.id}>
+                    {head.headName}
+                  </option>
+                ))
+              ) : (
+                <option disabled>No main heads available</option>
+              )}
             </Form.Control>
           </Form.Group>
           <Form.Group>
@@ -64,26 +77,26 @@ const AddSubHeadModal = ({ isOpen, onClose, onConfirm, mainHeads }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Edit SubHead Modal Component
 const EditSubHeadModal = ({ isOpen, onClose, onConfirm, subHead, mainHeads }) => {
-  const [mainHead, setMainHead] = useState(subHead?.mainHeadId || "");
-  const [subHeadName, setSubHeadName] = useState(subHead?.subHeadName || "");
+  const [mainHeadId, setMainHeadId] = useState(subHead?.mainHeadId || "")
+  const [subHeadName, setSubHeadName] = useState(subHead?.subHeadName || "")
 
   useEffect(() => {
     if (subHead) {
-      setMainHead(subHead.mainHeadId);
-      setSubHeadName(subHead.subHeadName);
+      setMainHeadId(subHead.mainHeadId)
+      setSubHeadName(subHead.subHeadName)
     }
-  }, [subHead]);
+  }, [subHead])
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(subHead.id, mainHead, subHeadName);
-  };
+    onConfirm(subHead.id, mainHeadId, subHeadName)
+  }
 
   return (
     <div className="modal-overlay">
@@ -94,16 +107,20 @@ const EditSubHeadModal = ({ isOpen, onClose, onConfirm, subHead, mainHeads }) =>
             <Form.Label>Select Main Head</Form.Label>
             <Form.Control
               as="select"
-              value={mainHead}
-              onChange={(e) => setMainHead(e.target.value)}
+              value={mainHeadId}
+              onChange={(e) => setMainHeadId(e.target.value)}
               className="custom-input mb-3"
             >
               <option value="">-- Select Main Head --</option>
-              {mainHeads.map((head) => (
-                <option key={head.id} value={head.id}>
-                  {head.headName}
-                </option>
-              ))}
+              {mainHeads && mainHeads.length > 0 ? (
+                mainHeads.map((head) => (
+                  <option key={head.id} value={head.id}>
+                    {head.headName}
+                  </option>
+                ))
+              ) : (
+                <option disabled>No main heads available</option>
+              )}
             </Form.Control>
           </Form.Group>
           <Form.Group>
@@ -127,12 +144,12 @@ const EditSubHeadModal = ({ isOpen, onClose, onConfirm, subHead, mainHeads }) =>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Delete SubHead Modal Component
 const DeleteSubHeadModal = ({ isOpen, onClose, onConfirm, subHead }) => {
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="modal-overlay">
@@ -153,195 +170,319 @@ const DeleteSubHeadModal = ({ isOpen, onClose, onConfirm, subHead }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
+
+// Confirm Edit Modal Component
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentData, newData, mainHeads }) => {
+  if (!isOpen) return null
+
+  // Find main head names for display
+  const getCurrentMainHeadName = () => {
+    const mainHead = mainHeads.find((head) => head.id === currentData.mainHeadId)
+    return mainHead ? mainHead.headName : "Unknown"
+  }
+
+  const getNewMainHeadName = () => {
+    const mainHead = mainHeads.find((head) => head.id === newData.mainHeadId)
+    return mainHead ? mainHead.headName : "Unknown"
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Edit</h2>
+        <div className="modal-body">
+          <p>Are you sure you want to edit this receipt sub head? This may affect the structure of receipt data.</p>
+          <p>
+            <strong>Current Main Head:</strong> {getCurrentMainHeadName()}
+          </p>
+          <p>
+            <strong>Current Sub Head:</strong> {currentData.subHeadName}
+          </p>
+          <p>
+            <strong>New Main Head:</strong> {getNewMainHeadName()}
+          </p>
+          <p>
+            <strong>New Sub Head:</strong> {newData.subHeadName}
+          </p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={onConfirm}>
+            Confirm Edit
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const ReceiptSubHeadSetup = () => {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedSubHead, setSelectedSubHead] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [subHeads, setSubHeads] = useState([]);
-  const [mainHeads, setMainHeads] = useState([]);
-  const [administrationId, setAdministrationId] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const location = useLocation();
-  const { user } = useAuthContext();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
+  const [selectedSubHead, setSelectedSubHead] = useState(null)
+  const [newSubHeadData, setNewSubHeadData] = useState({ mainHeadId: "", subHeadName: "" })
+  const [searchTerm, setSearchTerm] = useState("")
+  const [subHeads, setSubHeads] = useState([])
+  const [mainHeads, setMainHeads] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { user, currentAcademicYear } = useAuthContext()
 
-  // Reset state and fetch data when user changes
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
     const resetState = () => {
-      setSubHeads([]);
-      setMainHeads([]);
-      setAdministrationId(null);
-      setSearchTerm("");
-      setSelectedSubHead(null);
-      setIsAddModalOpen(false);
-      setIsEditModalOpen(false);
-      setIsDeleteModalOpen(false);
-    };
+      setSubHeads([])
+      setMainHeads([])
+      setSearchTerm("")
+      setSelectedSubHead(null)
+      setNewSubHeadData({ mainHeadId: "", subHeadName: "" })
+      setIsAddModalOpen(false)
+      setIsEditModalOpen(false)
+      setIsDeleteModalOpen(false)
+      setIsConfirmEditModalOpen(false)
+    }
 
-    resetState();
+    resetState()
 
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid);
-        await fetchAdministrationId();
-      } else {
-        console.log("User is not authenticated");
-        toast.error("Please log in to view and manage receipt sub heads.", {
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        setIsLoading(true)
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+          await fetchMainHeads()
+          await fetchSubHeads()
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        } finally {
+          setIsLoading(false)
+        }
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage receipt sub heads.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
           progress: undefined,
-        });
-        setIsLoading(false);
+        })
+      } else {
+        console.log("User is not authenticated")
+        toast.error("Please log in to view and manage receipt sub heads.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       }
-    };
-
-    checkAuthAndFetchData();
-
-    return () => resetState();
-  }, [auth.currentUser?.uid]);
-
-  useEffect(() => {
-    if (administrationId && auth.currentUser) {
-      fetchMainHeads();
-      fetchSubHeads();
     }
-  }, [administrationId]);
 
-  const fetchAdministrationId = async () => {
-    if (!auth.currentUser) return;
+    checkAuthAndFetchData()
+
+    return () => resetState()
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
+
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
 
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration");
-      const q = query(adminRef);
-      const querySnapshot = await getDocs(q);
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() });
-        setAdministrationId(newAdminRef.id);
-        console.log("New Administration ID created:", newAdminRef.id);
-      } else {
-        const adminId = querySnapshot.docs[0].id;
-        setAdministrationId(adminId);
-        console.log("Existing Administration ID fetched:", adminId);
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error);
-      toast.error("Failed to initialize administration data. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      });
+      console.error("Error ensuring necessary documents:", error)
     }
-  };
+  }
 
   const fetchMainHeads = async () => {
-    if (!administrationId || !auth.currentUser) return;
+    if (!auth.currentUser || !currentAcademicYear) return
 
     try {
-      const headsRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "ReceiptHeadSetup");
-      const querySnapshot = await getDocs(headsRef);
-      const headsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      console.log("Fetched main heads for user", auth.currentUser.uid, ":", headsData);
-      setMainHeads(headsData);
+      // Path to the ReceiptHeadSetup collection
+      const headsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "ReceiptHeadSetup",
+      )
+
+      const querySnapshot = await getDocs(headsRef)
+      const headsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log(
+        "Fetched main receipt heads for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        headsData,
+      )
+      setMainHeads(headsData)
     } catch (error) {
-      console.error("Error fetching main heads:", error);
-      toast.error("Failed to fetch main heads. Please try again.", {
+      console.error("Error fetching main receipt heads:", error)
+      toast.error("Failed to fetch main receipt heads. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      setMainHeads([]);
+      })
+      setMainHeads([])
     }
-  };
+  }
 
   const fetchSubHeads = async () => {
-    if (!administrationId || !auth.currentUser) return;
+    if (!auth.currentUser || !currentAcademicYear) return
 
     try {
-      setIsLoading(true);
-      const subHeadsRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "ReceiptSubHeadSetup");
-      const querySnapshot = await getDocs(subHeadsRef);
-      const subHeadsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      console.log("Fetched sub heads for user", auth.currentUser.uid, ":", subHeadsData);
-      setSubHeads(subHeadsData);
+      // Path to the ReceiptSubHeadSetup collection
+      const subHeadsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "ReceiptSubHeadSetup",
+      )
+
+      const querySnapshot = await getDocs(subHeadsRef)
+      const subHeadsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log(
+        "Fetched receipt sub heads for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        subHeadsData,
+      )
+      setSubHeads(subHeadsData)
     } catch (error) {
-      console.error("Error fetching sub heads:", error);
-      toast.error("Failed to fetch sub heads. Please try again.", {
+      console.error("Error fetching receipt sub heads:", error)
+      toast.error("Failed to fetch receipt sub heads. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      setSubHeads([]);
-    } finally {
-      setIsLoading(false);
+      })
+      setSubHeads([])
     }
-  };
+  }
 
   const handleAddSubHead = async (mainHeadId, subHeadName) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
     if (!mainHeadId) {
       toast.error("Please select a main head.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
     if (!subHeadName.trim()) {
       toast.error("Sub head name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
     const isDuplicate = subHeads.some(
       (subHead) =>
-        subHead.mainHeadId === mainHeadId &&
-        subHead.subHeadName.toLowerCase() === subHeadName.toLowerCase()
-    );
+        subHead.mainHeadId === mainHeadId && subHead.subHeadName.toLowerCase() === subHeadName.toLowerCase(),
+    )
     if (isDuplicate) {
       toast.error("A sub head with this name already exists under the selected main head.", {
         position: "top-right",
@@ -351,44 +492,69 @@ const ReceiptSubHeadSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
+    setIsLoading(true)
     try {
-      const mainHead = mainHeads.find((head) => head.id === mainHeadId);
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
+
+      const mainHead = mainHeads.find((head) => head.id === mainHeadId)
       if (!mainHead) {
         toast.error("Selected main head not found.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
           progress: undefined,
-        });
-        return;
+        })
+        setIsLoading(false)
+        return
       }
 
-      const subHeadsRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "ReceiptSubHeadSetup");
+      // Path to add a new sub head
+      const subHeadsRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "ReceiptSubHeadSetup",
+      )
+
       const docRef = await addDoc(subHeadsRef, {
         mainHeadId,
         mainHeadName: mainHead.headName,
         subHeadName: subHeadName.trim(),
         createdAt: new Date(),
-      });
-      console.log("Receipt sub head added with ID:", docRef.id, "for user:", auth.currentUser.uid);
+      })
 
+      console.log(
+        "Receipt sub head added with ID:",
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
       const newSubHead = {
         id: docRef.id,
         mainHeadId,
         mainHeadName: mainHead.headName,
         subHeadName: subHeadName.trim(),
         createdAt: new Date(),
-      };
-      setSubHeads((prevSubHeads) => [...prevSubHeads, newSubHead]);
+      }
+      setSubHeads((prevSubHeads) => [...prevSubHeads, newSubHead])
 
-      setIsAddModalOpen(false);
+      setIsAddModalOpen(false)
       toast.success("Receipt sub head added successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -398,69 +564,72 @@ const ReceiptSubHeadSetup = () => {
         draggable: true,
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
-      });
+      })
 
-      await fetchSubHeads();
+      // Fetch fresh data to ensure consistency
+      await fetchSubHeads()
     } catch (error) {
-      console.error("Error adding receipt sub head:", error);
+      console.error("Error adding receipt sub head:", error)
       toast.error("Failed to add receipt sub head. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
+      })
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleEditSubHead = async (subHeadId, mainHeadId, newSubHeadName) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
     if (!mainHeadId) {
       toast.error("Please select a main head.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
     if (!newSubHeadName.trim()) {
       toast.error("Sub head name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
     const isDuplicate = subHeads.some(
       (subHead) =>
         subHead.id !== subHeadId &&
         subHead.mainHeadId === mainHeadId &&
-        subHead.subHeadName.toLowerCase() === newSubHeadName.toLowerCase()
-    );
+        subHead.subHeadName.toLowerCase() === newSubHeadName.toLowerCase(),
+    )
     if (isDuplicate) {
       toast.error("A sub head with this name already exists under the selected main head.", {
         position: "top-right",
@@ -470,52 +639,93 @@ const ReceiptSubHeadSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
+    setIsEditModalOpen(false)
+    setNewSubHeadData({ mainHeadId, subHeadName: newSubHeadName })
+    setIsConfirmEditModalOpen(true)
+  }
+
+  const confirmEditSubHead = async () => {
+    if (!auth.currentUser || !currentAcademicYear || !selectedSubHead) {
+      toast.error("User not logged in, no academic year selected, or no sub head selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsLoading(true)
     try {
-      const mainHead = mainHeads.find((head) => head.id === mainHeadId);
+      const mainHead = mainHeads.find((head) => head.id === newSubHeadData.mainHeadId)
       if (!mainHead) {
         toast.error("Selected main head not found.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
           progress: undefined,
-        });
-        return;
+        })
+        setIsLoading(false)
+        return
       }
 
+      // Path to update a sub head
       const subHeadRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "ReceiptSubHeadSetup",
-        subHeadId
-      );
-      await updateDoc(subHeadRef, {
-        mainHeadId,
-        mainHeadName: mainHead.headName,
-        subHeadName: newSubHeadName.trim(),
-        updatedAt: new Date(),
-      });
-      console.log("Receipt sub head updated:", subHeadId, "for user:", auth.currentUser.uid);
+        selectedSubHead.id,
+      )
 
+      await updateDoc(subHeadRef, {
+        mainHeadId: newSubHeadData.mainHeadId,
+        mainHeadName: mainHead.headName,
+        subHeadName: newSubHeadData.subHeadName.trim(),
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        "Receipt sub head updated:",
+        selectedSubHead.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
       setSubHeads((prevSubHeads) =>
         prevSubHeads.map((subHead) =>
-          subHead.id === subHeadId
-            ? { ...subHead, mainHeadId, mainHeadName: mainHead.headName, subHeadName: newSubHeadName.trim(), updatedAt: new Date() }
-            : subHead
-        )
-      );
+          subHead.id === selectedSubHead.id
+            ? {
+                ...subHead,
+                mainHeadId: newSubHeadData.mainHeadId,
+                mainHeadName: mainHead.headName,
+                subHeadName: newSubHeadData.subHeadName.trim(),
+                updatedAt: new Date(),
+              }
+            : subHead,
+        ),
+      )
 
-      setIsEditModalOpen(false);
-      setSelectedSubHead(null);
+      setIsConfirmEditModalOpen(false)
+      setSelectedSubHead(null)
+      setNewSubHeadData({ mainHeadId: "", subHeadName: "" })
       toast.success("Receipt sub head updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -525,54 +735,70 @@ const ReceiptSubHeadSetup = () => {
         draggable: true,
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
-      });
+      })
 
-      await fetchSubHeads();
+      // Fetch fresh data
+      await fetchSubHeads()
     } catch (error) {
-      console.error("Error updating receipt sub head:", error);
+      console.error("Error updating receipt sub head:", error)
       toast.error("Failed to update receipt sub head. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
+      })
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleDeleteSubHead = async (subHeadId) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
+    setIsLoading(true)
     try {
+      // Path to delete a sub head
       const subHeadRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "ReceiptSubHeadSetup",
-        subHeadId
-      );
-      await deleteDoc(subHeadRef);
-      console.log("Receipt sub head deleted:", subHeadId, "for user:", auth.currentUser.uid);
+        subHeadId,
+      )
 
-      setSubHeads((prevSubHeads) => prevSubHeads.filter((subHead) => subHead.id !== subHeadId));
+      await deleteDoc(subHeadRef)
+      console.log(
+        "Receipt sub head deleted:",
+        subHeadId,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
-      setIsDeleteModalOpen(false);
-      setSelectedSubHead(null);
+      // Immediately update UI
+      setSubHeads((prevSubHeads) => prevSubHeads.filter((subHead) => subHead.id !== subHeadId))
+
+      setIsDeleteModalOpen(false)
+      setSelectedSubHead(null)
       toast.success("Receipt sub head deleted successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -581,37 +807,41 @@ const ReceiptSubHeadSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
+      })
 
-      await fetchSubHeads();
+      // Fetch fresh data
+      await fetchSubHeads()
     } catch (error) {
-      console.error("Error deleting receipt sub head:", error);
+      console.error("Error deleting receipt sub head:", error)
       toast.error("Failed to delete receipt sub head. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
+      })
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
 
   const openEditModal = (subHead) => {
-    setSelectedSubHead(subHead);
-    setIsEditModalOpen(true);
-  };
+    setSelectedSubHead(subHead)
+    setIsEditModalOpen(true)
+  }
 
   const openDeleteModal = (subHead) => {
-    setSelectedSubHead(subHead);
-    setIsDeleteModalOpen(true);
-  };
+    setSelectedSubHead(subHead)
+    setIsDeleteModalOpen(true)
+  }
 
-  const filteredSubHeads = subHeads.filter((subHead) =>
-    (subHead.subHeadName && subHead.subHeadName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (subHead.mainHeadName && subHead.mainHeadName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredSubHeads = subHeads.filter(
+    (subHead) =>
+      (subHead.subHeadName && subHead.subHeadName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (subHead.mainHeadName && subHead.mainHeadName.toLowerCase().includes(searchTerm.toLowerCase())),
+  )
 
   return (
     <MainContentPage>
@@ -619,13 +849,14 @@ const ReceiptSubHeadSetup = () => {
         {/* Breadcrumb Navigation */}
         <nav className="custom-breadcrumb py-1 py-lg-3">
           <Link to="/home">Home</Link>
-          <span className="separator"> &gt; </span>
+          <span className="separator">&gt;</span>
           <span>Administration</span>
-          <span className="separator"> &gt; </span>
+          <span className="separator">&gt;</span>
           <Link to="/admin/receipt-setup">Receipt Setup</Link>
-          <span className="separator"> &gt; </span>
+          <span className="separator">&gt;</span>
           <span className="current">Receipt Sub Head Setup</span>
         </nav>
+
         <Row>
           <Col xs={12}>
             <div className="course-setup-container">
@@ -637,7 +868,20 @@ const ReceiptSubHeadSetup = () => {
                     <h6 className="m-0 d-lg-none">Sub Head Of Account</h6>
                   </div>
                   <div className="d-flex align-items-center gap-2">
-                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                    <Button
+                      onClick={() => {
+                        if (mainHeads.length === 0) {
+                          toast.error("Please add main receipt heads first before adding sub heads.", {
+                            position: "top-right",
+                            autoClose: 3000,
+                          })
+                        } else {
+                          setIsAddModalOpen(true)
+                        }
+                      }}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || isLoading}
+                    >
                       + Add Sub Head
                     </Button>
                   </div>
@@ -645,71 +889,84 @@ const ReceiptSubHeadSetup = () => {
 
                 {/* Content */}
                 <div className="content-wrapper p-4">
-                  {/* Search Bar */}
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by Sub Head or Main Head Name"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="custom-search mb-3"
-                  />
+                  {!currentAcademicYear ? (
+                    <div className="alert alert-warning">Please select an academic year to manage receipt sub heads.</div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <Form.Control
+                        type="text"
+                        placeholder="Search by Sub Head or Main Head Name"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="custom-search mb-3"
+                        disabled={isLoading}
+                      />
 
-                  {/* Sub Heads Table */}
-                  <div className="table-responsive">
-                    <Table bordered hover>
-                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                        <tr>
-                          <th>Main Head Name</th>
-                          <th>Sub Head Name</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {isLoading ? (
-                          <tr>
-                            <td colSpan="3" className="text-center">
-                              Loading...
-                            </td>
-                          </tr>
-                        ) : subHeads.length === 0 ? (
-                          <tr>
-                            <td colSpan="3" className="text-center">
-                              No data available
-                            </td>
-                          </tr>
-                        ) : filteredSubHeads.length === 0 && searchTerm ? (
-                          <tr>
-                            <td colSpan="3" className="text-center">
-                              No matching sub heads found
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredSubHeads.map((subHead) => (
-                            <tr key={subHead.id}>
-                              <td>{subHead.mainHeadName}</td>
-                              <td>{subHead.subHeadName}</td>
-                              <td>
-                                <Button
-                                  variant="link"
-                                  className="action-button edit-button me-2"
-                                  onClick={() => openEditModal(subHead)}
-                                >
-                                  <FaEdit />
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  className="action-button delete-button"
-                                  onClick={() => openDeleteModal(subHead)}
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </div>
+                      {/* Loading Indicator */}
+                      {isLoading && (
+                        <div className="text-center my-4">
+                          <Spinner animation="border" role="status" variant="primary" className="loader">
+                            <span className="visually-hidden">Loading...</span>
+                          </Spinner>
+                          <p className="mt-2">Loading data...</p>
+                        </div>
+                      )}
+
+                      {/* Sub Heads Table */}
+                      {!isLoading && (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                              <tr>
+                                <th>Main Head Name</th>
+                                <th>Sub Head Name</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {subHeads.length === 0 ? (
+                                <tr>
+                                  <td colSpan="3" className="text-center">
+                                    No data available
+                                  </td>
+                                </tr>
+                              ) : filteredSubHeads.length === 0 && searchTerm ? (
+                                <tr>
+                                  <td colSpan="3" className="text-center">
+                                    No matching sub heads found
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredSubHeads.map((subHead) => (
+                                  <tr key={subHead.id}>
+                                    <td>{subHead.mainHeadName}</td>
+                                    <td>{subHead.subHeadName}</td>
+                                    <td>
+                                      <Button
+                                        variant="link"
+                                        className="action-button edit-button me-2"
+                                        onClick={() => openEditModal(subHead)}
+                                      >
+                                        <FaEdit />
+                                      </Button>
+                                      <Button
+                                        variant="link"
+                                        className="action-button delete-button"
+                                        onClick={() => openDeleteModal(subHead)}
+                                      >
+                                        <FaTrash />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </Table>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -727,8 +984,8 @@ const ReceiptSubHeadSetup = () => {
       <EditSubHeadModal
         isOpen={isEditModalOpen}
         onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedSubHead(null);
+          setIsEditModalOpen(false)
+          setSelectedSubHead(null)
         }}
         onConfirm={handleEditSubHead}
         subHead={selectedSubHead}
@@ -737,194 +994,29 @@ const ReceiptSubHeadSetup = () => {
       <DeleteSubHeadModal
         isOpen={isDeleteModalOpen}
         onClose={() => {
-          setIsDeleteModalOpen(false);
-          setSelectedSubHead(null);
+          setIsDeleteModalOpen(false)
+          setSelectedSubHead(null)
         }}
         onConfirm={handleDeleteSubHead}
         subHead={selectedSubHead}
       />
+      <ConfirmEditModal
+        isOpen={isConfirmEditModalOpen}
+        onClose={() => {
+          setIsConfirmEditModalOpen(false)
+          setSelectedSubHead(null)
+          setNewSubHeadData({ mainHeadId: "", subHeadName: "" })
+        }}
+        onConfirm={confirmEditSubHead}
+        currentData={selectedSubHead || {}}
+        newData={newSubHeadData}
+        mainHeads={mainHeads}
+      />
 
       {/* Toastify Container */}
       <ToastContainer />
-
-      <style>
-        {`
-          .course-setup-container {
-            background-color: #fff;
-          }
-
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          .form-card {
-            background-color: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-          }
-
-          .header {
-            border-bottom: 1px solid #dee2e6;
-          }
-
-          .custom-search {
-            max-width: 300px;
-          }
-
-          .table-responsive {
-            margin-bottom: 0;
-          }
-
-          .table th {
-            font-weight: 500;
-          }
-
-          .table td {
-            vertical-align: middle;
-          }
-
-          .action-button {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            padding: 0;
-            color: white;
-          }
-
-          .edit-button {
-            background-color: #0B3D7B;
-          }
-
-          .edit-button:hover {
-            background-color: #092a54;
-            color: white;
-          }
-
-          .delete-button {
-            background-color: #dc3545;
-          }
-
-          .delete-button:hover {
-            background-color: #bb2d3b;
-            color: white;
-          }
-
-          /* Modal Styles */
-          .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1100;
-          }
-
-          .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-          }
-
-          .modal-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #333;
-            text-align: center;
-          }
-
-          .modal-body {
-            margin-bottom: 1.5rem;
-          }
-
-          .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-          }
-
-          .modal-button {
-            padding: 0.5rem 2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
-          }
-
-          .modal-button.confirm {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .modal-button.delete {
-            background-color: #dc3545;
-            color: white;
-          }
-
-          .modal-button.cancel {
-            background-color: #6c757d;
-            color: white;
-          }
-
-          .custom-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-          }
-
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
-
-          .gap-2 {
-            gap: 0.5rem;
-          }
-        `}
-      </style>
     </MainContentPage>
-  );
-};
+  )
+}
 
-export default ReceiptSubHeadSetup;
+export default ReceiptSubHeadSetup

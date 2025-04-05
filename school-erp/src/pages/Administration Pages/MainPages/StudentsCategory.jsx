@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table, Spinner } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import "../styles/style.css"
 
 // Add Student Category Modal Component
 const AddStudentCategoryModal = ({ isOpen, onClose, onConfirm }) => {
@@ -154,20 +155,58 @@ const StudentsCategory = () => {
   const [newCategoryName, setNewCategoryName] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [categories, setCategories] = useState([])
-  const [error, setError] = useState(null)
-  const [administrationId, setAdministrationId] = useState(null)
-  const { user } = useAuthContext()
+  const [isLoading, setIsLoading] = useState(false)
+  const { user, currentAcademicYear } = useAuthContext()
 
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
+    const resetState = () => {
+      setCategories([])
+      setSearchTerm("")
+      setSelectedCategory(null)
+      setNewCategoryName("")
+      setIsAddModalOpen(false)
+      setIsEditModalOpen(false)
+      setIsDeleteModalOpen(false)
+      setIsConfirmEditModalOpen(false)
+    }
+
+    resetState()
+
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid)
-        await fetchAdministrationId()
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        setIsLoading(true)
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+          await fetchCategories()
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        } finally {
+          setIsLoading(false)
+        }
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage student categories.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       } else {
         console.log("User is not authenticated")
         toast.error("Please log in to view and manage student categories.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
@@ -178,78 +217,133 @@ const StudentsCategory = () => {
     }
 
     checkAuthAndFetchData()
-  }, [])
 
-  useEffect(() => {
-    if (administrationId) {
-      fetchCategories()
-    }
-  }, [administrationId])
+    return () => resetState()
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
 
-  const fetchAdministrationId = async () => {
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-      const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        // If no Administration document exists, create one
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-        setAdministrationId(newAdminRef.id)
-      } else {
-        // Use the ID of the first (and presumably only) Administration document
-        setAdministrationId(querySnapshot.docs[0].id)
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error)
-      toast.error("Failed to initialize. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      })
+      console.error("Error ensuring necessary documents:", error)
     }
   }
 
   const fetchCategories = async () => {
-    if (!administrationId) return
+    if (!auth.currentUser || !currentAcademicYear) return
 
-    setError(null)
+    setIsLoading(true)
     try {
+      // First ensure all documents exist
+      await ensureDocumentsExist()
+
+      // Path to the StudentCategory collection
       const categoriesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "StudentCategory",
       )
+
       const querySnapshot = await getDocs(categoriesRef)
       const categoriesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log("Fetched categories:", categoriesData)
-      setCategories(categoriesData)
+      console.log(
+        "Fetched student categories for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        categoriesData,
+      )
+      setCategories(categoriesData) // Update state with fetched data
     } catch (error) {
-      console.error("Error fetching categories:", error)
-      toast.error("Failed to fetch categories. Please try again.", {
+      console.error("Error fetching student categories:", error)
+      toast.error("Failed to fetch student categories. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+      setCategories([]) // Reset on error
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleAddCategory = async (categoryName) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    if (!categoryName.trim()) {
+      toast.error("Category name cannot be empty.", {
+        position: "top-right",
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -276,19 +370,43 @@ const StudentsCategory = () => {
       return
     }
 
+    setIsLoading(true)
     try {
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
+
+      // Path to add a new student category
       const categoriesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "StudentCategory",
       )
-      const docRef = await addDoc(categoriesRef, { StudentCategoryName: categoryName })
-      console.log("Category added with ID:", docRef.id)
+
+      const docRef = await addDoc(categoriesRef, {
+        StudentCategoryName: categoryName,
+        createdAt: new Date(),
+      })
+
+      console.log(
+        "Student category added with ID:",
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      const newCategory = { id: docRef.id, StudentCategoryName: categoryName }
+      setCategories((prevCategories) => [...prevCategories, newCategory])
+
       setIsAddModalOpen(false)
-      toast.success("Category added successfully!", {
+      toast.success("Student category added successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -298,26 +416,43 @@ const StudentsCategory = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data to ensure consistency
       await fetchCategories()
     } catch (error) {
-      console.error("Error adding category:", error)
-      toast.error("Failed to add category. Please try again.", {
+      console.error("Error adding student category:", error)
+      toast.error("Failed to add student category. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleEditCategory = async (categoryId, newName) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    if (!newName.trim()) {
+      toast.error("Category name cannot be empty.", {
+        position: "top-right",
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -350,51 +485,10 @@ const StudentsCategory = () => {
   }
 
   const confirmEditCategory = async () => {
-    try {
-      const categoryRef = doc(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "Administration",
-        administrationId,
-        "StudentCategory",
-        selectedCategory.id,
-      )
-      await updateDoc(categoryRef, { StudentCategoryName: newCategoryName })
-      console.log("Category updated:", selectedCategory.id)
-      setIsConfirmEditModalOpen(false)
-      setSelectedCategory(null)
-      setNewCategoryName("")
-      toast.success("Category updated successfully!", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        style: { background: "#0B3D7B", color: "white" },
-      })
-      await fetchCategories()
-    } catch (error) {
-      console.error("Error updating category:", error)
-      toast.error("Failed to update category. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      })
-    }
-  }
-
-  const handleDeleteCategory = async (categoryId) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -404,21 +498,119 @@ const StudentsCategory = () => {
       return
     }
 
+    setIsLoading(true)
     try {
+      // Path to update a student category
       const categoryRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
+        "StudentCategory",
+        selectedCategory.id,
+      )
+
+      await updateDoc(categoryRef, {
+        StudentCategoryName: newCategoryName,
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        "Student category updated:",
+        selectedCategory.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      setCategories((prevCategories) =>
+        prevCategories.map((category) =>
+          category.id === selectedCategory.id ? { ...category, StudentCategoryName: newCategoryName } : category,
+        ),
+      )
+
+      setIsConfirmEditModalOpen(false)
+      setSelectedCategory(null)
+      setNewCategoryName("")
+      toast.success("Student category updated successfully!", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        style: { background: "#0B3D7B", color: "white" },
+      })
+
+      // Fetch fresh data
+      await fetchCategories()
+    } catch (error) {
+      console.error("Error updating student category:", error)
+      toast.error("Failed to update student category. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      // Path to delete a student category
+      const categoryRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
         "StudentCategory",
         categoryId,
       )
+
       await deleteDoc(categoryRef)
-      console.log("Category deleted:", categoryId)
+      console.log(
+        "Student category deleted:",
+        categoryId,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      setCategories((prevCategories) => prevCategories.filter((category) => category.id !== categoryId))
+
       setIsDeleteModalOpen(false)
       setSelectedCategory(null)
-      toast.success("Category deleted successfully!", {
+      toast.success("Student category deleted successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -427,18 +619,22 @@ const StudentsCategory = () => {
         draggable: true,
         progress: undefined,
       })
+
+      // Fetch fresh data
       await fetchCategories()
     } catch (error) {
-      console.error("Error deleting category:", error)
-      toast.error("Failed to delete category. Please try again.", {
+      console.error("Error deleting student category:", error)
+      toast.error("Failed to delete student category. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -473,58 +669,99 @@ const StudentsCategory = () => {
               <div className="form-card mt-3">
                 {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Create Students Category</h2>
-                  <h6 className="m-0 d-lg-none">Create Students Category</h6>
-                  <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                  <div>
+                    <h2 className="m-0 d-none d-lg-block">Create Students Category</h2>
+                    <h6 className="m-0 d-lg-none">Create Students Category</h6>
+                  </div>
+                  <Button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="btn btn-light text-dark"
+                    disabled={!currentAcademicYear || isLoading}
+                  >
                     + Add Students Category
                   </Button>
                 </div>
 
                 {/* Content */}
                 <div className="content-wrapper p-4">
-                  {/* Search Bar */}
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by Students Category"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="custom-search mb-3"
-                  />
+                  {!currentAcademicYear ? (
+                    <div className="alert alert-warning">
+                      Please select an academic year to manage student categories.
+                    </div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <Form.Control
+                        type="text"
+                        placeholder="Search by Students Category"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="custom-search mb-3"
+                        disabled={isLoading}
+                      />
 
-                  {/* Category Table */}
-                  <div className="table-responsive">
-                    <Table bordered hover>
-                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                        <tr>
-                          <th>Category Name</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredCategories.map((category) => (
-                          <tr key={category.id}>
-                            <td>{category.StudentCategoryName}</td>
-                            <td>
-                              <Button
-                                variant="link"
-                                className="action-button edit-button me-2"
-                                onClick={() => openEditModal(category)}
-                              >
-                                <FaEdit />
-                              </Button>
-                              <Button
-                                variant="link"
-                                className="action-button delete-button"
-                                onClick={() => openDeleteModal(category)}
-                              >
-                                <FaTrash />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  </div>
+                      {/* Loading Indicator */}
+                      {isLoading && (
+                        <div className="text-center my-4">
+                          <Spinner animation="border" role="status" variant="primary" className="loader">
+                            <span className="visually-hidden">Loading...</span>
+                          </Spinner>
+                          <p className="mt-2">Loading data...</p>
+                        </div>
+                      )}
+
+                      {/* Category Table */}
+                      {!isLoading && (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                              <tr>
+                                <th>Category Name</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {categories.length === 0 ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No data available
+                                  </td>
+                                </tr>
+                              ) : filteredCategories.length === 0 && searchTerm ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No matching categories found
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredCategories.map((category) => (
+                                  <tr key={category.id}>
+                                    <td>{category.StudentCategoryName}</td>
+                                    <td>
+                                      <Button
+                                        variant="link"
+                                        className="action-button edit-button me-2"
+                                        onClick={() => openEditModal(category)}
+                                      >
+                                        <FaEdit />
+                                      </Button>
+                                      <Button
+                                        variant="link"
+                                        className="action-button delete-button"
+                                        onClick={() => openDeleteModal(category)}
+                                      >
+                                        <FaTrash />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </Table>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -570,179 +807,6 @@ const StudentsCategory = () => {
 
       {/* Toastify Container */}
       <ToastContainer />
-
-      <style>
-        {`
-          .category-setup-container {
-            background-color: #fff;
-          }
-
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          .form-card {
-            background-color: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-          }
-
-          .header {
-            border-bottom: 1px solid #dee2e6;
-          }
-
-          .custom-search {
-            max-width: 300px;
-          }
-
-          .table-responsive {
-            margin-bottom: 0;
-          }
-
-          .table th {
-            font-weight: 500;
-          }
-
-          .table td {
-            vertical-align: middle;
-          }
-
-          .action-button {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            padding: 0;
-            color: white;
-          }
-
-          .edit-button {
-            background-color: #0B3D7B;
-          }
-
-          .edit-button:hover {
-            background-color: #092a54;
-            color: white;
-          }
-
-          .delete-button {
-            background-color: #dc3545;
-          }
-
-          .delete-button:hover {
-            background-color: #bb2d3b;
-            color: white;
-          }
-
-          /* Modal Styles */
-          .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1100;
-          }
-
-          .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-          }
-
-          .modal-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #333;
-            text-align: center;
-          }
-
-          .modal-body {
-            margin-bottom: 1.5rem;
-          }
-
-          .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-          }
-
-          .modal-button {
-            padding: 0.5rem 2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
-          }
-
-          .modal-button.confirm {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .modal-button.delete {
-            background-color: #dc3545;
-            color: white;
-          }
-
-          .modal-button.cancel {
-            background-color: #6c757d;
-            color: white;
-          }
-
-          .custom-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-          }
-
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
-        `}
-      </style>
     </MainContentPage>
   )
 }

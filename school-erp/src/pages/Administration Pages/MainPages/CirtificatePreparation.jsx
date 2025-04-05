@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import MainContentPage from "../../../components/MainContent/MainContentPage";
 import "../Styles/ReceiptSetup.css";
 
+
 const CertificatePreparation = () => {
   const [className, setClassName] = useState("");
   const location = useLocation();

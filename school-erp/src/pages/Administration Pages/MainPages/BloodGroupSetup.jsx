@@ -3,14 +3,15 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table, Spinner } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import * as XLSX from "xlsx" // Added for import/export
+import "../styles/style.css"
 
 // Add Blood Group Modal Component
 const AddBloodGroupModal = ({ isOpen, onClose, onConfirm }) => {
@@ -155,21 +156,58 @@ const BloodGroupSetup = () => {
   const [newBloodGroupName, setNewBloodGroupName] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [bloodGroups, setBloodGroups] = useState([])
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null) // Unused, kept for original structure
-  const [administrationId, setAdministrationId] = useState(null)
-  const { user } = useAuthContext()
+  const [isLoading, setIsLoading] = useState(false)
+  const { user, currentAcademicYear } = useAuthContext()
 
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
+    const resetState = () => {
+      setBloodGroups([])
+      setSearchTerm("")
+      setSelectedBloodGroup(null)
+      setNewBloodGroupName("")
+      setIsAddModalOpen(false)
+      setIsEditModalOpen(false)
+      setIsDeleteModalOpen(false)
+      setIsConfirmEditModalOpen(false)
+    }
+
+    resetState()
+
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid)
-        await fetchAdministrationId()
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        setIsLoading(true)
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+          await fetchBloodGroups()
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        } finally {
+          setIsLoading(false)
+        }
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage blood groups.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       } else {
         console.log("User is not authenticated")
         toast.error("Please log in to view and manage blood groups.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
@@ -180,76 +218,120 @@ const BloodGroupSetup = () => {
     }
 
     checkAuthAndFetchData()
-  }, [])
 
-  useEffect(() => {
-    if (administrationId) {
-      fetchBloodGroups()
-    }
-  }, [administrationId])
+    return () => resetState()
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
 
-  const fetchAdministrationId = async () => {
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-      const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-        setAdministrationId(newAdminRef.id)
-      } else {
-        setAdministrationId(querySnapshot.docs[0].id)
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error)
-      toast.error("Failed to initialize. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      })
+      console.error("Error ensuring necessary documents:", error)
     }
   }
 
   const fetchBloodGroups = async () => {
-    if (!administrationId) return
+    if (!auth.currentUser || !currentAcademicYear) return
 
-    setError(null)
+    setIsLoading(true)
     try {
+      // First ensure all documents exist
+      await ensureDocumentsExist()
+
+      // Path to the BloodGroupSetup collection
       const bloodGroupsRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
-        "BloodGroupSetup"
+        ADMIN_DOC_ID,
+        "BloodGroupSetup",
       )
+
       const querySnapshot = await getDocs(bloodGroupsRef)
       const bloodGroupsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log("Fetched blood groups:", bloodGroupsData)
-      setBloodGroups(bloodGroupsData)
+      console.log(
+        "Fetched blood groups for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        bloodGroupsData,
+      )
+      setBloodGroups(bloodGroupsData) // Update state with fetched data
     } catch (error) {
       console.error("Error fetching blood groups:", error)
       toast.error("Failed to fetch blood groups. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+      setBloodGroups([]) // Reset on error
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleAddBloodGroup = async (name) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -262,7 +344,7 @@ const BloodGroupSetup = () => {
     if (!name.trim()) {
       toast.error("Blood group name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -272,9 +354,7 @@ const BloodGroupSetup = () => {
       return
     }
 
-    const isDuplicate = bloodGroups.some(
-      (bloodGroup) => bloodGroup.name.toLowerCase() === name.toLowerCase()
-    )
+    const isDuplicate = bloodGroups.some((bloodGroup) => bloodGroup.name.toLowerCase() === name.toLowerCase())
     if (isDuplicate) {
       toast.error("A blood group with this name already exists. Please choose a different name.", {
         position: "top-right",
@@ -288,19 +368,41 @@ const BloodGroupSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
+
+      // Path to add a new blood group
       const bloodGroupsRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
-        "BloodGroupSetup"
+        ADMIN_DOC_ID,
+        "BloodGroupSetup",
       )
-      const docRef = await addDoc(bloodGroupsRef, { name })
-      console.log("Blood group added with ID:", docRef.id)
 
-      setBloodGroups((prev) => [...prev, { id: docRef.id, name }])
+      const docRef = await addDoc(bloodGroupsRef, {
+        name,
+        createdAt: new Date(),
+      })
+
+      console.log(
+        "Blood group added with ID:",
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      const newBloodGroup = { id: docRef.id, name }
+      setBloodGroups((prevBloodGroups) => [...prevBloodGroups, newBloodGroup])
+
       setIsAddModalOpen(false)
       toast.success("Blood group added successfully!", {
         position: "top-right",
@@ -312,26 +414,30 @@ const BloodGroupSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data to ensure consistency
       await fetchBloodGroups()
     } catch (error) {
       console.error("Error adding blood group:", error)
       toast.error("Failed to add blood group. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleEditBloodGroup = async (bloodGroupId, newName) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -344,7 +450,7 @@ const BloodGroupSetup = () => {
     if (!newName.trim()) {
       toast.error("Blood group name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -355,7 +461,7 @@ const BloodGroupSetup = () => {
     }
 
     const isDuplicate = bloodGroups.some(
-      (bloodGroup) => bloodGroup.id !== bloodGroupId && bloodGroup.name.toLowerCase() === newName.toLowerCase()
+      (bloodGroup) => bloodGroup.id !== bloodGroupId && bloodGroup.name.toLowerCase() === newName.toLowerCase(),
     )
     if (isDuplicate) {
       toast.error("A blood group with this name already exists. Please choose a different name.", {
@@ -376,22 +482,53 @@ const BloodGroupSetup = () => {
   }
 
   const confirmEditBloodGroup = async () => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsLoading(true)
     try {
+      // Path to update a blood group
       const bloodGroupRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "BloodGroupSetup",
-        selectedBloodGroup.id
+        selectedBloodGroup.id,
       )
-      await updateDoc(bloodGroupRef, { name: newBloodGroupName })
-      console.log("Blood group updated:", selectedBloodGroup.id)
 
-      setBloodGroups((prev) =>
-        prev.map((bg) => (bg.id === selectedBloodGroup.id ? { ...bg, name: newBloodGroupName } : bg))
+      await updateDoc(bloodGroupRef, {
+        name: newBloodGroupName,
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        "Blood group updated:",
+        selectedBloodGroup.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
       )
+
+      // Immediately update UI
+      setBloodGroups((prevBloodGroups) =>
+        prevBloodGroups.map((bg) => (bg.id === selectedBloodGroup.id ? { ...bg, name: newBloodGroupName } : bg)),
+      )
+
       setIsConfirmEditModalOpen(false)
       setSelectedBloodGroup(null)
       setNewBloodGroupName("")
@@ -405,26 +542,30 @@ const BloodGroupSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data
       await fetchBloodGroups()
     } catch (error) {
       console.error("Error updating blood group:", error)
       toast.error("Failed to update blood group. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleDeleteBloodGroup = async (bloodGroupId) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -434,20 +575,34 @@ const BloodGroupSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
+      // Path to delete a blood group
       const bloodGroupRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "BloodGroupSetup",
-        bloodGroupId
+        bloodGroupId,
       )
-      await deleteDoc(bloodGroupRef)
-      console.log("Blood group deleted:", bloodGroupId)
 
-      setBloodGroups((prev) => prev.filter((bg) => bg.id !== bloodGroupId))
+      await deleteDoc(bloodGroupRef)
+      console.log(
+        "Blood group deleted:",
+        bloodGroupId,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      setBloodGroups((prevBloodGroups) => prevBloodGroups.filter((bg) => bg.id !== bloodGroupId))
+
       setIsDeleteModalOpen(false)
       setSelectedBloodGroup(null)
       toast.success("Blood group deleted successfully!", {
@@ -458,28 +613,31 @@ const BloodGroupSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-        style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data
       await fetchBloodGroups()
     } catch (error) {
       console.error("Error deleting blood group:", error)
       toast.error("Failed to delete blood group. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleImport = async (event) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -492,6 +650,7 @@ const BloodGroupSetup = () => {
     const file = event.target.files[0]
     if (!file) return
 
+    setIsLoading(true)
     const reader = new FileReader()
     reader.onload = async (e) => {
       const data = new Uint8Array(e.target.result)
@@ -502,50 +661,72 @@ const BloodGroupSetup = () => {
 
       if (jsonData.length === 0) {
         toast.error("No data found in the imported file.")
+        setIsLoading(false)
         return
       }
 
       try {
+        // Ensure all necessary documents exist
+        await ensureDocumentsExist()
+
+        // Path to add imported blood groups
         const bloodGroupsRef = collection(
           db,
           "Schools",
           auth.currentUser.uid,
+          "AcademicYears",
+          currentAcademicYear,
           "Administration",
-          administrationId,
-          "BloodGroupSetup"
+          ADMIN_DOC_ID,
+          "BloodGroupSetup",
         )
+
         const newBloodGroups = []
         for (const row of jsonData) {
           const name = row["Blood Group Name"] || row["name"]
           if (name && name.trim()) {
-            const isDuplicate = bloodGroups.some(
-              (bg) => bg.name.toLowerCase() === name.toLowerCase()
-            )
+            const isDuplicate = bloodGroups.some((bg) => bg.name.toLowerCase() === name.toLowerCase())
             if (!isDuplicate) {
-              const docRef = await addDoc(bloodGroupsRef, { name })
+              const docRef = await addDoc(bloodGroupsRef, {
+                name,
+                createdAt: new Date(),
+              })
               newBloodGroups.push({ id: docRef.id, name })
             }
           }
         }
 
-        setBloodGroups((prev) => [...prev, ...newBloodGroups])
+        // Update UI
+        setBloodGroups((prevBloodGroups) => [...prevBloodGroups, ...newBloodGroups])
+
         toast.success("Blood groups imported successfully!", {
+          position: "top-right",
+          autoClose: 1000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
           style: { background: "#0B3D7B", color: "white" },
         })
+
+        // Fetch fresh data
         await fetchBloodGroups()
       } catch (error) {
         console.error("Error importing blood groups:", error)
         toast.error("Failed to import blood groups. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
     }
     reader.readAsArrayBuffer(file)
   }
 
   const handleExport = () => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -566,8 +747,15 @@ const BloodGroupSetup = () => {
     const worksheet = XLSX.utils.json_to_sheet(exportData)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "BloodGroups")
-    XLSX.writeFile(workbook, `BloodGroups_Export_${auth.currentUser.uid}.xlsx`)
+    XLSX.writeFile(workbook, `BloodGroups_Export_${auth.currentUser.uid}_${currentAcademicYear}.xlsx`)
     toast.success("Blood groups exported successfully!", {
+      position: "top-right",
+      autoClose: 1000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
       style: { background: "#0B3D7B", color: "white" },
     })
   }
@@ -583,7 +771,7 @@ const BloodGroupSetup = () => {
   }
 
   const filteredBloodGroups = bloodGroups.filter((bloodGroup) =>
-    bloodGroup.name.toLowerCase().includes(searchTerm.toLowerCase())
+    bloodGroup.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -616,72 +804,103 @@ const BloodGroupSetup = () => {
                     <Button
                       onClick={() => document.getElementById("import-file").click()}
                       className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || isLoading}
                     >
                       Import
                     </Button>
-                    <Button onClick={handleExport} className="btn btn-light text-dark">
+                    <Button
+                      onClick={handleExport}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || bloodGroups.length === 0 || isLoading}
+                    >
                       Export
                     </Button>
-                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                    <Button
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || isLoading}
+                    >
                       + Add Blood Group
                     </Button>
                   </div>
                 </div>
                 <div className="content-wrapper p-4">
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by Blood Group Name"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="custom-search mb-3"
-                  />
-                  <div className="table-responsive">
-                    <Table bordered hover>
-                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                        <tr>
-                          <th>Blood Group Name</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bloodGroups.length === 0 ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No data available
-                            </td>
-                          </tr>
-                        ) : filteredBloodGroups.length === 0 && searchTerm ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No matching blood groups found
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredBloodGroups.map((bloodGroup) => (
-                            <tr key={bloodGroup.id}>
-                              <td>{bloodGroup.name}</td>
-                              <td>
-                                <Button
-                                  variant="link"
-                                  className="action-button edit-button me-2"
-                                  onClick={() => openEditModal(bloodGroup)}
-                                >
-                                  <FaEdit />
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  className="action-button delete-button"
-                                  onClick={() => openDeleteModal(bloodGroup)}
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </div>
+                  {!currentAcademicYear ? (
+                    <div className="alert alert-warning">Please select an academic year to manage blood groups.</div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <Form.Control
+                        type="text"
+                        placeholder="Search by Blood Group Name"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="custom-search mb-3"
+                        disabled={isLoading}
+                      />
+
+                      {/* Loading Indicator */}
+                      {isLoading && (
+                        <div className="text-center my-4">
+                          <Spinner animation="border" role="status" variant="primary" className="loader">
+                            <span className="visually-hidden">Loading...</span>
+                          </Spinner>
+                          <p className="mt-2">Loading data...</p>
+                        </div>
+                      )}
+
+                      {/* Blood Groups Table */}
+                      {!isLoading && (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                              <tr>
+                                <th>Blood Group Name</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bloodGroups.length === 0 ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No data available
+                                  </td>
+                                </tr>
+                              ) : filteredBloodGroups.length === 0 && searchTerm ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No matching blood groups found
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredBloodGroups.map((bloodGroup) => (
+                                  <tr key={bloodGroup.id}>
+                                    <td>{bloodGroup.name}</td>
+                                    <td>
+                                      <Button
+                                        variant="link"
+                                        className="action-button edit-button me-2"
+                                        onClick={() => openEditModal(bloodGroup)}
+                                      >
+                                        <FaEdit />
+                                      </Button>
+                                      <Button
+                                        variant="link"
+                                        className="action-button delete-button"
+                                        onClick={() => openDeleteModal(bloodGroup)}
+                                      >
+                                        <FaTrash />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </Table>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -725,64 +944,9 @@ const BloodGroupSetup = () => {
       />
 
       <ToastContainer />
-
-      <style>
-        {`
-          .blood-group-setup-container {
-            background-color: #fff;
-          }
-          .custom-breadcrumb { padding: 0.5rem 1rem; }
-          .custom-breadcrumb a { color: #0B3D7B; text-decoration: none; }
-          .custom-breadcrumb .separator { margin: 0 0.5rem; color: #6c757d; }
-          .custom-breadcrumb .current { color: #212529; }
-          .form-card { background-color: #fff; border: 1px solid #dee2e6; border-radius: 0.25rem; }
-          .header { border-bottom: 1px solid #dee2e6; }
-          .custom-search { max-width: 300px; }
-          .table-responsive { margin-bottom: 0; }
-          .table th { font-weight: 500; }
-          .table td { vertical-align: middle; }
-          .action-button {
-            width: 30px; height: 30px; display: inline-flex; align-items: center;
-            justify-content: center; border-radius: 4px; padding: 0; color: white;
-          }
-          .edit-button { background-color: #0B3D7B; }
-          .edit-button:hover { background-color: #092a54; color: white; }
-          .delete-button { background-color: #dc3545; }
-          .delete-button:hover { background-color: #bb2d3b; color: white; }
-          .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5); display: flex;
-            justify-content: center; align-items: center; z-index: 1100;
-          }
-          .modal-content {
-            background: white; padding: 2rem; border-radius: 8px;
-            width: 90%; max-width: 400px;
-          }
-          .modal-title {
-            font-size: 1.5rem; margin-bottom: 1rem; color: #333; text-align: center;
-          }
-          .modal-body { margin-bottom: 1.5rem; }
-          .modal-buttons { display: flex; justify-content: center; gap: 1rem; }
-          .modal-button {
-            padding: 0.5rem 2rem; border: none; border-radius: 4px;
-            cursor: pointer; font-weight: 500; transition: opacity 0.2s;
-          }
-          .modal-button.confirm { background-color: #0B3D7B; color: white; }
-          .modal-button.delete { background-color: #dc3545; color: white; }
-          .modal-button.cancel { background-color: #6c757d; color: white; }
-          .custom-input {
-            width: 100%; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;
-          }
-          .Toastify__toast-container { z-index: 9999; }
-          .Toastify__toast { background-color: #0B3D7B; color: white; }
-          .Toastify__toast--success { background-color: #0B3D7B; }
-          .Toastify__toast--error { background-color: #dc3545; }
-          .Toastify__progress-bar { background-color: rgba(255, 255, 255, 0.7); }
-          .gap-2 { gap: 0.5rem; }
-        `}
-      </style>
     </MainContentPage>
   )
 }
 
 export default BloodGroupSetup
+

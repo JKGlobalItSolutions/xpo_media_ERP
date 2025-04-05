@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table, Spinner } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
@@ -11,6 +11,7 @@ import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import * as XLSX from "xlsx"
+import "../styles/style.css"
 
 // Add Course Modal Component
 const AddCourseModal = ({ isOpen, onClose, onConfirm }) => {
@@ -155,6 +156,7 @@ const CourseSetup = () => {
   const [newStandard, setNewStandard] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [courses, setCourses] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
   const { user, currentAcademicYear } = useAuthContext()
 
   // Document ID for Administration
@@ -179,9 +181,17 @@ const CourseSetup = () => {
       if (auth.currentUser && currentAcademicYear) {
         console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
 
-        // Ensure all necessary documents exist
-        await ensureDocumentsExist()
-        await fetchCourses()
+        setIsLoading(true)
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+          await fetchCourses()
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        } finally {
+          setIsLoading(false)
+        }
       } else if (!currentAcademicYear) {
         console.log("No academic year selected")
         toast.error("Please select an academic year to view and manage courses.", {
@@ -272,6 +282,7 @@ const CourseSetup = () => {
   const fetchCourses = async () => {
     if (!auth.currentUser || !currentAcademicYear) return
 
+    setIsLoading(true)
     try {
       // First ensure all documents exist
       await ensureDocumentsExist()
@@ -311,6 +322,8 @@ const CourseSetup = () => {
         progress: undefined,
       })
       setCourses([]) // Reset on error
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -355,6 +368,7 @@ const CourseSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
       // Ensure all necessary documents exist
       await ensureDocumentsExist()
@@ -414,6 +428,8 @@ const CourseSetup = () => {
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -479,6 +495,7 @@ const CourseSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
       // Path to update a course - now directly in CourseSetup collection
       const courseDocRef = doc(
@@ -539,6 +556,8 @@ const CourseSetup = () => {
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -556,6 +575,7 @@ const CourseSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
       // Path to delete a course - now directly in CourseSetup collection
       const courseDocRef = doc(
@@ -608,6 +628,8 @@ const CourseSetup = () => {
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -628,6 +650,7 @@ const CourseSetup = () => {
     const file = event.target.files[0]
     if (!file) return
 
+    setIsLoading(true)
     const reader = new FileReader()
     reader.onload = async (e) => {
       const data = new Uint8Array(e.target.result)
@@ -638,6 +661,7 @@ const CourseSetup = () => {
 
       if (jsonData.length === 0) {
         toast.error("No data found in the imported file.")
+        setIsLoading(false)
         return
       }
 
@@ -692,6 +716,8 @@ const CourseSetup = () => {
       } catch (error) {
         console.error("Error importing courses:", error)
         toast.error("Failed to import courses. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
     }
     reader.readAsArrayBuffer(file)
@@ -748,9 +774,9 @@ const CourseSetup = () => {
         {/* Breadcrumb Navigation */}
         <nav className="custom-breadcrumb py-1 py-lg-3">
           <Link to="/home">Home</Link>
-          <span className="separator"></span>
+          <span className="separator">&gt;</span>
           <span>Administration</span>
-          <span className="separator"></span>
+          <span className="separator">&gt;</span>
           <span className="current col-12">Standard/Course Setup</span>
         </nav>
 
@@ -775,21 +801,21 @@ const CourseSetup = () => {
                     <Button
                       onClick={() => document.getElementById("import-file").click()}
                       className="btn btn-light text-dark"
-                      disabled={!currentAcademicYear}
+                      disabled={!currentAcademicYear || isLoading}
                     >
                       Import
                     </Button>
                     <Button
                       onClick={handleExport}
                       className="btn btn-light text-dark"
-                      disabled={!currentAcademicYear || courses.length === 0}
+                      disabled={!currentAcademicYear || courses.length === 0 || isLoading}
                     >
                       Export
                     </Button>
                     <Button
                       onClick={() => setIsAddModalOpen(true)}
                       className="btn btn-light text-dark"
-                      disabled={!currentAcademicYear}
+                      disabled={!currentAcademicYear || isLoading}
                     >
                       + Add Course
                     </Button>
@@ -809,56 +835,69 @@ const CourseSetup = () => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="custom-search mb-3"
+                        disabled={isLoading}
                       />
 
+                      {/* Loading Indicator */}
+                      {isLoading && (
+                        <div className="text-center my-4">
+                          <Spinner animation="border" role="status" variant="primary" className="loader">
+                            <span className="visually-hidden">Loading...</span>
+                          </Spinner>
+                          <p className="mt-2">Loading data...</p>
+                        </div>
+                      )}
+
                       {/* Course Table */}
-                      <div className="table-responsive">
-                        <Table bordered hover>
-                          <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                            <tr>
-                              <th>Course Name</th>
-                              <th>Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {courses.length === 0 ? (
+                      {!isLoading && (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
                               <tr>
-                                <td colSpan="2" className="text-center">
-                                  No data available
-                                </td>
+                                <th>Course Name</th>
+                                <th>Action</th>
                               </tr>
-                            ) : filteredCourses.length === 0 && searchTerm ? (
-                              <tr>
-                                <td colSpan="2" className="text-center">
-                                  No matching courses found
-                                </td>
-                              </tr>
-                            ) : (
-                              filteredCourses.map((course) => (
-                                <tr key={course.id}>
-                                  <td>{course.standard}</td>
-                                  <td>
-                                    <Button
-                                      variant="link"
-                                      className="action-button edit-button me-2"
-                                      onClick={() => openEditModal(course)}
-                                    >
-                                      <FaEdit />
-                                    </Button>
-                                    <Button
-                                      variant="link"
-                                      className="action-button delete-button"
-                                      onClick={() => openDeleteModal(course)}
-                                    >
-                                      <FaTrash />
-                                    </Button>
+                            </thead>
+                            <tbody>
+                              {courses.length === 0 ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No data available
                                   </td>
                                 </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </Table>
-                      </div>
+                              ) : filteredCourses.length === 0 && searchTerm ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No matching courses found
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredCourses.map((course) => (
+                                  <tr key={course.id}>
+                                    <td>{course.standard}</td>
+                                    <td>
+                                      <Button
+                                        variant="link"
+                                        className="action-button edit-button me-2"
+                                        onClick={() => openEditModal(course)}
+                                      >
+                                        <FaEdit />
+                                      </Button>
+                                      <Button
+                                        variant="link"
+                                        className="action-button delete-button"
+                                        onClick={() => openDeleteModal(course)}
+                                      >
+                                        <FaTrash />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </Table>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -902,183 +941,6 @@ const CourseSetup = () => {
 
       {/* Toastify Container */}
       <ToastContainer />
-
-      <style>
-        {`
-          .course-setup-container {
-            background-color: #fff;
-          }
-
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          .form-card {
-            background-color: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-          }
-
-          .header {
-            border-bottom: 1px solid #dee2e6;
-          }
-
-          .custom-search {
-            max-width: 300px;
-          }
-
-          .table-responsive {
-            margin-bottom: 0;
-          }
-
-          .table th {
-            font-weight: 500;
-          }
-
-          .table td {
-            vertical-align: middle;
-          }
-
-          .action-button {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            padding: 0;
-            color: white;
-          }
-
-          .edit-button {
-            background-color: #0B3D7B;
-          }
-
-          .edit-button:hover {
-            background-color: #092a54;
-            color: white;
-          }
-
-          .delete-button {
-            background-color: #dc3545;
-          }
-
-          .delete-button:hover {
-            background-color: #bb2d3b;
-            color: white;
-          }
-
-          /* Modal Styles */
-          .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1100;
-          }
-
-          .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-          }
-
-          .modal-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #333;
-            text-align: center;
-          }
-
-          .modal-body {
-            margin-bottom: 1.5rem;
-          }
-
-          .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-          }
-
-          .modal-button {
-            padding: 0.5rem 2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
-          }
-
-          .modal-button.confirm {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .modal-button.delete {
-            background-color: #dc3545;
-            color: white;
-          }
-
-          .modal-button.cancel {
-            background-color: #6c757d;
-            color: white;
-          }
-
-          .custom-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-          }
-
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
-
-          .gap-2 {
-            gap: 0.5rem;
-          }
-        `}
-      </style>
     </MainContentPage>
   )
 }

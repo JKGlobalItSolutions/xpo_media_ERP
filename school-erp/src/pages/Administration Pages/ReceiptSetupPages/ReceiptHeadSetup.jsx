@@ -1,24 +1,27 @@
-import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import MainContentPage from "../../../components/MainContent/MainContentPage";
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap";
-import { FaEdit, FaTrash } from "react-icons/fa";
-import { db, auth } from "../../../Firebase/config";
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, getFirestore } from "firebase/firestore";
-import { useAuthContext } from "../../../context/AuthContext";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+"use client"
+
+import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
+import MainContentPage from "../../../components/MainContent/MainContentPage"
+import { Form, Button, Row, Col, Container, Table, Spinner } from "react-bootstrap"
+import { FaEdit, FaTrash } from "react-icons/fa"
+import { db, auth } from "../../../Firebase/config"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
+import { useAuthContext } from "../../../context/AuthContext"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import "../styles/style.css"
 
 // Add Head Modal Component
 const AddHeadModal = ({ isOpen, onClose, onConfirm }) => {
-  const [headName, setHeadName] = useState("");
+  const [headName, setHeadName] = useState("")
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(headName);
-    setHeadName("");
-  };
+    onConfirm(headName)
+    setHeadName("")
+  }
 
   return (
     <div className="modal-overlay">
@@ -43,24 +46,24 @@ const AddHeadModal = ({ isOpen, onClose, onConfirm }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Edit Head Modal Component
 const EditHeadModal = ({ isOpen, onClose, onConfirm, head }) => {
-  const [headName, setHeadName] = useState(head?.headName || "");
+  const [headName, setHeadName] = useState(head?.headName || "")
 
   useEffect(() => {
     if (head) {
-      setHeadName(head.headName);
+      setHeadName(head.headName)
     }
-  }, [head]);
+  }, [head])
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleSubmit = () => {
-    onConfirm(head.id, headName);
-  };
+    onConfirm(head.id, headName)
+  }
 
   return (
     <div className="modal-overlay">
@@ -85,12 +88,12 @@ const EditHeadModal = ({ isOpen, onClose, onConfirm, head }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Delete Head Modal Component
 const DeleteHeadModal = ({ isOpen, onClose, onConfirm, head }) => {
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="modal-overlay">
@@ -110,152 +113,247 @@ const DeleteHeadModal = ({ isOpen, onClose, onConfirm, head }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
+
+// Confirm Edit Modal Component
+const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentName, newName }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Edit</h2>
+        <div className="modal-body">
+          <p>Are you sure you want to edit this receipt head? This may affect the structure of receipt data.</p>
+          <p>
+            <strong>Current Name:</strong> {currentName}
+          </p>
+          <p>
+            <strong>New Name:</strong> {newName}
+          </p>
+        </div>
+        <div className="modal-buttons">
+          <Button className="modal-button confirm" onClick={onConfirm}>
+            Confirm Edit
+          </Button>
+          <Button className="modal-button cancel" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const ReceiptHeadSetup = () => {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedHead, setSelectedHead] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [heads, setHeads] = useState([]);
-  const [administrationId, setAdministrationId] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const location = useLocation();
-  const { user } = useAuthContext();
-  const db = getFirestore();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmEditModalOpen, setIsConfirmEditModalOpen] = useState(false)
+  const [selectedHead, setSelectedHead] = useState(null)
+  const [newHeadName, setNewHeadName] = useState("")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [heads, setHeads] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const { user, currentAcademicYear } = useAuthContext()
 
-  // Reset state and fetch data when user changes
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
     const resetState = () => {
-      setHeads([]);
-      setAdministrationId(null);
-      setSearchTerm("");
-      setSelectedHead(null);
-      setIsAddModalOpen(false);
-      setIsEditModalOpen(false);
-      setIsDeleteModalOpen(false);
-    };
+      setHeads([])
+      setSearchTerm("")
+      setSelectedHead(null)
+      setNewHeadName("")
+      setIsAddModalOpen(false)
+      setIsEditModalOpen(false)
+      setIsDeleteModalOpen(false)
+      setIsConfirmEditModalOpen(false)
+    }
 
-    resetState();
+    resetState()
 
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid);
-        await fetchAdministrationId();
-      } else {
-        console.log("User is not authenticated");
-        toast.error("Please log in to view and manage receipt heads.", {
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        setIsLoading(true)
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+          await fetchHeads()
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        } finally {
+          setIsLoading(false)
+        }
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage receipt heads.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
           progress: undefined,
-        });
-        setIsLoading(false);
+        })
+      } else {
+        console.log("User is not authenticated")
+        toast.error("Please log in to view and manage receipt heads.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       }
-    };
-
-    checkAuthAndFetchData();
-
-    return () => resetState();
-  }, [auth.currentUser?.uid]); // Re-run on user change
-
-  useEffect(() => {
-    if (administrationId && auth.currentUser) {
-      fetchHeads();
     }
-  }, [administrationId]);
 
-  const fetchAdministrationId = async () => {
-    if (!auth.currentUser) return;
+    checkAuthAndFetchData()
+
+    return () => resetState()
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
+
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
 
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration");
-      const q = query(adminRef);
-      const querySnapshot = await getDocs(q);
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() });
-        setAdministrationId(newAdminRef.id);
-        console.log("New Administration ID created:", newAdminRef.id);
-      } else {
-        const adminId = querySnapshot.docs[0].id;
-        setAdministrationId(adminId);
-        console.log("Existing Administration ID fetched:", adminId);
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error);
-      toast.error("Failed to initialize administration data. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      });
+      console.error("Error ensuring necessary documents:", error)
     }
-  };
+  }
 
   const fetchHeads = async () => {
-    if (!administrationId || !auth.currentUser) return;
+    if (!auth.currentUser || !currentAcademicYear) return
 
+    setIsLoading(true)
     try {
-      setIsLoading(true);
-      const headsRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "ReceiptHeadSetup");
-      const querySnapshot = await getDocs(headsRef);
-      const headsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      console.log("Fetched receipt heads for user", auth.currentUser.uid, ":", headsData);
-      setHeads(headsData); // Update state with fetched data
+      // First ensure all documents exist
+      await ensureDocumentsExist()
+
+      // Path to the ReceiptHeadSetup collection
+      const headsCollectionRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "ReceiptHeadSetup",
+      )
+
+      const querySnapshot = await getDocs(headsCollectionRef)
+      const headsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log(
+        "Fetched receipt heads for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        headsData,
+      )
+      setHeads(headsData) // Update state with fetched data
     } catch (error) {
-      console.error("Error fetching receipt heads:", error);
+      console.error("Error fetching receipt heads:", error)
       toast.error("Failed to fetch receipt heads. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      setHeads([]); // Reset on error
+      })
+      setHeads([]) // Reset on error
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleAddHead = async (headName) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
     if (!headName.trim()) {
       toast.error("Head name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
-    const isDuplicate = heads.some((head) => head.headName.toLowerCase() === headName.toLowerCase());
+    const isDuplicate = heads.some((head) => head.headName.toLowerCase() === headName.toLowerCase())
     if (isDuplicate) {
       toast.error("A head with this name already exists. Please choose a different name.", {
         position: "top-right",
@@ -265,23 +363,46 @@ const ReceiptHeadSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
+    setIsLoading(true)
     try {
-      const headsRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "ReceiptHeadSetup");
-      const docRef = await addDoc(headsRef, { 
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
+
+      // Path to add a new head
+      const headsCollectionRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "ReceiptHeadSetup",
+      )
+
+      const docRef = await addDoc(headsCollectionRef, {
         headName: headName.trim(),
-        createdAt: new Date()
-      });
-      console.log("Receipt head added with ID:", docRef.id, "for user:", auth.currentUser.uid);
+        createdAt: new Date(),
+      })
+
+      console.log(
+        "Receipt head added with ID:",
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
       // Immediately update UI
-      const newHead = { id: docRef.id, headName: headName.trim(), createdAt: new Date() };
-      setHeads((prevHeads) => [...prevHeads, newHead]);
+      const newHead = { id: docRef.id, headName: headName.trim(), createdAt: new Date() }
+      setHeads((prevHeads) => [...prevHeads, newHead])
 
-      setIsAddModalOpen(false);
+      setIsAddModalOpen(false)
       toast.success("Receipt head added successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -291,54 +412,56 @@ const ReceiptHeadSetup = () => {
         draggable: true,
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
-      });
+      })
 
       // Fetch fresh data to ensure consistency
-      await fetchHeads();
+      await fetchHeads()
     } catch (error) {
-      console.error("Error adding receipt head:", error);
+      console.error("Error adding receipt head:", error)
       toast.error("Failed to add receipt head. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
+      })
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleEditHead = async (headId, newHeadName) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
     if (!newHeadName.trim()) {
       toast.error("Head name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
     const isDuplicate = heads.some(
       (head) => head.id !== headId && head.headName.toLowerCase() === newHeadName.toLowerCase(),
-    );
+    )
     if (isDuplicate) {
       toast.error("A head with this name already exists. Please choose a different name.", {
         position: "top-right",
@@ -348,35 +471,66 @@ const ReceiptHeadSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
+    setIsEditModalOpen(false)
+    setIsConfirmEditModalOpen(true)
+    setNewHeadName(newHeadName)
+  }
+
+  const confirmEditHead = async () => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsLoading(true)
     try {
-      const headRef = doc(
+      // Path to update a head
+      const headDocRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "ReceiptHeadSetup",
-        headId
-      );
-      await updateDoc(headRef, { 
+        selectedHead.id,
+      )
+
+      await updateDoc(headDocRef, {
         headName: newHeadName.trim(),
-        updatedAt: new Date()
-      });
-      console.log("Receipt head updated:", headId, "for user:", auth.currentUser.uid);
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        "Receipt head updated:",
+        selectedHead.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
       // Immediately update UI
       setHeads((prevHeads) =>
-        prevHeads.map((head) =>
-          head.id === headId ? { ...head, headName: newHeadName.trim(), updatedAt: new Date() } : head
-        )
-      );
+        prevHeads.map((head) => (head.id === selectedHead.id ? { ...head, headName: newHeadName.trim() } : head)),
+      )
 
-      setIsEditModalOpen(false);
-      setSelectedHead(null);
+      setIsConfirmEditModalOpen(false)
+      setSelectedHead(null)
+      setNewHeadName("")
       toast.success("Receipt head updated successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -386,56 +540,70 @@ const ReceiptHeadSetup = () => {
         draggable: true,
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
-      });
+      })
 
       // Fetch fresh data
-      await fetchHeads();
+      await fetchHeads()
     } catch (error) {
-      console.error("Error updating receipt head:", error);
+      console.error("Error updating receipt head:", error)
       toast.error("Failed to update receipt head. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
+      })
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleDeleteHead = async (headId) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
-      return;
+      })
+      return
     }
 
+    setIsLoading(true)
     try {
-      const headRef = doc(
+      // Path to delete a head
+      const headDocRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "ReceiptHeadSetup",
-        headId
-      );
-      await deleteDoc(headRef);
-      console.log("Receipt head deleted:", headId, "for user:", auth.currentUser.uid);
+        headId,
+      )
+
+      await deleteDoc(headDocRef)
+      console.log(
+        "Receipt head deleted:",
+        headId,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
 
       // Immediately update UI
-      setHeads((prevHeads) => prevHeads.filter((head) => head.id !== headId));
+      setHeads((prevHeads) => prevHeads.filter((head) => head.id !== headId))
 
-      setIsDeleteModalOpen(false);
-      setSelectedHead(null);
+      setIsDeleteModalOpen(false)
+      setSelectedHead(null)
       toast.success("Receipt head deleted successfully!", {
         position: "top-right",
         autoClose: 1000,
@@ -444,51 +612,53 @@ const ReceiptHeadSetup = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
+      })
 
       // Fetch fresh data
-      await fetchHeads();
+      await fetchHeads()
     } catch (error) {
-      console.error("Error deleting receipt head:", error);
+      console.error("Error deleting receipt head:", error)
       toast.error("Failed to delete receipt head. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-      });
+      })
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
 
   const openEditModal = (head) => {
-    setSelectedHead(head);
-    setIsEditModalOpen(true);
-  };
+    setSelectedHead(head)
+    setIsEditModalOpen(true)
+  }
 
   const openDeleteModal = (head) => {
-    setSelectedHead(head);
-    setIsDeleteModalOpen(true);
-  };
+    setSelectedHead(head)
+    setIsDeleteModalOpen(true)
+  }
 
-  const filteredHeads = heads.filter((head) =>
-    head.headName && head.headName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredHeads = heads.filter(
+    (head) => head.headName && head.headName.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   return (
     <MainContentPage>
       <Container fluid className="px-0 px-lg-0">
         {/* Breadcrumb Navigation */}
-        <nav className="custom-breadcrumb d-flex align-items-center py-1 py-lg-3">
-  <Link to="/home" className="text-decoration-none text-primary">Home</Link>
-  <span className="mx-2">&gt;</span>
-  <span>Administration</span>
-  <span className="mx-2">&gt;</span>
-  <Link to="/admin/receipt-setup" className="text-decoration-none text-primary">Receipt Setup</Link>
-  <span className="mx-2">&gt;</span>
-  <span className="fw-bold">Receipt Head Setup</span>
-</nav>
+        <nav className="custom-breadcrumb py-1 py-lg-3">
+          <Link to="/home">Home</Link>
+          <span className="separator">&gt;</span>
+          <span>Administration</span>
+          <span className="separator">&gt;</span>
+          <Link to="/admin/receipt-setup">Receipt Setup</Link>
+          <span className="separator">&gt;</span>
+          <span className="current col-12">Receipt Head Setup</span>
+        </nav>
 
         <Row>
           <Col xs={12}>
@@ -501,7 +671,11 @@ const ReceiptHeadSetup = () => {
                     <h6 className="m-0 d-lg-none">Head Of Account</h6>
                   </div>
                   <div className="d-flex align-items-center gap-2">
-                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                    <Button
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || isLoading}
+                    >
                       + Add Head
                     </Button>
                   </div>
@@ -509,69 +683,82 @@ const ReceiptHeadSetup = () => {
 
                 {/* Content */}
                 <div className="content-wrapper p-4">
-                  {/* Search Bar */}
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by Head Name"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="custom-search mb-3"
-                  />
+                  {!currentAcademicYear ? (
+                    <div className="alert alert-warning">Please select an academic year to manage receipt heads.</div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <Form.Control
+                        type="text"
+                        placeholder="Search by Head Name"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="custom-search mb-3"
+                        disabled={isLoading}
+                      />
 
-                  {/* Heads Table */}
-                  <div className="table-responsive">
-                    <Table bordered hover>
-                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                        <tr>
-                          <th>Head Name</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {isLoading ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              Loading...
-                            </td>
-                          </tr>
-                        ) : heads.length === 0 ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No data available
-                            </td>
-                          </tr>
-                        ) : filteredHeads.length === 0 && searchTerm ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No matching heads found
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredHeads.map((head) => (
-                            <tr key={head.id}>
-                              <td>{head.headName}</td>
-                              <td>
-                                <Button
-                                  variant="link"
-                                  className="action-button edit-button me-2"
-                                  onClick={() => openEditModal(head)}
-                                >
-                                  <FaEdit />
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  className="action-button delete-button"
-                                  onClick={() => openDeleteModal(head)}
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </div>
+                      {/* Loading Indicator */}
+                      {isLoading && (
+                        <div className="text-center my-4">
+                          <Spinner animation="border" role="status" variant="primary" className="loader">
+                            <span className="visually-hidden">Loading...</span>
+                          </Spinner>
+                          <p className="mt-2">Loading data...</p>
+                        </div>
+                      )}
+
+                      {/* Heads Table */}
+                      {!isLoading && (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                              <tr>
+                                <th>Head Name</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {heads.length === 0 ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No data available
+                                  </td>
+                                </tr>
+                              ) : filteredHeads.length === 0 && searchTerm ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No matching heads found
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredHeads.map((head) => (
+                                  <tr key={head.id}>
+                                    <td>{head.headName}</td>
+                                    <td>
+                                      <Button
+                                        variant="link"
+                                        className="action-button edit-button me-2"
+                                        onClick={() => openEditModal(head)}
+                                      >
+                                        <FaEdit />
+                                      </Button>
+                                      <Button
+                                        variant="link"
+                                        className="action-button delete-button"
+                                        onClick={() => openDeleteModal(head)}
+                                      >
+                                        <FaTrash />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </Table>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -584,8 +771,8 @@ const ReceiptHeadSetup = () => {
       <EditHeadModal
         isOpen={isEditModalOpen}
         onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedHead(null);
+          setIsEditModalOpen(false)
+          setSelectedHead(null)
         }}
         onConfirm={handleEditHead}
         head={selectedHead}
@@ -593,194 +780,29 @@ const ReceiptHeadSetup = () => {
       <DeleteHeadModal
         isOpen={isDeleteModalOpen}
         onClose={() => {
-          setIsDeleteModalOpen(false);
-          setSelectedHead(null);
+          setIsDeleteModalOpen(false)
+          setSelectedHead(null)
         }}
         onConfirm={handleDeleteHead}
         head={selectedHead}
       />
+      <ConfirmEditModal
+        isOpen={isConfirmEditModalOpen}
+        onClose={() => {
+          setIsConfirmEditModalOpen(false)
+          setSelectedHead(null)
+          setNewHeadName("")
+        }}
+        onConfirm={confirmEditHead}
+        currentName={selectedHead?.headName}
+        newName={newHeadName}
+      />
 
       {/* Toastify Container */}
       <ToastContainer />
-
-      <style>
-        {`
-          .course-setup-container {
-            background-color: #fff;
-          }
-
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          .form-card {
-            background-color: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-          }
-
-          .header {
-            border-bottom: 1px solid #dee2e6;
-          }
-
-          .custom-search {
-            max-width: 300px;
-          }
-
-          .table-responsive {
-            margin-bottom: 0;
-          }
-
-          .table th {
-            font-weight: 500;
-          }
-
-          .table td {
-            vertical-align: middle;
-          }
-
-          .action-button {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            padding: 0;
-            color: white;
-          }
-
-          .edit-button {
-            background-color: #0B3D7B;
-          }
-
-          .edit-button:hover {
-            background-color: #092a54;
-            color: white;
-          }
-
-          .delete-button {
-            background-color: #dc3545;
-          }
-
-          .delete-button:hover {
-            background-color: #bb2d3b;
-            color: white;
-          }
-
-          /* Modal Styles */
-          .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1100;
-          }
-
-          .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-          }
-
-          .modal-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #333;
-            text-align: center;
-          }
-
-          .modal-body {
-            margin-bottom: 1.5rem;
-          }
-
-          .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-          }
-
-          .modal-button {
-            padding: 0.5rem 2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
-          }
-
-          .modal-button.confirm {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .modal-button.delete {
-            background-color: #dc3545;
-            color: white;
-          }
-
-          .modal-button.cancel {
-            background-color: #6c757d;
-            color: white;
-          }
-
-          .custom-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-          }
-
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
-
-          .gap-2 {
-            gap: 0.5rem;
-          }
-        `}
-      </style>
     </MainContentPage>
-  );
-};
+  )
+}
 
-export default ReceiptHeadSetup;
+export default ReceiptHeadSetup
+

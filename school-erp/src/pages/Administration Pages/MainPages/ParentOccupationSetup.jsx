@@ -3,14 +3,15 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table, Spinner } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import * as XLSX from "xlsx" // Added for import/export
+import "../styles/style.css"
 
 // Add Parent Occupation Modal Component
 const AddParentOccupationModal = ({ isOpen, onClose, onConfirm }) => {
@@ -155,20 +156,58 @@ const ParentOccupationSetup = () => {
   const [newOccupationName, setNewOccupationName] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [occupations, setOccupations] = useState([])
-  const [error, setError] = useState(null)
-  const [administrationId, setAdministrationId] = useState(null)
-  const { user } = useAuthContext()
+  const [isLoading, setIsLoading] = useState(false)
+  const { user, currentAcademicYear } = useAuthContext()
 
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
+    const resetState = () => {
+      setOccupations([])
+      setSearchTerm("")
+      setSelectedOccupation(null)
+      setNewOccupationName("")
+      setIsAddModalOpen(false)
+      setIsEditModalOpen(false)
+      setIsDeleteModalOpen(false)
+      setIsConfirmEditModalOpen(false)
+    }
+
+    resetState()
+
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid)
-        await fetchAdministrationId()
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        setIsLoading(true)
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+          await fetchOccupations()
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        } finally {
+          setIsLoading(false)
+        }
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage parent occupations.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       } else {
         console.log("User is not authenticated")
         toast.error("Please log in to view and manage parent occupations.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
@@ -179,76 +218,120 @@ const ParentOccupationSetup = () => {
     }
 
     checkAuthAndFetchData()
-  }, [])
 
-  useEffect(() => {
-    if (administrationId) {
-      fetchOccupations()
-    }
-  }, [administrationId])
+    return () => resetState()
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
 
-  const fetchAdministrationId = async () => {
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-      const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-        setAdministrationId(newAdminRef.id)
-      } else {
-        setAdministrationId(querySnapshot.docs[0].id)
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error)
-      toast.error("Failed to initialize. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      })
+      console.error("Error ensuring necessary documents:", error)
     }
   }
 
   const fetchOccupations = async () => {
-    if (!administrationId) return
+    if (!auth.currentUser || !currentAcademicYear) return
 
-    setError(null)
+    setIsLoading(true)
     try {
+      // First ensure all documents exist
+      await ensureDocumentsExist()
+
+      // Path to the ParentOccupation collection
       const occupationsRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "ParentOccupation",
       )
+
       const querySnapshot = await getDocs(occupationsRef)
       const occupationsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      console.log("Fetched occupations:", occupationsData)
-      setOccupations(occupationsData)
+      console.log(
+        "Fetched parent occupations for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        occupationsData,
+      )
+      setOccupations(occupationsData) // Update state with fetched data
     } catch (error) {
-      console.error("Error fetching occupations:", error)
-      toast.error("Failed to fetch occupations. Please try again.", {
+      console.error("Error fetching parent occupations:", error)
+      toast.error("Failed to fetch parent occupations. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+      setOccupations([]) // Reset on error
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleAddOccupation = async (occupationName) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -261,7 +344,7 @@ const ParentOccupationSetup = () => {
     if (!occupationName.trim()) {
       toast.error("Parent occupation name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -271,9 +354,7 @@ const ParentOccupationSetup = () => {
       return
     }
 
-    const isDuplicate = occupations.some(
-      (occupation) => occupation.name.toLowerCase() === occupationName.toLowerCase()
-    )
+    const isDuplicate = occupations.some((occupation) => occupation.name.toLowerCase() === occupationName.toLowerCase())
     if (isDuplicate) {
       toast.error("A parent occupation with this name already exists. Please choose a different name.", {
         position: "top-right",
@@ -287,21 +368,43 @@ const ParentOccupationSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
+
+      // Path to add a new parent occupation
       const occupationsRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "ParentOccupation",
       )
-      const docRef = await addDoc(occupationsRef, { name: occupationName })
-      console.log("Parent Occupation added with ID:", docRef.id)
 
-      setOccupations((prev) => [...prev, { id: docRef.id, name: occupationName }])
+      const docRef = await addDoc(occupationsRef, {
+        name: occupationName,
+        createdAt: new Date(),
+      })
+
+      console.log(
+        "Parent occupation added with ID:",
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      const newOccupation = { id: docRef.id, name: occupationName }
+      setOccupations((prevOccupations) => [...prevOccupations, newOccupation])
+
       setIsAddModalOpen(false)
-      toast.success("Parent Occupation added successfully!", {
+      toast.success("Parent occupation added successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -311,26 +414,30 @@ const ParentOccupationSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data to ensure consistency
       await fetchOccupations()
     } catch (error) {
       console.error("Error adding parent occupation:", error)
       toast.error("Failed to add parent occupation. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleEditOccupation = async (occupationId, newName) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -343,7 +450,7 @@ const ParentOccupationSetup = () => {
     if (!newName.trim()) {
       toast.error("Parent occupation name cannot be empty.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -354,7 +461,7 @@ const ParentOccupationSetup = () => {
     }
 
     const isDuplicate = occupations.some(
-      (occupation) => occupation.id !== occupationId && occupation.name.toLowerCase() === newName.toLowerCase()
+      (occupation) => occupation.id !== occupationId && occupation.name.toLowerCase() === newName.toLowerCase(),
     )
     if (isDuplicate) {
       toast.error("A parent occupation with this name already exists. Please choose a different name.", {
@@ -375,55 +482,10 @@ const ParentOccupationSetup = () => {
   }
 
   const confirmEditOccupation = async () => {
-    try {
-      const occupationRef = doc(
-        db,
-        "Schools",
-        auth.currentUser.uid,
-        "Administration",
-        administrationId,
-        "ParentOccupation",
-        selectedOccupation.id
-      )
-      await updateDoc(occupationRef, { name: newOccupationName })
-      console.log("Parent Occupation updated:", selectedOccupation.id)
-
-      setOccupations((prev) =>
-        prev.map((occ) => (occ.id === selectedOccupation.id ? { ...occ, name: newOccupationName } : occ))
-      )
-      setIsConfirmEditModalOpen(false)
-      setSelectedOccupation(null)
-      setNewOccupationName("")
-      toast.success("Parent Occupation updated successfully!", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        style: { background: "#0B3D7B", color: "white" },
-      })
-      await fetchOccupations()
-    } catch (error) {
-      console.error("Error updating parent occupation:", error)
-      toast.error("Failed to update parent occupation. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      })
-    }
-  }
-
-  const handleDeleteOccupation = async (occupationId) => {
-    if (!administrationId) {
-      toast.error("Administration not initialized. Please try again.", {
-        position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -433,23 +495,44 @@ const ParentOccupationSetup = () => {
       return
     }
 
+    setIsLoading(true)
     try {
+      // Path to update a parent occupation
       const occupationRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "ParentOccupation",
-        occupationId
+        selectedOccupation.id,
       )
-      await deleteDoc(occupationRef)
-      console.log("Parent Occupation deleted:", occupationId)
 
-      setOccupations((prev) => prev.filter((occ) => occ.id !== occupationId))
-      setIsDeleteModalOpen(false)
+      await updateDoc(occupationRef, {
+        name: newOccupationName,
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        "Parent occupation updated:",
+        selectedOccupation.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      setOccupations((prevOccupations) =>
+        prevOccupations.map((occ) => (occ.id === selectedOccupation.id ? { ...occ, name: newOccupationName } : occ)),
+      )
+
+      setIsConfirmEditModalOpen(false)
       setSelectedOccupation(null)
-      toast.success("Parent Occupation deleted successfully!", {
+      setNewOccupationName("")
+      toast.success("Parent occupation updated successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -459,10 +542,70 @@ const ParentOccupationSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data
       await fetchOccupations()
     } catch (error) {
-      console.error("Error deleting parent occupation:", error)
-      toast.error("Failed to delete parent occupation. Please try again.", {
+      console.error("Error updating parent occupation:", error)
+      toast.error("Failed to update parent occupation. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteOccupation = async (occupationId) => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      // Path to delete a parent occupation
+      const occupationRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "ParentOccupation",
+        occupationId,
+      )
+
+      await deleteDoc(occupationRef)
+      console.log(
+        "Parent occupation deleted:",
+        occupationId,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      setOccupations((prevOccupations) => prevOccupations.filter((occ) => occ.id !== occupationId))
+
+      setIsDeleteModalOpen(false)
+      setSelectedOccupation(null)
+      toast.success("Parent occupation deleted successfully!", {
         position: "top-right",
         autoClose: 1000,
         hideProgressBar: false,
@@ -471,14 +614,30 @@ const ParentOccupationSetup = () => {
         draggable: true,
         progress: undefined,
       })
+
+      // Fetch fresh data
+      await fetchOccupations()
+    } catch (error) {
+      console.error("Error deleting parent occupation:", error)
+      toast.error("Failed to delete parent occupation. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleImport = async (event) => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -491,6 +650,7 @@ const ParentOccupationSetup = () => {
     const file = event.target.files[0]
     if (!file) return
 
+    setIsLoading(true)
     const reader = new FileReader()
     reader.onload = async (e) => {
       const data = new Uint8Array(e.target.result)
@@ -501,50 +661,72 @@ const ParentOccupationSetup = () => {
 
       if (jsonData.length === 0) {
         toast.error("No data found in the imported file.")
+        setIsLoading(false)
         return
       }
 
       try {
+        // Ensure all necessary documents exist
+        await ensureDocumentsExist()
+
+        // Path to add imported parent occupations
         const occupationsRef = collection(
           db,
           "Schools",
           auth.currentUser.uid,
+          "AcademicYears",
+          currentAcademicYear,
           "Administration",
-          administrationId,
-          "ParentOccupation"
+          ADMIN_DOC_ID,
+          "ParentOccupation",
         )
+
         const newOccupations = []
         for (const row of jsonData) {
           const name = row["Parent Occupation"] || row["name"]
           if (name && name.trim()) {
-            const isDuplicate = occupations.some(
-              (occ) => occ.name.toLowerCase() === name.toLowerCase()
-            )
+            const isDuplicate = occupations.some((occ) => occ.name.toLowerCase() === name.toLowerCase())
             if (!isDuplicate) {
-              const docRef = await addDoc(occupationsRef, { name })
+              const docRef = await addDoc(occupationsRef, {
+                name,
+                createdAt: new Date(),
+              })
               newOccupations.push({ id: docRef.id, name })
             }
           }
         }
 
-        setOccupations((prev) => [...prev, ...newOccupations])
+        // Update UI
+        setOccupations((prevOccupations) => [...prevOccupations, ...newOccupations])
+
         toast.success("Parent occupations imported successfully!", {
+          position: "top-right",
+          autoClose: 1000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
           style: { background: "#0B3D7B", color: "white" },
         })
+
+        // Fetch fresh data
         await fetchOccupations()
       } catch (error) {
         console.error("Error importing parent occupations:", error)
         toast.error("Failed to import parent occupations. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
     }
     reader.readAsArrayBuffer(file)
   }
 
   const handleExport = () => {
-    if (!administrationId || !auth.currentUser) {
-      toast.error("Administration not initialized or user not logged in.", {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -565,8 +747,15 @@ const ParentOccupationSetup = () => {
     const worksheet = XLSX.utils.json_to_sheet(exportData)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "ParentOccupations")
-    XLSX.writeFile(workbook, `ParentOccupations_Export_${auth.currentUser.uid}.xlsx`)
+    XLSX.writeFile(workbook, `ParentOccupations_Export_${auth.currentUser.uid}_${currentAcademicYear}.xlsx`)
     toast.success("Parent occupations exported successfully!", {
+      position: "top-right",
+      autoClose: 1000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
       style: { background: "#0B3D7B", color: "white" },
     })
   }
@@ -582,7 +771,7 @@ const ParentOccupationSetup = () => {
   }
 
   const filteredOccupations = occupations.filter((occupation) =>
-    occupation.name.toLowerCase().includes(searchTerm.toLowerCase())
+    occupation.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -615,72 +804,105 @@ const ParentOccupationSetup = () => {
                     <Button
                       onClick={() => document.getElementById("import-file").click()}
                       className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || isLoading}
                     >
                       Import
                     </Button>
-                    <Button onClick={handleExport} className="btn btn-light text-dark">
+                    <Button
+                      onClick={handleExport}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || occupations.length === 0 || isLoading}
+                    >
                       Export
                     </Button>
-                    <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                    <Button
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="btn btn-light text-dark"
+                      disabled={!currentAcademicYear || isLoading}
+                    >
                       + Add Parent Occupation
                     </Button>
                   </div>
                 </div>
                 <div className="content-wrapper p-4">
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by Parent Occupation"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="custom-search mb-3"
-                  />
-                  <div className="table-responsive">
-                    <Table bordered hover>
-                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                        <tr>
-                          <th>Parent Occupation</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {occupations.length === 0 ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No data available
-                            </td>
-                          </tr>
-                        ) : filteredOccupations.length === 0 && searchTerm ? (
-                          <tr>
-                            <td colSpan="2" className="text-center">
-                              No matching occupations found
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredOccupations.map((occupation) => (
-                            <tr key={occupation.id}>
-                              <td>{occupation.name}</td>
-                              <td>
-                                <Button
-                                  variant="link"
-                                  className="action-button edit-button me-2"
-                                  onClick={() => openEditModal(occupation)}
-                                >
-                                  <FaEdit />
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  className="action-button delete-button"
-                                  onClick={() => openDeleteModal(occupation)}
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </div>
+                  {!currentAcademicYear ? (
+                    <div className="alert alert-warning">
+                      Please select an academic year to manage parent occupations.
+                    </div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <Form.Control
+                        type="text"
+                        placeholder="Search by Parent Occupation"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="custom-search mb-3"
+                        disabled={isLoading}
+                      />
+
+                      {/* Loading Indicator */}
+                      {isLoading && (
+                        <div className="text-center my-4">
+                          <Spinner animation="border" role="status" variant="primary" className="loader">
+                            <span className="visually-hidden">Loading...</span>
+                          </Spinner>
+                          <p className="mt-2">Loading data...</p>
+                        </div>
+                      )}
+
+                      {/* Occupations Table */}
+                      {!isLoading && (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                              <tr>
+                                <th>Parent Occupation</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {occupations.length === 0 ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No data available
+                                  </td>
+                                </tr>
+                              ) : filteredOccupations.length === 0 && searchTerm ? (
+                                <tr>
+                                  <td colSpan="2" className="text-center">
+                                    No matching occupations found
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredOccupations.map((occupation) => (
+                                  <tr key={occupation.id}>
+                                    <td>{occupation.name}</td>
+                                    <td>
+                                      <Button
+                                        variant="link"
+                                        className="action-button edit-button me-2"
+                                        onClick={() => openEditModal(occupation)}
+                                      >
+                                        <FaEdit />
+                                      </Button>
+                                      <Button
+                                        variant="link"
+                                        className="action-button delete-button"
+                                        onClick={() => openDeleteModal(occupation)}
+                                      >
+                                        <FaTrash />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </Table>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -724,64 +946,9 @@ const ParentOccupationSetup = () => {
       />
 
       <ToastContainer />
-
-      <style>
-        {`
-          .occupation-setup-container {
-            background-color: #fff;
-          }
-          .custom-breadcrumb { padding: 0.5rem 1rem; }
-          .custom-breadcrumb a { color: #0B3D7B; text-decoration: none; }
-          .custom-breadcrumb .separator { margin: 0 0.5rem; color: #6c757d; }
-          .custom-breadcrumb .current { color: #212529; }
-          .form-card { background-color: #fff; border: 1px solid #dee2e6; border-radius: 0.25rem; }
-          .header { border-bottom: 1px solid #dee2e6; }
-          .custom-search { max-width: 300px; }
-          .table-responsive { margin-bottom: 0; }
-          .table th { font-weight: 500; }
-          .table td { vertical-align: middle; }
-          .action-button {
-            width: 30px; height: 30px; display: inline-flex; align-items: center;
-            justify-content: center; border-radius: 4px; padding: 0; color: white;
-          }
-          .edit-button { background-color: #0B3D7B; }
-          .edit-button:hover { background-color: #092a54; color: white; }
-          .delete-button { background-color: #dc3545; }
-          .delete-button:hover { background-color: #bb2d3b; color: white; }
-          .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5); display: flex;
-            justify-content: center; align-items: center; z-index: 1100;
-          }
-          .modal-content {
-            background: white; padding: 2rem; border-radius: 8px;
-            width: 90%; max-width: 400px;
-          }
-          .modal-title {
-            font-size: 1.5rem; margin-bottom: 1rem; color: #333; text-align: center;
-          }
-          .modal-body { margin-bottom: 1.5rem; }
-          .modal-buttons { display: flex; justify-content: center; gap: 1rem; }
-          .modal-button {
-            padding: 0.5rem 2rem; border: none; border-radius: 4px;
-            cursor: pointer; font-weight: 500; transition: opacity 0.2s;
-          }
-          .modal-button.confirm { background-color: #0B3D7B; color: white; }
-          .modal-button.delete { background-color: #dc3545; color: white; }
-          .modal-button.cancel { background-color: #6c757d; color: white; }
-          .custom-input {
-            width: 100%; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;
-          }
-          .Toastify__toast-container { z-index: 9999; }
-          .Toastify__toast { background-color: #0B3D7B; color: white; }
-          .Toastify__toast--success { background-color: #0B3D7B; }
-          .Toastify__toast--error { background-color: #dc3545; }
-          .Toastify__progress-bar { background-color: rgba(255, 255, 255, 0.7); }
-          .gap-2 { gap: 0.5rem; }
-        `}
-      </style>
     </MainContentPage>
   )
 }
 
 export default ParentOccupationSetup
+

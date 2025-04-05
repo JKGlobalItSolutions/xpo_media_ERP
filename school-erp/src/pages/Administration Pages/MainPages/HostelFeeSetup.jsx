@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import MainContentPage from "../../../components/MainContent/MainContentPage"
-import { Form, Button, Row, Col, Container, Table } from "react-bootstrap"
+import { Form, Button, Row, Col, Container, Table, Spinner } from "react-bootstrap"
 import { FaEdit, FaTrash } from "react-icons/fa"
 import { db, auth } from "../../../Firebase/config"
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, limit } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore"
 import { useAuthContext } from "../../../context/AuthContext"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import "../styles/style.css"
 
 // Add Hostel Fee Modal Component
 const AddHostelFeeModal = ({ isOpen, onClose, onConfirm, courses, studentCategories, feeHeadings }) => {
@@ -272,17 +273,17 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentFee, updatedFee }
           <p>Are you sure you want to edit this hostel fee? This may affect related data.</p>
           <div className="mb-3">
             <h6>Current Fee Details:</h6>
-            <p>Standard: {currentFee.standard}</p>
-            <p>Student Category: {currentFee.studentCategory}</p>
-            <p>Fee Heading: {currentFee.feeHeading}</p>
-            <p>Fee Amount: {currentFee.feeAmount}</p>
+            <p>Standard: {currentFee?.standard}</p>
+            <p>Student Category: {currentFee?.studentCategory}</p>
+            <p>Fee Heading: {currentFee?.feeHeading}</p>
+            <p>Fee Amount: {currentFee?.feeAmount}</p>
           </div>
           <div>
             <h6>Updated Fee Details:</h6>
-            <p>Standard: {updatedFee.standard}</p>
-            <p>Student Category: {updatedFee.studentCategory}</p>
-            <p>Fee Heading: {updatedFee.feeHeading}</p>
-            <p>Fee Amount: {updatedFee.feeAmount}</p>
+            <p>Standard: {updatedFee?.standard}</p>
+            <p>Student Category: {updatedFee?.studentCategory}</p>
+            <p>Fee Heading: {updatedFee?.feeHeading}</p>
+            <p>Fee Amount: {updatedFee?.feeAmount}</p>
           </div>
         </div>
         <div className="modal-buttons">
@@ -299,6 +300,9 @@ const ConfirmEditModal = ({ isOpen, onClose, onConfirm, currentFee, updatedFee }
 }
 
 const HostelFeeSetup = () => {
+  // Document ID for Administration
+  const ADMIN_DOC_ID = "admin_doc"
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -312,19 +316,73 @@ const HostelFeeSetup = () => {
   const [hostelFees, setHostelFees] = useState([])
   const [selectedCourse, setSelectedCourse] = useState("")
   const [selectedStudentCategory, setSelectedStudentCategory] = useState("")
-  const [administrationId, setAdministrationId] = useState(null)
-  const { user } = useAuthContext()
+  const [isLoading, setIsLoading] = useState({
+    courses: false,
+    studentCategories: false,
+    feeHeadings: false,
+    hostelFees: false,
+  })
+  const { user, currentAcademicYear } = useAuthContext()
 
+  // Reset state and fetch data when user or academic year changes
   useEffect(() => {
+    const resetState = () => {
+      setFeeHeadings([])
+      setCourses([])
+      setStudentCategories([])
+      setHostelFees([])
+      setSearchTerm("")
+      setSelectedCourse("")
+      setSelectedStudentCategory("")
+      setSelectedFee(null)
+      setUpdatedFee(null)
+      setIsAddModalOpen(false)
+      setIsEditModalOpen(false)
+      setIsDeleteModalOpen(false)
+      setIsConfirmEditModalOpen(false)
+      setIsLoading({
+        courses: false,
+        studentCategories: false,
+        feeHeadings: false,
+        hostelFees: false,
+      })
+    }
+
+    resetState()
+
     const checkAuthAndFetchData = async () => {
-      if (auth.currentUser) {
-        console.log("User is authenticated:", auth.currentUser.uid)
-        await fetchAdministrationId()
+      if (auth.currentUser && currentAcademicYear) {
+        console.log("User is authenticated:", auth.currentUser.uid, "Academic Year:", currentAcademicYear)
+
+        try {
+          // Ensure all necessary documents exist
+          await ensureDocumentsExist()
+
+          // Fetch all required data
+          await fetchCourses()
+          await fetchStudentCategories()
+          await fetchFeeHeadings()
+          await fetchHostelFees()
+        } catch (error) {
+          console.error("Error during data fetching:", error)
+          toast.error("An error occurred while loading data.")
+        }
+      } else if (!currentAcademicYear) {
+        console.log("No academic year selected")
+        toast.error("Please select an academic year to view and manage hostel fees.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        })
       } else {
         console.log("User is not authenticated")
         toast.error("Please log in to view and manage hostel fees.", {
           position: "top-right",
-          autoClose: 1000,
+          autoClose: 3000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
@@ -335,136 +393,331 @@ const HostelFeeSetup = () => {
     }
 
     checkAuthAndFetchData()
-  }, [])
 
-  useEffect(() => {
-    if (administrationId) {
-      fetchCourses()
-      fetchStudentCategories()
-      fetchFeeHeadings()
-      fetchHostelFees()
-    }
-  }, [administrationId])
+    return () => resetState()
+  }, [auth.currentUser?.uid, currentAcademicYear]) // Re-run on user or academic year change
 
-  const fetchAdministrationId = async () => {
+  // Ensure all necessary documents exist in the path
+  const ensureDocumentsExist = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
     try {
-      const adminRef = collection(db, "Schools", auth.currentUser.uid, "Administration")
-      const q = query(adminRef, limit(1))
-      const querySnapshot = await getDocs(q)
+      // Ensure Schools/{uid} document exists
+      const schoolDocRef = doc(db, "Schools", auth.currentUser.uid)
+      await setDoc(
+        schoolDocRef,
+        {
+          updatedAt: new Date(),
+          type: "school",
+        },
+        { merge: true },
+      )
 
-      if (querySnapshot.empty) {
-        const newAdminRef = await addDoc(adminRef, { createdAt: new Date() })
-        setAdministrationId(newAdminRef.id)
-      } else {
-        setAdministrationId(querySnapshot.docs[0].id)
-      }
+      // Ensure AcademicYears/{academicYear} document exists
+      const academicYearDocRef = doc(db, "Schools", auth.currentUser.uid, "AcademicYears", currentAcademicYear)
+      await setDoc(
+        academicYearDocRef,
+        {
+          year: currentAcademicYear,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      )
+
+      // Ensure Administration/{adminDocId} document exists
+      const adminDocRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+      )
+      await setDoc(
+        adminDocRef,
+        {
+          createdAt: new Date(),
+          type: "administration",
+        },
+        { merge: true },
+      )
+
+      console.log(
+        "All necessary documents ensured for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
     } catch (error) {
-      console.error("Error fetching/creating Administration ID:", error)
-      toast.error("Failed to initialize. Please try again.", {
+      console.error("Error ensuring necessary documents:", error)
+    }
+  }
+
+  const fetchCourses = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
+    setIsLoading((prev) => ({ ...prev, courses: true }))
+    try {
+      // Path to the CourseSetup collection
+      const coursesRef = collection(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "CourseSetup",
+      )
+
+      const querySnapshot = await getDocs(coursesRef)
+      const coursesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log(
+        "Fetched courses for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        coursesData,
+      )
+      setCourses(coursesData)
+    } catch (error) {
+      console.error("Error fetching courses:", error)
+      toast.error("Failed to fetch courses. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
-    }
-  }
-
-  const fetchCourses = async () => {
-    try {
-      const coursesRef = collection(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "Courses")
-      const querySnapshot = await getDocs(coursesRef)
-      const coursesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      setCourses(coursesData)
-    } catch (error) {
-      console.error("Error fetching courses:", error)
-      toast.error("Failed to fetch courses. Please try again.")
+      setCourses([])
+    } finally {
+      setIsLoading((prev) => ({ ...prev, courses: false }))
     }
   }
 
   const fetchStudentCategories = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
+    setIsLoading((prev) => ({ ...prev, studentCategories: true }))
     try {
+      // Path to the StudentCategory collection
       const categoriesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "StudentCategory",
       )
+
       const querySnapshot = await getDocs(categoriesRef)
       const categoriesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log(
+        "Fetched student categories for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        categoriesData,
+      )
       setStudentCategories(categoriesData)
     } catch (error) {
       console.error("Error fetching student categories:", error)
-      toast.error("Failed to fetch student categories. Please try again.")
+      toast.error("Failed to fetch student categories. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      setStudentCategories([])
+    } finally {
+      setIsLoading((prev) => ({ ...prev, studentCategories: false }))
     }
   }
 
   const fetchFeeHeadings = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
+    setIsLoading((prev) => ({ ...prev, feeHeadings: true }))
     try {
+      // Path to the HostelFeeHeadSetup collection
       const feeHeadingsRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "HostelFeeHeadSetup",
       )
+
       const querySnapshot = await getDocs(feeHeadingsRef)
       const feeHeadingsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log(
+        "Fetched hostel fee headings for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        feeHeadingsData,
+      )
       setFeeHeadings(feeHeadingsData)
     } catch (error) {
       console.error("Error fetching hostel fee headings:", error)
-      toast.error("Failed to fetch hostel fee headings. Please try again.")
+      toast.error("Failed to fetch hostel fee headings. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      setFeeHeadings([])
+    } finally {
+      setIsLoading((prev) => ({ ...prev, feeHeadings: false }))
     }
   }
 
   const fetchHostelFees = async () => {
+    if (!auth.currentUser || !currentAcademicYear) return
+
+    setIsLoading((prev) => ({ ...prev, hostelFees: true }))
     try {
+      // Path to the HostelFeeSetup collection
       const feesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "HostelFeeSetup",
       )
+
       const querySnapshot = await getDocs(feesRef)
       const feesData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      console.log(
+        "Fetched hostel fees for user",
+        auth.currentUser.uid,
+        "for academic year",
+        currentAcademicYear,
+        ":",
+        feesData,
+      )
       setHostelFees(feesData)
     } catch (error) {
       console.error("Error fetching hostel fees:", error)
-      toast.error("Failed to fetch hostel fees. Please try again.")
+      toast.error("Failed to fetch hostel fees. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      setHostelFees([])
+    } finally {
+      setIsLoading((prev) => ({ ...prev, hostelFees: false }))
     }
   }
 
   const handleAddFee = async (newFee) => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    // Validate form data
+    if (!newFee.standardId || !newFee.studentCategoryId || !newFee.feeHeadingId || !newFee.feeAmount) {
+      toast.error("Please fill in all fields.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    // Check for duplicate entry
+    const isDuplicate = hostelFees.some(
+      (fee) =>
+        fee.standardId === newFee.standardId &&
+        fee.studentCategoryId === newFee.studentCategoryId &&
+        fee.feeHeadingId === newFee.feeHeadingId,
+    )
+
+    if (isDuplicate) {
+      toast.error("A fee with the same standard, student category, and fee heading already exists.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsLoading((prev) => ({ ...prev, hostelFees: true }))
     try {
-      // Check for duplicate fee
-      const isDuplicate = hostelFees.some(
-        (fee) =>
-          fee.standardId === newFee.standardId &&
-          fee.studentCategoryId === newFee.studentCategoryId &&
-          fee.feeHeadingId === newFee.feeHeadingId,
-      )
+      // Ensure all necessary documents exist
+      await ensureDocumentsExist()
 
-      if (isDuplicate) {
-        toast.error("A fee with the same standard, student category, and fee heading already exists.")
-        return
-      }
-
+      // Path to add a new hostel fee
       const feesRef = collection(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "HostelFeeSetup",
       )
-      await addDoc(feesRef, newFee)
+
+      const docRef = await addDoc(feesRef, {
+        ...newFee,
+        createdAt: new Date(),
+      })
+
+      console.log(
+        "Hostel fee added with ID:",
+        docRef.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      const newFeeWithId = { id: docRef.id, ...newFee }
+      setHostelFees((prevFees) => [...prevFees, newFeeWithId])
+
       setIsAddModalOpen(false)
       toast.success("Hostel fee added successfully!", {
         position: "top-right",
@@ -476,39 +729,126 @@ const HostelFeeSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data to ensure consistency
       await fetchHostelFees()
     } catch (error) {
       console.error("Error adding hostel fee:", error)
       toast.error("Failed to add hostel fee. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading((prev) => ({ ...prev, hostelFees: false }))
     }
   }
 
   const handleEditFee = async (id, updatedFee) => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    // Validate form data
+    if (!updatedFee.standardId || !updatedFee.studentCategoryId || !updatedFee.feeHeadingId || !updatedFee.feeAmount) {
+      toast.error("Please fill in all fields.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    // Check for duplicate entry (excluding the current fee being edited)
+    const isDuplicate = hostelFees.some(
+      (fee) =>
+        fee.id !== id &&
+        fee.standardId === updatedFee.standardId &&
+        fee.studentCategoryId === updatedFee.studentCategoryId &&
+        fee.feeHeadingId === updatedFee.feeHeadingId,
+    )
+
+    if (isDuplicate) {
+      toast.error("A fee with the same standard, student category, and fee heading already exists.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
     setIsEditModalOpen(false)
     setIsConfirmEditModalOpen(true)
     setUpdatedFee(updatedFee)
   }
 
   const confirmEditFee = async () => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsLoading((prev) => ({ ...prev, hostelFees: true }))
     try {
+      // Path to update a hostel fee
       const feeRef = doc(
         db,
         "Schools",
         auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
         "Administration",
-        administrationId,
+        ADMIN_DOC_ID,
         "HostelFeeSetup",
         selectedFee.id,
       )
-      await updateDoc(feeRef, updatedFee)
+
+      await updateDoc(feeRef, {
+        ...updatedFee,
+        updatedAt: new Date(),
+      })
+
+      console.log(
+        "Hostel fee updated:",
+        selectedFee.id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      setHostelFees((prevFees) => prevFees.map((fee) => (fee.id === selectedFee.id ? { ...fee, ...updatedFee } : fee)))
+
       setIsConfirmEditModalOpen(false)
       setSelectedFee(null)
       setUpdatedFee(null)
@@ -522,25 +862,67 @@ const HostelFeeSetup = () => {
         progress: undefined,
         style: { background: "#0B3D7B", color: "white" },
       })
+
+      // Fetch fresh data
       await fetchHostelFees()
     } catch (error) {
       console.error("Error updating hostel fee:", error)
       toast.error("Failed to update hostel fee. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading((prev) => ({ ...prev, hostelFees: false }))
     }
   }
 
   const handleDeleteFee = async (id) => {
+    if (!auth.currentUser || !currentAcademicYear) {
+      toast.error("User not logged in or no academic year selected. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+      return
+    }
+
+    setIsLoading((prev) => ({ ...prev, hostelFees: true }))
     try {
-      const feeRef = doc(db, "Schools", auth.currentUser.uid, "Administration", administrationId, "HostelFeeSetup", id)
+      // Path to delete a hostel fee
+      const feeRef = doc(
+        db,
+        "Schools",
+        auth.currentUser.uid,
+        "AcademicYears",
+        currentAcademicYear,
+        "Administration",
+        ADMIN_DOC_ID,
+        "HostelFeeSetup",
+        id,
+      )
+
       await deleteDoc(feeRef)
+      console.log(
+        "Hostel fee deleted:",
+        id,
+        "for user:",
+        auth.currentUser.uid,
+        "in academic year:",
+        currentAcademicYear,
+      )
+
+      // Immediately update UI
+      setHostelFees((prevFees) => prevFees.filter((fee) => fee.id !== id))
+
       setIsDeleteModalOpen(false)
       setSelectedFee(null)
       toast.success("Hostel fee deleted successfully!", {
@@ -552,18 +934,22 @@ const HostelFeeSetup = () => {
         draggable: true,
         progress: undefined,
       })
+
+      // Fetch fresh data
       await fetchHostelFees()
     } catch (error) {
       console.error("Error deleting hostel fee:", error)
       toast.error("Failed to delete hostel fee. Please try again.", {
         position: "top-right",
-        autoClose: 1000,
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
       })
+    } finally {
+      setIsLoading((prev) => ({ ...prev, hostelFees: false }))
     }
   }
 
@@ -577,14 +963,35 @@ const HostelFeeSetup = () => {
     setIsDeleteModalOpen(true)
   }
 
-  const filteredFees = hostelFees.filter(
-    (fee) =>
-      (selectedCourse === "" || fee.standardId === selectedCourse) &&
-      (selectedStudentCategory === "" || fee.studentCategoryId === selectedStudentCategory) &&
-      (fee.feeHeading.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        fee.standard.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        fee.studentCategory.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
+  // Custom sorting function for standards
+  const sortStandards = (a, b) => {
+    const order = ["LKG", "UKG", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"]
+    const aIndex = order.indexOf(a.standard)
+    const bIndex = order.indexOf(b.standard)
+
+    if (aIndex === -1 && bIndex === -1) return a.standard.localeCompare(b.standard)
+    if (aIndex === -1) return 1
+    if (bIndex === -1) return -1
+    return aIndex - bIndex
+  }
+
+  const filteredFees = hostelFees
+    .filter(
+      (fee) =>
+        (selectedCourse === "" || fee.standardId === selectedCourse) &&
+        (selectedStudentCategory === "" || fee.studentCategoryId === selectedStudentCategory) &&
+        (fee.feeHeading.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          fee.standard.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          fee.studentCategory.toLowerCase().includes(searchTerm.toLowerCase())),
+    )
+    .sort(sortStandards)
+
+  const calculateTotalFee = () => {
+    return filteredFees.reduce((total, fee) => total + Number(fee.feeAmount || 0), 0).toFixed(2)
+  }
+
+  // Check if any data is loading
+  const isAnyLoading = Object.values(isLoading).some((loading) => loading)
 
   return (
     <MainContentPage>
@@ -592,106 +999,159 @@ const HostelFeeSetup = () => {
         <Row>
           <Col xs={12}>
             <div className="hostel-fee-setup-container">
+              {/* Breadcrumb Navigation */}
               <nav className="custom-breadcrumb py-1 py-lg-3">
                 <Link to="/home">Home</Link>
                 <span className="separator">&gt;</span>
-                <span to="">Administration</span>
+                <span>Administration</span>
                 <span className="separator">&gt;</span>
-                <Link to="/admin/hostel-fee-setup">Hostel Fee Setup</Link>
+                <span className="current col-12">Hostel Fee Setup</span>
               </nav>
 
               <div className="form-card mt-3">
+                {/* Header */}
                 <div className="header p-3 d-flex justify-content-between align-items-center">
-                  <h2 className="m-0 d-none d-lg-block">Hostel Fee Setup</h2>
-                  <h6 className="m-0 d-lg-none">Hostel Fee Setup</h6>
-                  <Button onClick={() => setIsAddModalOpen(true)} className="btn btn-light text-dark">
+                  <div>
+                    <h2 className="m-0 d-none d-lg-block">Hostel Fee Setup</h2>
+                    <h6 className="m-0 d-lg-none">Hostel Fee Setup</h6>
+                  </div>
+                  <Button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="btn btn-light text-dark"
+                    disabled={!currentAcademicYear || isAnyLoading}
+                  >
                     + Add Hostel Fee
                   </Button>
                 </div>
 
                 <div className="content-wrapper p-4">
-                  <Row className="mb-3">
-                    <Col xs={12} md={6} lg={3}>
-                      <Form.Group>
-                        <Form.Label>Select Course</Form.Label>
-                        <Form.Select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
-                          <option value="">All Courses</option>
-                          {courses.map((course) => (
-                            <option key={course.id} value={course.id}>
-                              {course.standard}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    <Col xs={12} md={6} lg={3}>
-                      <Form.Group>
-                        <Form.Label>Select Student Category</Form.Label>
-                        <Form.Select
-                          value={selectedStudentCategory}
-                          onChange={(e) => setSelectedStudentCategory(e.target.value)}
-                        >
-                          <option value="">All Categories</option>
-                          {studentCategories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.StudentCategoryName}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    <Col xs={12} md={12} lg={6}>
-                      <Form.Group>
-                        <Form.Label>Search</Form.Label>
-                        <Form.Control
-                          type="text"
-                          placeholder="Search by Standard, Category, or Fee Heading"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
+                  {!currentAcademicYear ? (
+                    <div className="alert alert-warning">Please select an academic year to manage hostel fees.</div>
+                  ) : (
+                    <>
+                      <Row className="mb-3">
+                        <Col xs={12} md={6} lg={3}>
+                          <Form.Group>
+                            <Form.Label>Select Course</Form.Label>
+                            <Form.Select
+                              value={selectedCourse}
+                              onChange={(e) => setSelectedCourse(e.target.value)}
+                              disabled={isAnyLoading}
+                            >
+                              <option value="">All Courses</option>
+                              {courses.map((course) => (
+                                <option key={course.id} value={course.id}>
+                                  {course.standard}
+                                </option>
+                              ))}
+                            </Form.Select>
+                          </Form.Group>
+                        </Col>
+                        <Col xs={12} md={6} lg={3}>
+                          <Form.Group>
+                            <Form.Label>Select Student Category</Form.Label>
+                            <Form.Select
+                              value={selectedStudentCategory}
+                              onChange={(e) => setSelectedStudentCategory(e.target.value)}
+                              disabled={isAnyLoading}
+                            >
+                              <option value="">All Categories</option>
+                              {studentCategories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                  {category.StudentCategoryName}
+                                </option>
+                              ))}
+                            </Form.Select>
+                          </Form.Group>
+                        </Col>
+                        <Col xs={12} md={12} lg={6}>
+                          <Form.Group>
+                            <Form.Label>Search</Form.Label>
+                            <Form.Control
+                              type="text"
+                              placeholder="Search by Standard, Category, or Fee Heading"
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              disabled={isAnyLoading}
+                            />
+                          </Form.Group>
+                        </Col>
+                      </Row>
 
-                  <div className="table-responsive">
-                    <Table bordered hover>
-                      <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
-                        <tr>
-                          <th>Standard</th>
-                          <th>Student Category</th>
-                          <th>Fee Heading</th>
-                          <th>Fee Amount</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredFees.map((fee) => (
-                          <tr key={fee.id}>
-                            <td>{fee.standard}</td>
-                            <td>{fee.studentCategory}</td>
-                            <td>{fee.feeHeading}</td>
-                            <td>{fee.feeAmount}</td>
-                            <td>
-                              <Button
-                                variant="link"
-                                className="action-button edit-button me-2"
-                                onClick={() => openEditModal(fee)}
-                              >
-                                <FaEdit />
-                              </Button>
-                              <Button
-                                variant="link"
-                                className="action-button delete-button"
-                                onClick={() => openDeleteModal(fee)}
-                              >
-                                <FaTrash />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  </div>
+                      {/* Loading Indicator */}
+                      {isAnyLoading && (
+                        <div className="text-center my-4">
+                          <Spinner animation="border" role="status" variant="primary" className="loader">
+                            <span className="visually-hidden">Loading...</span>
+                          </Spinner>
+                          <p className="mt-2">Loading data...</p>
+                        </div>
+                      )}
+
+                      {/* Hostel Fees Table */}
+                      {!isAnyLoading && (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead style={{ backgroundColor: "#0B3D7B", color: "white" }}>
+                              <tr>
+                                <th>Standard</th>
+                                <th>Student Category</th>
+                                <th>Fee Heading</th>
+                                <th>Fee Amount</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredFees.length === 0 ? (
+                                <tr>
+                                  <td colSpan="5" className="text-center">
+                                    No data available
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredFees.map((fee) => (
+                                  <tr key={fee.id}>
+                                    <td>{fee.standard}</td>
+                                    <td>{fee.studentCategory}</td>
+                                    <td>{fee.feeHeading}</td>
+                                    <td>{fee.feeAmount}</td>
+                                    <td>
+                                      <Button
+                                        variant="link"
+                                        className="action-button edit-button me-2"
+                                        onClick={() => openEditModal(fee)}
+                                      >
+                                        <FaEdit />
+                                      </Button>
+                                      <Button
+                                        variant="link"
+                                        className="action-button delete-button"
+                                        onClick={() => openDeleteModal(fee)}
+                                      >
+                                        <FaTrash />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                            {filteredFees.length > 0 && (
+                              <tfoot>
+                                <tr>
+                                  <td colSpan="3" className="text-end fw-bold">
+                                    Total Fee:
+                                  </td>
+                                  <td colSpan="2" className="fw-bold">
+                                    {calculateTotalFee()}
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            )}
+                          </Table>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -743,177 +1203,6 @@ const HostelFeeSetup = () => {
 
       {/* Toastify Container */}
       <ToastContainer />
-
-      <style>
-        {`
-          .hostel-fee-setup-container {
-            background-color: #fff;
-          }
-
-          .custom-breadcrumb {
-            padding: 0.5rem 1rem;
-          }
-
-          .custom-breadcrumb a {
-            color: #0B3D7B;
-            text-decoration: none;
-          }
-
-          .custom-breadcrumb .separator {
-            margin: 0 0.5rem;
-            color: #6c757d;
-          }
-
-          .custom-breadcrumb .current {
-            color: #212529;
-          }
-
-          .form-card {
-            background-color: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 0.25rem;
-          }
-
-          .header {
-            border-bottom: 1px solid #dee2e6;
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .table-responsive {
-            margin-bottom: 0;
-          }
-
-          .table th {
-            font-weight: 500;
-          }
-
-          .table td {
-            vertical-align: middle;
-          }
-
-          .action-button {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            padding: 0;
-            color: white;
-          }
-
-          .edit-button {
-            background-color: #0B3D7B;
-          }
-
-          .edit-button:hover {
-            background-color: #092a54;
-            color: white;
-          }
-
-          .delete-button {
-            background-color: #dc3545;
-          }
-
-          .delete-button:hover {
-            background-color: #bb2d3b;
-            color: white;
-          }
-
-          /* Modal Styles */
-          .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1100;
-          }
-
-          .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-          }
-
-          .modal-title {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #333;
-            text-align: center;
-          }
-
-          .modal-body {
-            margin-bottom: 1.5rem;
-          }
-
-          .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-          }
-
-          .modal-button {
-            padding: 0.5rem 2rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
-          }
-
-          .modal-button.confirm {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .modal-button.delete {
-            background-color: #dc3545;
-            color: white;
-          }
-
-          .modal-button.cancel {
-            background-color: #6c757d;
-            color: white;
-          }
-
-          /* Toastify custom styles */
-          .Toastify__toast-container {
-            z-index: 9999;
-          }
-
-          .Toastify__toast {
-            background-color: #0B3D7B;
-            color: white;
-          }
-
-          .Toastify__toast--success {
-            background-color: #0B3D7B;
-          }
-
-          .Toastify__toast--error {
-            background-color: #dc3545;
-          }
-
-          .Toastify__progress-bar {
-            background-color: rgba(255, 255, 255, 0.7);
-          }
-
-          /* Form Label Styles */
-          .form-label {
-            text-align: left !important;
-            display: block;
-            width: 100%;
-          }
-        `}
-      </style>
     </MainContentPage>
   )
 }
